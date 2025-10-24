@@ -1,0 +1,9 @@
+# Ignorar pasta de builds
+/builds/
+
+# Ignorar artefatos do Packer na pasta packer
+/packer/*.box
+/packer/packer.log
+
+# Ignorar arquivos temporários do Vagrant
+.vagrant/
