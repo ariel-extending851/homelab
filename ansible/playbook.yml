@@ -1,0 +1,117 @@
+---
+- name: Instalar e configurar *** com Docker
+  hosts: all
+  become: yes
+  vars:
+    ***_user_id: "1000:1000"
+    ***_config_dir: "/srv/***/config"
+    ***_cache_dir: "/srv/***/cache"
+    ***_media_dir1: "/srv/media/movies"
+    ***_media_dir2: "/srv/media/tv"
+    ***_fonts_dir: "/srv/***/fonts"
+    compose_project_dir: "/opt/***"
+
+  tasks:
+    # --------------------------------------------------
+    # 1. Instalar Docker e Docker Compose
+    # --------------------------------------------------
+    - name: Adicionar repositório do Docker
+      get_url:
+        url: https://download.docker.com/linux/fedora/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: '0644'
+
+    - name: Instalar pacotes do Docker CE e plugin Compose
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Garantir que o serviço Docker está iniciado e habilitado
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Adicionar usuário 'ariel' ao grupo 'docker'
+      user:
+        name: ariel
+        groups: docker
+        append: yes
+
+    # --------------------------------------------------
+    # 2. Criar diretórios necessários para ***
+    # --------------------------------------------------
+    - name: Criar diretórios de configuração, cache e projeto do Compose
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ***_user_id.split(':')[0] }}"
+        group: "{{ ***_user_id.split(':')[1] }}"
+      loop:
+        - "{{ compose_project_dir }}"
+        - "{{ ***_config_dir }}"
+        - "{{ ***_cache_dir }}"
+        - "{{ ***_fonts_dir }}"
+
+    - name: Criar diretórios de mídia
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ ***_media_dir1 }}"
+        - "{{ ***_media_dir2 }}" # Cria mesmo se não usar
+
+    # --------------------------------------------------
+    # 3. Criar arquivo docker-compose.yml
+    # --------------------------------------------------
+    - name: Criar docker-compose.yml para ***
+      copy:
+        dest: "{{ compose_project_dir }}/docker-compose.yml"
+        owner: "{{ ***_user_id.split(':')[0] }}"
+        group: "{{ ***_user_id.split(':')[1] }}"
+        mode: '0644'
+        content: |
+          services:
+            ***:
+              image: ***/***:latest
+              container_name: ***
+              user: {{ ***_user_id }}
+              ports:
+                - "8096:8096/tcp"
+                - "7359:7359/udp" # Para descoberta DLNA/UPnP
+              volumes:
+                - {{ ***_config_dir }}:/config
+                - {{ ***_cache_dir }}:/cache
+                - type: bind
+                  source: {{ ***_media_dir1 }}
+                  target: /media # Mapeia para /media dentro do container
+                - type: bind
+                  source: {{ ***_media_dir2 }}
+                  target: /media2 # Mapeia para /media2 dentro do container
+                  read_only: true
+                # Opcional - Fontes
+                - type: bind
+                  source: {{ ***_fonts_dir }}
+                  target: /usr/share/fonts/custom # Correção do caminho interno
+                  read_only: true
+              restart: 'unless-stopped'
+              # environment:
+              #   - ***_PublishedServerUrl=http://SEU_IP_OU_DNS # Opcional
+              # extra_hosts:
+              #   - 'host.docker.internal:host-gateway' # Geralmente não necessário no Linux
+
+    # --------------------------------------------------
+    # 4. Iniciar container *** com Docker Compose
+    # --------------------------------------------------
+    - name: Iniciar o container ***
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir }}"
+        state: present
