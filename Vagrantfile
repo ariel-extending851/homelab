@@ -5,7 +5,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.box = "fedora-libvirt"
 
-  config.vm.box_url = "file://#{__dir__}/packer/fedora-libvirt.box"
+  config.vm.box_url = "file://#{__dir__}/builds/fedora-42-cloud-x86_64-libvirt.box"
 
   config.ssh.username = "ariel"
   config.ssh.password = "fedora"
