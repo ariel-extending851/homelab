@@ -1,0 +1,25 @@
+regions:
+  - us-east-1
+  - us-east-2
+  - us-west-1
+  - us-west-2
+  - global
+
+# Contas que NÃO devem ser apagadas (Segurança)
+blocklist:
+  - "123456789012" # Exemplo de conta prod
+
+# Configurações globais
+settings:
+  disable-deletion-protection:
+    RDSInstance: true
+
+# A conta que você VAI limpar deve estar listada aqui
+accounts:
+  "123456789012": # Seu ID de conta
+    presets: []
+    filters:
+      CloudWatchAlarm:
+        - "Billing_Alarm"
+      SNSTopic:
+        - "arn:aws:sns:us-east-1:123456789012:Billing_Alarms_Topic"
