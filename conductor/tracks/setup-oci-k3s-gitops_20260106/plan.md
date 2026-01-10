@@ -6,7 +6,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Initialize Terraform project structure for OCI.
 - [x] Task: Define OCI provider, authentication variables, and remote backend configuration.
 - [x] Task: Create a reusable Terraform module for the OCI Virtual Cloud Network (VCN), subnets, and security groups.
-- [ ] Task: Create Terraform code to provision the required number of Always Free ARM Compute Instances.
+- [x] Task: Create Terraform code to provision the required number of Always Free ARM Compute Instances. cccc1aa
 - [ ] Task: Implement a dynamic inventory script or use a Terraform provisioner to generate an Ansible inventory from the Terraform state.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: OCI Infrastructure Provisioning with Terraform' (Protocol in workflow.md)
 
