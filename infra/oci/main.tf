@@ -25,3 +25,14 @@ module "main_network" {
   tailscale_auth_key  = var.tailscale_auth_key
   label_prefix        = "hl"
 }
+
+module "k3s_nodes" {
+  source = "./modules/compute"
+
+  compartment_id = var.compartment_id
+  subnet_id      = module.main_network.public_subnet_id
+  ssh_public_key = file("~/.ssh/omarchy_pc.pub")
+  label_prefix   = "hl"
+
+  instance_count = 2
+}

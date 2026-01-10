@@ -18,12 +18,12 @@ resource "oci_identity_policy" "homelab_policy" {
   compartment_id = var.tenancy_ocid
   description    = "Policy for Homelab automation"
   name           = "homelab-policy"
-  statements     = [
+  statements = [
     "Allow group homelab-admins to manage all-resources in tenancy"
   ]
 }
 
 output "terraform_bot_ocid" {
-  value = oci_identity_user.terraform_bot.id
+  value       = oci_identity_user.terraform_bot.id
   description = "OCID of the created Terraform Bot user"
 }
