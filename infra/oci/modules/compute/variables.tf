@@ -41,3 +41,8 @@ variable "label_prefix" {
   description = "Prefix for resource names"
   type        = string
 }
+
+variable "source_id" {
+  description = "OCID da imagem a ser usada na instância"
+  type        = string
+}

@@ -9,10 +9,10 @@ resource "oci_identity_group" "homelab_admins" {
   name        = "homelab-admins"
 }
 
-resource "oci_identity_user_group_membership" "terraform_bot_membership" {
-  group_id = oci_identity_group.homelab_admins.id
-  user_id  = oci_identity_user.terraform_bot.id
-}
+#resource "oci_identity_user_group_membership" "terraform_bot_membership" {
+#  group_id = oci_identity_group.homelab_admins.id
+#  user_id  = oci_identity_user.terraform_bot.id
+#}
 
 resource "oci_identity_policy" "homelab_policy" {
   compartment_id = var.tenancy_ocid

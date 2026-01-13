@@ -16,6 +16,15 @@ provider "oci" {
   region           = var.region
 }
 
+#data "oci_core_images" "ubuntu_24_04" {
+#  compartment_id           = var.compartment_id
+#  operating_system         = "Canonical Ubuntu"
+#  operating_system_version = "24.04"
+#  shape                    = var.instance_shape
+#  sort_by                  = "TIMECREATED"
+#  sort_order               = "DESC"
+#}
+
 module "main_network" {
   source              = "./modules/network"
   compartment_id      = var.compartment_id
@@ -34,5 +43,9 @@ module "k3s_nodes" {
   ssh_public_key = file("~/.ssh/omarchy_pc.pub")
   label_prefix   = "hl"
 
+  instance_shape = var.instance_shape
+
   instance_count = 2
+
+  source_id = var.instance_image_id
 }

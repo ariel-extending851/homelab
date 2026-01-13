@@ -2,6 +2,7 @@ resource "oci_core_vcn" "main" {
   compartment_id = var.compartment_id
   cidr_block     = var.vcn_cidr
   display_name   = "${var.label_prefix}-main-vcn"
+  dns_label      = "homelabvcn"
 }
 resource "oci_core_internet_gateway" "internet_gateway" {
   compartment_id = var.compartment_id
@@ -32,6 +33,15 @@ resource "oci_core_security_list" "security_list" {
     protocol    = "all"
     source_type = "CIDR_BLOCK"
   }
+  #ingress_security_rules {
+    #protocol    = "6"
+    #source      = "0.0.0.0/0"
+    #source_type = "CIDR_BLOCK"
+    #tcp_options {
+      #min = 22
+      #max = 22
+      #}
+    #}
 }
 resource "oci_core_subnet" "public_subnet" {
   cidr_block        = var.public_subnet_cidr
@@ -40,6 +50,8 @@ resource "oci_core_subnet" "public_subnet" {
   display_name      = "${var.label_prefix}-main-public-subnet"
   route_table_id    = oci_core_route_table.route_table.id
   security_list_ids = [oci_core_security_list.security_list.id]
+
+  dns_label         = "public"
 }
 resource "oci_core_subnet" "private_subnet" {
   cidr_block        = var.private_subnet_cidr
@@ -48,4 +60,6 @@ resource "oci_core_subnet" "private_subnet" {
   display_name      = "${var.label_prefix}-main-private-subnet"
   route_table_id    = oci_core_route_table.route_table.id
   security_list_ids = [oci_core_security_list.security_list.id]
+
+  dns_label         = "private"
 }

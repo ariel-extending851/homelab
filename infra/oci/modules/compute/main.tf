@@ -1,13 +1,14 @@
+terraform {
+  required_providers {
+    oci = {
+      source  = "oracle/oci"
+      version = "= 7.29.0"
+    }
+  }
+}
+
 data "oci_identity_availability_domains" "ads" {
   compartment_id = var.compartment_id
-}
-data "oci_core_images" "ubuntu_arm" {
-  compartment_id           = var.compartment_id
-  operating_system         = "Canonical Ubuntu"
-  operating_system_version = "24.04"
-  shape                    = var.instance_shape
-  sort_by                  = "TIMECREATED"
-  sort_order               = "DESC"
 }
 resource "oci_core_instance" "k3s_node" {
   count = var.instance_count
@@ -30,7 +31,7 @@ resource "oci_core_instance" "k3s_node" {
   }
   source_details {
     source_type = "image"
-    source_id   = data.oci_core_images.ubuntu_arm.images[0].id
+    source_id   = var.source_id
   }
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
