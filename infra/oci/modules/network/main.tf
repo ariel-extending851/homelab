@@ -33,6 +33,17 @@ resource "oci_core_security_list" "security_list" {
     protocol    = "all"
     source_type = "CIDR_BLOCK"
   }
+  ingress_security_rules {
+    protocol    = "17"
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    stateless   = true
+    udp_options {
+      min = 41641
+      max = 41641
+    }
+    description = "Tailscale Direct Connections"
+  }
   #ingress_security_rules {
     #protocol    = "6"
     #source      = "0.0.0.0/0"
