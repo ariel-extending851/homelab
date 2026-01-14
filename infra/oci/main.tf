@@ -48,4 +48,6 @@ module "k3s_nodes" {
   instance_count = 2
 
   source_id = var.instance_image_id
+
+  tailscale_auth_key = var.tailscale_auth_key
 }

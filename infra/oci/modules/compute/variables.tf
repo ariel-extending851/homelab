@@ -46,3 +46,9 @@ variable "source_id" {
   description = "OCID da imagem a ser usada na instância"
   type        = string
 }
+
+variable "tailscale_auth_key" {
+  type        = string
+  description = "Tailscale authentication key for new instances to join the Tailnet."
+  sensitive   = true
+}

@@ -51,8 +51,8 @@ resource "oci_core_security_list" "security_list" {
     #tcp_options {
       #min = 22
       #max = 22
-      #}
     #}
+  #}
 }
 resource "oci_core_subnet" "public_subnet" {
   cidr_block        = var.public_subnet_cidr
