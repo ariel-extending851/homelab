@@ -1,0 +1,381 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+# --- PERMISSÕES (RBAC) ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+---
+# --- ARMAZENAMENTO ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+# --- CONFIGURAÇÃO DO PROMETHEUS (OTEL + ALERTS + BLACKBOX) ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  # 1. Configuração de Scraping e Carregamento de Regras
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s # Frequência de checagem dos alertas
+
+    # Carrega o arquivo de regras definido mais abaixo
+    rule_files:
+      - /etc/prometheus/rules.yml
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.monitoring.svc.cluster.local:8080']
+            labels:
+              cluster: 'k3s-home'
+
+      # MÁGICA DO OTEL: Procura pods 'app: opentelemetry' na porta 8889
+      - job_name: 'otel-collector'
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: opentelemetry
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_ip]
+          regex: (.*)
+          replacement: $1:8889
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+          action: replace
+      
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_endpoints_name]
+          regex: 'node-exporter'
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+          action: replace
+
+      # --- JOBS DO BLACKBOX (REDE) ---
+      - job_name: 'blackbox-ping-nodes'
+        metrics_path: /probe
+        params:
+          module: [icmp]
+        static_configs:
+          - targets:
+            # Seus nós (Interno)
+            - rasp-pi-03
+            - rasp-pi-04
+            - k3s-node-1
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.monitoring.svc.cluster.local:9115
+
+      - job_name: 'blackbox-ping-internet'
+        metrics_path: /probe
+        params:
+          module: [icmp]
+        static_configs:
+          - targets:
+            - 8.8.8.8   # Google
+            - 1.1.1.1   # Cloudflare
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.monitoring.svc.cluster.local:9115
+
+      # Job para testar DNS puro (usando o módulo dns_google)
+      - job_name: 'blackbox-dns-check'
+        metrics_path: /probe
+        params:
+          module: [dns_google]
+        static_configs:
+          - targets:
+            - 8.8.8.8
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.monitoring.svc.cluster.local:9115
+
+  # 2. Definição das Regras de Alerta (Hardware, Crítico e Rede)
+  rules.yml: |
+    groups:
+      - name: critical-infrastructure
+        rules:
+        # 1. Nó Caiu
+        - alert: NodeDown
+          expr: up{job="node-exporter"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "URGENTE: O Nó {{ $labels.instance }} caiu!"
+            description: "O servidor parou de responder."
+
+        # 2. Container Reiniciando Infinitamente
+        - alert: PodCrashLooping
+          expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CrashLoop: Pod {{ $labels.pod }}"
+            description: "O container {{ $labels.container }} está reiniciando sem parar."
+
+        # 3. Disco Cheio (< 15%)
+        - alert: LowDiskSpace
+          expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100) < 15
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disco Cheio em {{ $labels.instance }}"
+
+      - name: hardware-health
+        rules:
+        # 4. CPU Fritando
+        - alert: HighCPUUsage
+          expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CPU Alta em {{ $labels.instance }}"
+
+        # 5. Memória Crítica (Vital para Raspberry Pi)
+        - alert: HighMemoryUsage
+          expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Memória Crítica em {{ $labels.instance }}"
+            description: "Menos de 10% de RAM livre! Risco de OOM."
+
+        # 6. Temperatura Alta
+        - alert: HighTemperature
+          expr: avg by (instance) (node_hwmon_temp_celsius) > 75
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Superaquecimento: {{ $labels.instance }} (>75°C)"
+
+      - name: network-health
+        rules:
+        # 7. Rede Caiu
+        - alert: NetworkHostDown
+          expr: probe_success == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Falha de Rede: {{ $labels.instance }}"
+
+        # 8. Latência Alta
+        - alert: NetworkHighLatency
+          expr: probe_duration_seconds > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Latência Alta: {{ $labels.instance }}"
+            description: "Ping acima de 500ms."
+
+        # 9. DNS Lento
+        - alert: NetworkSlowDNS
+          expr: probe_dns_lookup_time_seconds > 0.2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "DNS Lento: {{ $labels.instance }}"
+
+---
+# --- DEPLOYMENT PROMETHEUS ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-0
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus/
+            - name: storage-volume
+              mountPath: /prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config
+        - name: storage-volume
+          persistentVolumeClaim:
+            claimName: prometheus-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: ClusterIP
+---
+# --- DEPLOYMENT GRAFANA ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostAliases:
+        - ip: "149.154.167.220"
+          hostnames:
+            - "api.telegram.org"
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-0
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-storage
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-service
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+    - nodePort: 31761
+      port: 3001
+      targetPort: 3000
+  type: NodePort

@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-conf
+  namespace: monitoring
+  labels:
+    app: opentelemetry
+data:
+  otel-collector-config: |
+    receivers:
+      hostmetrics:
+        collection_interval: 30s
+        root_path: /hostfs
+        scrapers:
+          cpu:
+          memory:
+          load:
+          filesystem:
+          network:
+          paging:
+
+      # Coleta LOGS dos containers
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        exclude:
+          - /var/log/pods/monitoring_otel-collector*/*/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          - type: container # <--- Isso exige a versão latest ou >0.98
+
+    processors:
+      batch:
+      k8sattributes:
+        auth_type: "serviceAccount"
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.container.name
+
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        resource_to_telemetry_conversion:
+          enabled: true
+      
+      # Envia para o Loki no k3s-node-1
+      loki:
+        endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [hostmetrics]
+          processors: [k8sattributes, batch]
+          exporters: [prometheus]
+        logs:
+          receivers: [filelog]
+          processors: [k8sattributes, batch]
+          exporters: [loki]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: opentelemetry
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry
+  template:
+    metadata:
+      labels:
+        app: opentelemetry
+    spec:
+      serviceAccountName: prometheus
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: otel-collector
+          # --- CORREÇÃO AQUI: USAR LATEST ---
+          image: otel/opentelemetry-collector-contrib:0.102.0
+          # ----------------------------------
+          args: ["--config=/conf/otel-collector-config"]
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          resources:
+            limits:
+              memory: 250Mi
+              cpu: 300m
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          ports:
+            - containerPort: 8889
+              hostPort: 8889
+              name: metrics
+          volumeMounts:
+            - name: otel-collector-config-vol
+              mountPath: /conf
+            - name: hostfs
+              mountPath: /hostfs
+              readOnly: true
+              mountPropagation: HostToContainer
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: otel-collector-config-vol
+          configMap:
+            name: otel-collector-conf
+            items:
+              - key: otel-collector-config
+                path: otel-collector-config
+        - name: hostfs
+          hostPath:
+            path: /
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: opentelemetry
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 8889
+      targetPort: 8889
+      protocol: TCP
+  selector:
+    app: opentelemetry
