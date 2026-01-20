@@ -44,6 +44,17 @@ resource "oci_core_security_list" "security_list" {
     }
     description = "Tailscale Direct Connections"
   }
+  ingress_security_rules {
+    description = "Kubernetes Flannel VXLAN (Overlay Network)"
+    protocol    = "17"
+    source      = "100.69.24.73/32"
+    source_type = "CIDR_BLOCK"
+
+    udp_options {
+      min = 8472
+      max = 8472
+    }
+  }
   #ingress_security_rules {
     #protocol    = "6"
     #source      = "0.0.0.0/0"
