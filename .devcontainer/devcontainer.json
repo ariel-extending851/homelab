@@ -1,0 +1,34 @@
+{
+    "name": "Homelab Platform Engine",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": { 
+            "USERNAME": "dev" 
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "hashicorp.terraform",
+                "fwcd.kotlin",
+                "vscjava.vscode-java-pack",
+                "ms-azuretools.vscode-docker",
+                "github.copilot",
+                "asvetliakov.vscode-neovim"
+            ],
+            "settings": {
+                "vscode-neovim.neovimExecutablePaths.linux": "/home/dev/.local/share/mise/shims/nvim",
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    },
+    "remoteEnv": {
+        "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
+    },
+    "remoteUser": "dev",
+    
+    "postCreateCommand": "mise install && git clone https://github.com/LazyVim/starter ~/.config/nvim && nvim --headless +LazySync +qa"
+}

@@ -1,0 +1,9 @@
+[tools]
+awscli-local = "latest"
+oci = "latest"
+neovim = "latest"
+"npm:@google/gemini-cli" = "latest"
+"pipx:terraform-local" = "latest"
+
+[settings]
+experimental = true
