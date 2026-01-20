@@ -1,3 +1,0 @@
-# Template mínimo para o pós-processador do Vagrant
-Vagrant.configure("2") do |config|
-end
