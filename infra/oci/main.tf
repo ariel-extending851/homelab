@@ -51,3 +51,19 @@ module "k3s_nodes" {
 
   tailscale_auth_key = var.tailscale_auth_key
 }
+
+resource "null_resource" "ansible_inventory_generator" {
+  depends_on = [module.k3s_nodes]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "[k3s_master]" > hosts.ini
+      echo "${module.k3s_nodes.instance_public_ips[0]} ansible_user=opc" >> hosts.ini
+      echo "" >> hosts.ini
+      echo "[k3s_node]" >> hosts.ini
+      ${join("\n", formatlist("echo \"%s ansible_user=opc\" >> hosts.ini", slice(module.k3s_nodes.instance_public_ips, 1, length(module.k3s_nodes.instance_public_ips))))}
+    EOT
+    working_dir = path.module
+  }
+}
+
