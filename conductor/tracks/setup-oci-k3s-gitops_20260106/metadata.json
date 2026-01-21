@@ -1,8 +1,0 @@
-{
-  "track_id": "setup-oci-k3s-gitops_20260106",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-01-06T17:49:26Z",
-  "updated_at": "2026-01-06T17:49:26Z",
-  "description": "Setup Oracle Cloud k3s Cluster with Terraform and ArgoCD for GitOps"
-}
