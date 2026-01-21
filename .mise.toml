@@ -1,13 +1,16 @@
 [tools]
-awscli-local                =   "latest"
 oci                         =   "latest"
 neovim                      =   "latest"
+"kubectl"                   =   "latest"
+"helm"                      =   "latest"
+"minikube"                  =   "latest"
+"terraform"                 =   "latest"
 "node"                      =   "lts"
 "npm"                       =   "11.7.0"
 "pipx"                      =   "1.8.0"
 "npm:@google/gemini-cli"    =   "latest"
-"terraform"                 =   "latest"
 "pipx:terraform-local"      =   "latest"
+"pipx:awscli-local"         =   "latest"
 
 [settings]
 experimental                =   true

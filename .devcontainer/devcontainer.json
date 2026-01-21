@@ -2,9 +2,8 @@
     "name": "Homelab Platform Engine",
     "build": {
         "dockerfile": "Dockerfile",
-        "args": { 
-            "USERNAME": "dev" 
-        }
+        "context": "..", // Importante: Permite copiar o .mise.toml da raiz
+        "args": { "USERNAME": "dev" }
     },
     "customizations": {
         "vscode": {
@@ -13,6 +12,10 @@
                 "fwcd.kotlin",
                 "vscjava.vscode-java-pack",
                 "ms-azuretools.vscode-docker",
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "redhat.vscode-yaml",
+                "esbenp.prettier-vscode",
+                "eamodio.gitlens",
                 "github.copilot",
                 "asvetliakov.vscode-neovim"
             ],
@@ -28,7 +31,8 @@
     "remoteEnv": {
         "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
     },
-    "remoteUser": "dev",
     
-    "postCreateCommand": "mise install && git clone https://github.com/LazyVim/starter ~/.config/nvim && nvim --headless +LazySync +qa"
+    "remoteUser": "dev",
+
+    "postCreateCommand": "mise trust && (test -d ~/.config/nvim || git clone https://github.com/LazyVim/starter ~/.config/nvim) && /home/dev/.local/share/mise/shims/nvim --headless +LazySync +qa"
 }
