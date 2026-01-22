@@ -3,6 +3,19 @@ kind: Namespace
 metadata:
   name: searxng
 ---
+# NOTE: Before deploying, generate a secure random secret key:
+# kubectl create secret generic searxng-secret --from-literal=secret-key=$(openssl rand -hex 32) -n searxng
+apiVersion: v1
+kind: Secret
+metadata:
+  name: searxng-secret
+  namespace: searxng
+type: Opaque
+stringData:
+  # IMPORTANT: Replace this placeholder with a secure random key before deployment
+  # Generate one with: openssl rand -hex 32
+  secret-key: "REPLACE-WITH-SECURE-RANDOM-KEY-BEFORE-DEPLOYMENT"
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,7 +25,6 @@ data:
   settings.yml: |
     use_default_settings: true
     server:
-      secret_key: "changeme-replace-with-random-key"
       limiter: false
       image_proxy: true
     ui:
@@ -69,7 +81,10 @@ spec:
         - name: SEARXNG_BASE_URL
           value: "http://searxng.local/"
         - name: SEARXNG_SECRET
-          value: "changeme-replace-with-random-key"
+          valueFrom:
+            secretKeyRef:
+              name: searxng-secret
+              key: secret-key
         # Liveness probe to detect zombie processes
         livenessProbe:
           httpGet:
