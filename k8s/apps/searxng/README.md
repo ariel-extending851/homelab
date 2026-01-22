@@ -8,12 +8,12 @@ SearXNG is configured with strict resource constraints to accommodate the limite
 
 ## Components
 
-- **Namespace**: `searxng`
-- **Secret**: Stores the SearXNG secret key (must be configured before deployment)
-- **ConfigMap**: SearXNG configuration settings
-- **Deployment**: SearXNG application with resource limits and health probes
-- **Service**: ClusterIP service exposing port 8080
-- **Ingress**: Traefik ingress for external access via `searxng.local`
+- **Namespace**: `searxng` (in deployment.yaml)
+- **Secret**: Stores the SearXNG secret key (must be configured before deployment, in deployment.yaml)
+- **ConfigMap**: SearXNG configuration settings (in deployment.yaml)
+- **Deployment**: SearXNG application with resource limits and health probes (in deployment.yaml)
+- **Service**: ClusterIP service exposing port 8080 (in service.yaml)
+- **Ingress**: Traefik ingress for external access via `searxng.local` (in ingress.yaml)
 
 ## Resource Limits
 
@@ -52,8 +52,18 @@ stringData:
 
 ### 2. Apply the Manifests
 
+Apply all manifests in order:
+
 ```bash
 kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f ingress.yaml
+```
+
+Or apply all at once:
+
+```bash
+kubectl apply -f .
 ```
 
 ### 3. Verify Deployment
