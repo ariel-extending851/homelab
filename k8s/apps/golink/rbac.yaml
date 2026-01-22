@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: golink
+  namespace: golink
+  labels:
+    app: golink
+---
+# Note: GoLink doesn't require cluster-level permissions
+# This ServiceAccount is created for least-privilege principle
+# If future versions require RBAC, add Role/RoleBinding here

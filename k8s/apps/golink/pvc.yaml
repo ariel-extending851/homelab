@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: golink-data
+  namespace: golink
+  labels:
+    app: golink
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Minimal storage for SQLite database
+      # GoLink uses a small SQLite database for link storage
+      storage: 1Gi
+  # Uses default storageClass (local-path on k3s)

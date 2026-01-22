@@ -43,8 +43,74 @@ This directory will contain Kubernetes manifests for deploying GoLink (by Tailsc
 
 The Tailscale-first network strategy works seamlessly with Kubernetes pods, as Tailscale can run as a sidecar or use the host's Tailscale connection.
 
-### Implementation Notes for Future Deployment
-- Target namespace: TBD (recommend dedicated namespace or apps namespace)
-- Resource limits: Should be constrained for RPi3 environment (e.g., 100m CPU, 128Mi memory)
-- Integration: Will leverage existing cluster Tailscale configuration
-- Storage: May require persistent volume for link database
+## Deployment
+
+### Prerequisites
+
+1. **Generate Tailscale Auth Key**:
+   ```bash
+   # Visit https://login.tailscale.com/admin/settings/keys
+   # Create a new auth key with:
+   #   - Reusable: No (one-time use for security)
+   #   - Ephemeral: No (persist across pod restarts)
+   #   - Pre-approved: Yes
+   #   - Tags: tag:golink (recommended)
+   ```
+
+2. **Create the Secret**:
+   ```bash
+   kubectl create secret generic tailscale-auth-key \
+     --from-literal=authkey=tskey-auth-XXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYY \
+     -n golink
+   ```
+
+   **Important**: Delete `secret.yaml` from your apply command if you created the secret manually, or replace the placeholder in `secret.yaml` before deploying.
+
+### Deploy GoLink
+
+```bash
+# Apply all manifests
+kubectl apply -k k8s/apps/golink/
+
+# Verify deployment
+kubectl get pods -n golink
+kubectl logs -n golink -l app=golink
+```
+
+### Access GoLink
+
+Once deployed, GoLink will be available at:
+- **Internal DNS**: `http://golink.local` (via Traefik Ingress)
+- **Tailscale MagicDNS**: `http://golink` (if MagicDNS is enabled in your tailnet)
+
+### Resource Allocation
+
+**Configured Limits** (optimized for RPi3):
+- CPU Request: 50m, Limit: 200m
+- Memory Request: 64Mi, Limit: 128Mi
+- Storage: 1Gi PVC for SQLite database
+
+### Security Hardening
+
+This deployment follows AWS DevOps Professional (DOP-C02) best practices:
+- ✅ **Non-root execution**: Runs as user 65532
+- ✅ **Dropped capabilities**: All Linux capabilities dropped
+- ✅ **Resource constraints**: Strict CPU/memory limits
+- ✅ **Health checks**: Liveness and readiness probes configured
+- ✅ **Least privilege**: Dedicated ServiceAccount with minimal permissions
+
+## Troubleshooting
+
+**Pod not starting:**
+```bash
+# Check pod status and events
+kubectl describe pod -n golink -l app=golink
+
+# Check logs
+kubectl logs -n golink -l app=golink
+```
+
+**Common issues:**
+1. **Invalid Tailscale auth key**: Verify the secret is correctly created
+2. **PVC not binding**: Check if local-path provisioner is running (default in k3s)
+3. **Resource limits**: If pod is OOMKilled, increase memory limits cautiously

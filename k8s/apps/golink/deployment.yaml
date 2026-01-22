@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golink
+  namespace: golink
+  labels:
+    app: golink
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for PVC with ReadWriteOnce
+  selector:
+    matchLabels:
+      app: golink
+  template:
+    metadata:
+      labels:
+        app: golink
+    spec:
+      # Optional: Pin to specific node if needed
+      # nodeSelector:
+      #   kubernetes.io/hostname: rasp-pi-03
+      
+      serviceAccountName: golink
+      
+      containers:
+      - name: golink
+        # Pinned version - update when new releases are available
+        # Check: https://github.com/tailscale/golink/pkgs/container/golink
+        image: ghcr.io/tailscale/golink:main
+        imagePullPolicy: IfNotPresent
+        
+        # Security hardening following AWS DevOps Professional best practices
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          # GoLink needs to write to /home/nonroot for state
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 65532  # nonroot user in distroless images
+        
+        # Strict resource limits for RPi3 environment
+        # GoLink is lightweight, allocate conservatively
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        env:
+        - name: TS_AUTHKEY
+          valueFrom:
+            secretKeyRef:
+              name: tailscale-auth-key
+              key: authkey
+        # Persist Tailscale state across restarts
+        - name: TS_STATE_DIR
+          value: /data/tailscale
+        # Optional: Set hostname for Tailscale node
+        - name: TS_HOSTNAME
+          value: golink
+        # Optional: Accept DNS configuration from Tailscale
+        - name: TS_ACCEPT_DNS
+          value: "false"
+        
+        # Health checks for self-healing
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: golink-data
