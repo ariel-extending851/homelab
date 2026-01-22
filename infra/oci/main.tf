@@ -56,7 +56,7 @@ resource "null_resource" "ansible_inventory_generator" {
   depends_on = [module.k3s_nodes]
 
   provisioner "local-exec" {
-    command = <<EOT
+    command     = <<EOT
       echo "[k3s_master]" > hosts.ini
       echo "${module.k3s_nodes.instance_public_ips[0]} ansible_user=opc" >> hosts.ini
       echo "" >> hosts.ini

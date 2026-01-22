@@ -56,13 +56,13 @@ resource "oci_core_security_list" "security_list" {
     }
   }
   #ingress_security_rules {
-    #protocol    = "6"
-    #source      = "0.0.0.0/0"
-    #source_type = "CIDR_BLOCK"
-    #tcp_options {
-      #min = 22
-      #max = 22
-    #}
+  #protocol    = "6"
+  #source      = "0.0.0.0/0"
+  #source_type = "CIDR_BLOCK"
+  #tcp_options {
+  #min = 22
+  #max = 22
+  #}
   #}
 }
 resource "oci_core_subnet" "public_subnet" {
@@ -73,7 +73,7 @@ resource "oci_core_subnet" "public_subnet" {
   route_table_id    = oci_core_route_table.route_table.id
   security_list_ids = [oci_core_security_list.security_list.id]
 
-  dns_label         = "public"
+  dns_label = "public"
 }
 resource "oci_core_subnet" "private_subnet" {
   cidr_block        = var.private_subnet_cidr
@@ -83,5 +83,5 @@ resource "oci_core_subnet" "private_subnet" {
   route_table_id    = oci_core_route_table.route_table.id
   security_list_ids = [oci_core_security_list.security_list.id]
 
-  dns_label         = "private"
+  dns_label = "private"
 }

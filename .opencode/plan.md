@@ -8,6 +8,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Create a reusable Terraform module for the OCI Virtual Cloud Network (VCN), subnets, and security groups.
 - [x] Task: Create Terraform code to provision the required number of Always Free ARM Compute Instances. cccc1aa
 - [~] Task: Implement a dynamic inventory script or use a Terraform provisioner to generate an Ansible inventory from the Terraform state.
+- [x] Task: Align Terraform with Tailscale Infrastructure as Code best practices - Refactor cloud-init to use template files, ensure SSH hardening
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: OCI Infrastructure Provisioning with Terraform' (Protocol in workflow.md)
 
 ## Phase 2: k3s Cluster Installation with Ansible

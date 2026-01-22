@@ -35,6 +35,7 @@ variable "compartment_id" {
 variable "tailscale_auth_key" {
   type        = string
   description = "auth key for tailscale"
+  sensitive   = true
 }
 variable "instance_image_id" {
   description = "OCID da imagem (Ubuntu) para as maquinas"
