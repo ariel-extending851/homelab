@@ -3,8 +3,11 @@ kind: Namespace
 metadata:
   name: searxng
 ---
-# NOTE: Before deploying, generate a secure random secret key:
-# kubectl create secret generic searxng-secret --from-literal=secret-key=$(openssl rand -hex 32) -n searxng
+# SearXNG Secret Key
+# Generate before deployment:
+# kubectl create secret generic searxng-secret \
+#   --from-literal=secret-key=$(openssl rand -hex 32) \
+#   -n searxng
 apiVersion: v1
 kind: Secret
 metadata:
@@ -12,9 +15,35 @@ metadata:
   namespace: searxng
 type: Opaque
 stringData:
-  # IMPORTANT: Replace this placeholder with a secure random key before deployment
-  # Generate one with: openssl rand -hex 32
-  secret-key: "REPLACE-WITH-SECURE-RANDOM-KEY-BEFORE-DEPLOYMENT"
+  secret-key: "REPLACE-WITH-SECURE-RANDOM-KEY"
+---
+# Tailscale Auth Key
+# Create manually to avoid overwrites:
+# kubectl create secret generic tailscale-auth-key \
+#   --from-literal=authkey=tskey-auth-XXXXXXXXXXXX \
+#   -n searxng
+---
+# Tailscale Authentication Secret
+# IMPORTANT: Create this secret before deployment:
+# kubectl create secret generic searxng-tailscale-auth \
+#   --from-literal=authkey=tskey-auth-XXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYY \
+#   -n searxng
+#
+# Generate at: https://login.tailscale.com/admin/settings/keys
+# Recommended settings:
+#   - Reusable: Yes (for pod restarts)
+#   - Ephemeral: No (maintain persistent identity)
+#   - Pre-approved: Yes
+#   - Tags: tag:k8s,tag:searxng
+apiVersion: v1
+kind: Secret
+metadata:
+  name: searxng-tailscale-auth
+  namespace: searxng
+type: Opaque
+stringData:
+  # PLACEHOLDER - Replace with actual Tailscale auth key
+  authkey: "REPLACE-WITH-TAILSCALE-AUTH-KEY-BEFORE-DEPLOYMENT"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -91,59 +120,111 @@ spec:
       labels:
         app: searxng
     spec:
-      # Force pod to run on rasp-pi-03 (Raspberry Pi 3)
+      # Migrated from rasp-pi-03 (1 GiB RAM) to k3s-node-1 (12 GiB RAM)
+      # RPi3 was hitting 90% memory usage and causing node instability
       nodeSelector:
-        kubernetes.io/hostname: rasp-pi-03
+        kubernetes.io/hostname: k3s-node-1
+
       containers:
-      - name: searxng
-        # Official SearXNG image with ARM64 support
-        image: searxng/searxng:latest
-        imagePullPolicy: IfNotPresent
-        # STRICT resource limits for RPi3 with ~800MB free RAM
-        # Request: 150Mi, Limit: 400Mi to leave room for OS
-        resources:
-          requests:
-            memory: "150Mi"
-            cpu: "100m"
-          limits:
-            memory: "400Mi"
-            cpu: "500m"
-        ports:
-        - containerPort: 8080
-          name: http
-          protocol: TCP
-        env:
-        - name: SEARXNG_BASE_URL
-          value: "http://searxng.local/"
-        - name: SEARXNG_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: searxng-secret
-              key: secret-key
-        # Liveness probe to detect zombie processes
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 5
-          failureThreshold: 3
-        # Readiness probe to ensure pod is ready before receiving traffic
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
-        volumeMounts:
-        - name: searxng-config
-          mountPath: /etc/searxng
-          readOnly: true
+        # Tailscale Sidecar - Provides HTTPS access via Tailnet
+        - name: tailscale
+          image: tailscale/tailscale:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: searxng-tailscale-auth
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: "searxng"
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_ACCEPT_DNS
+              value: "false"
+            # CRITICAL: Disable kube secret storage to prevent TPM attestation errors
+            - name: TS_KUBE_SECRET
+              value: ""
+            # NOTE: Tailscale Serve must be configured manually after pod starts:
+            # kubectl exec -n searxng deployment/searxng -c tailscale -- \
+            #   tailscale serve --bg 8080
+
+          securityContext:
+            runAsUser: 0 # Required for state directory access
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            - name: tmp
+              mountPath: /tmp
+
+        # SearXNG Application
+        - name: searxng
+          image: searxng/searxng:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+
+          env:
+            - name: SEARXNG_BASE_URL
+              value: "https://searxng/"
+            - name: SEARXNG_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: searxng-secret
+                  key: secret-key
+
+          resources:
+            requests:
+              cpu: "500m" # Reserve 0.5 core
+              memory: "512Mi" # Reserve 512Mi RAM
+            limits:
+              cpu: "4000m" # Allow full burst to all 4 cores
+              memory: "4Gi" # Allow up to 4Gi RAM (we have 12Gi)
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: searxng-config
+              mountPath: /etc/searxng
+              readOnly: true
+
       volumes:
         - name: searxng-config
           configMap:
