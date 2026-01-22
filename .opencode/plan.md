@@ -28,3 +28,6 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Create an ArgoCD `Application` custom resource manifest that points to the "hello-world" app in the Git repository.
 - [ ] Task: Apply the ArgoCD `Application` manifest to the cluster to trigger the first sync.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: GitOps Implementation with ArgoCD' (Protocol in workflow.md)
+
+## Phase 4: Applications
+- [ ] Task: Deploy SearXNG to RPi3 (rasp-pi-03) with resource constraints and ARM64 support

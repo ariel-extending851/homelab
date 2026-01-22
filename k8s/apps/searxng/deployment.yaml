@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: searxng
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-config
+  namespace: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+    server:
+      secret_key: "changeme-replace-with-random-key"
+      limiter: false
+      image_proxy: true
+    ui:
+      static_use_hash: true
+    search:
+      safe_search: 0
+      autocomplete: "duckduckgo"
+    enabled_plugins:
+      - 'Hash plugin'
+      - 'Self Information'
+      - 'Tracker URL remover'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+    spec:
+      # Force pod to run on rasp-pi-03 (Raspberry Pi 3)
+      nodeSelector:
+        kubernetes.io/hostname: rasp-pi-03
+      containers:
+      - name: searxng
+        # Official SearXNG image with ARM64 support
+        image: searxng/searxng:latest
+        imagePullPolicy: IfNotPresent
+        # STRICT resource limits for RPi3 with ~800MB free RAM
+        # Request: 150Mi, Limit: 400Mi to leave room for OS
+        resources:
+          requests:
+            memory: "150Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SEARXNG_BASE_URL
+          value: "http://searxng.local/"
+        - name: SEARXNG_SECRET
+          value: "changeme-replace-with-random-key"
+        # Liveness probe to detect zombie processes
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe to ensure pod is ready before receiving traffic
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: searxng-config
+          mountPath: /etc/searxng
+          readOnly: true
+      volumes:
+      - name: searxng-config
+        configMap:
+          name: searxng-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng-service
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  type: ClusterIP
+  selector:
+    app: searxng
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: searxng-ingress
+  namespace: searxng
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: searxng.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: searxng-service
+            port:
+              number: 8080
