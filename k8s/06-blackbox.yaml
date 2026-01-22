@@ -46,15 +46,34 @@ spec:
       # --------------------------
       containers:
         - name: blackbox-exporter
-          image: quay.io/prometheus/blackbox-exporter:latest
+          image: quay.io/prometheus/blackbox-exporter:v0.24.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
           args:
             - "--config.file=/etc/blackbox_exporter/blackbox.yml"
           ports:
             - containerPort: 9115
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
           resources:
             limits:
               memory: 50Mi
               cpu: 100m
+            requests:
+              memory: 10Mi
+              cpu: 10m
           volumeMounts:
             - name: config
               mountPath: /etc/blackbox_exporter

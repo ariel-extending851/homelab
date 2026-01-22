@@ -98,6 +98,31 @@ spec:
       containers:
         - name: loki
           image: grafana/loki:2.9.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 45
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 45
           args:
             - "-config.file=/etc/loki/loki.yaml"
           ports:
@@ -109,6 +134,8 @@ spec:
               mountPath: /etc/loki
             - name: storage
               mountPath: /loki
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: config
           configMap:
@@ -116,6 +143,8 @@ spec:
         - name: storage
           persistentVolumeClaim:
             claimName: loki-storage
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

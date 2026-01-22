@@ -62,7 +62,22 @@ spec:
         kubernetes.io/hostname: rasp-pi-03
       containers:
       - name: adguardhome
-        image: adguard/adguardhome:latest
+        image: adguard/adguardhome:v0.107.43
+        securityContext:
+          privileged: true # Required for host network DNS (port 53)
+          allowPrivilegeEscalation: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
         resources:
           requests:
             memory: "100Mi"

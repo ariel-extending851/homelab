@@ -55,7 +55,12 @@ data:
       loki:
         endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
 
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+
     service:
+      extensions: [health_check]
       pipelines:
         metrics:
           receivers: [hostmetrics]
@@ -92,8 +97,12 @@ spec:
           # ----------------------------------
           args: ["--config=/conf/otel-collector-config"]
           securityContext:
-            privileged: true
+            privileged: true # Required for host access (logs, metrics)
             runAsUser: 0
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133 # Health check extension port (needs to be enabled in config, checking if it is enabled by default or we need to add)
           resources:
             limits:
               memory: 250Mi

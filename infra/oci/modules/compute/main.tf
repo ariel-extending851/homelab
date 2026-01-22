@@ -33,6 +33,16 @@ resource "oci_core_instance" "k3s_node" {
     source_type = "image"
     source_id   = var.source_id
   }
+
+  instance_options {
+    are_legacy_imds_endpoints_disabled = true
+  }
+
+  launch_options {
+    is_pv_encryption_in_transit_enabled = true
+    network_type                        = "PARAVIRTUALIZED"
+  }
+
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
     user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {

@@ -294,7 +294,22 @@ spec:
         kubernetes.io/hostname: k3s-node-0
       containers:
         - name: prometheus
-          image: prom/prometheus:latest
+          image: prom/prometheus:v2.45.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"
@@ -355,7 +370,22 @@ spec:
         kubernetes.io/hostname: k3s-node-0
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:10.2.3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false # Grafana needs to write to /var/lib/grafana and logs
+            runAsNonRoot: true
+            runAsUser: 472
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           ports:
             - containerPort: 3000
           volumeMounts:
