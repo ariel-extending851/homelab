@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguardhome
+  namespace: adguard
+  labels:
+    app: adguardhome
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: adguardhome
+  template:
+    metadata:
+      labels:
+        app: adguardhome
+    spec:
+      # CRITICAL: Must use hostNetwork for DNS (UDP 53) to function as LAN DNS server
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+
+      # Pin to Raspberry Pi with local PV
+      nodeSelector:
+        kubernetes.io/hostname: rasp-pi-03
+
+      containers:
+        # Tailscale Sidecar - Provides Zero Trust HTTPS access to Admin UI
+        - name: tailscale
+          image: ghcr.io/tailscale/tailscale:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: "adguard"
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_ACCEPT_DNS
+              value: "false"
+            - name: TS_KUBE_SECRET
+              value: ""
+
+          # Serve AdGuard Admin UI (port 3000) via HTTPS
+          command:
+            - sh
+            - -c
+            - |
+              tailscaled --state=${TS_STATE_DIR}/tailscaled.state --socket=/tmp/tailscaled.sock &
+              sleep 5
+              tailscale up --authkey=${TS_AUTHKEY} --hostname=${TS_HOSTNAME} --accept-dns=${TS_ACCEPT_DNS}
+              tailscale serve --bg --https=443 localhost:3000
+              wait
+
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            - name: tmp
+              mountPath: /tmp
+
+        # AdGuard Home Application
+        - name: adguardhome
+          image: adguard/adguardhome:v0.107.43
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            # Requires elevated privileges for DNS (port 53) on hostNetwork
+            privileged: true
+            allowPrivilegeEscalation: true
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "100Mi"
+            limits:
+              cpu: "800m"
+              memory: "250Mi"
+
+          ports:
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 53
+              name: dns-udp
+              protocol: UDP
+            - containerPort: 3000
+              name: admin-ui
+              protocol: TCP
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          volumeMounts:
+            - name: adguard-storage
+              mountPath: /opt/adguardhome/conf
+            - name: adguard-storage
+              mountPath: /opt/adguardhome/work
+              subPath: data
+
+      volumes:
+        - name: adguard-storage
+          persistentVolumeClaim:
+            claimName: adguard-pvc
+        - name: tailscale-state
+          persistentVolumeClaim:
+            claimName: adguard-tailscale-state
+        - name: tmp
+          emptyDir: {}

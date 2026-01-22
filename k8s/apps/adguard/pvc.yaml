@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-pvc
+  namespace: adguard
+  labels:
+    app: adguardhome
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-storage-adguard
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-tailscale-state
+  namespace: adguard
+  labels:
+    app: adguardhome
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi

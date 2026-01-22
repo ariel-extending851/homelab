@@ -1,0 +1,26 @@
+# NOTE: Service is optional since AdGuard uses hostNetwork
+# This service is mainly for cluster-internal DNS queries
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguard-service
+  namespace: adguard
+  labels:
+    app: adguardhome
+spec:
+  type: ClusterIP
+  selector:
+    app: adguardhome
+  ports:
+    - name: admin-ui
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP

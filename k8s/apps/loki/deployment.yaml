@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: loki
+  labels:
+    app: loki
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      serviceAccountName: loki
+      # Schedule on Oracle Cloud node (more resources)
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-1
+
+      containers:
+        # Tailscale Sidecar - Provides Zero Trust HTTPS access
+        - name: tailscale
+          image: ghcr.io/tailscale/tailscale:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: "loki"
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_ACCEPT_DNS
+              value: "false"
+            - name: TS_KUBE_SECRET
+              value: ""
+
+          command:
+            - sh
+            - -c
+            - |
+              tailscaled --state=${TS_STATE_DIR}/tailscaled.state --socket=/tmp/tailscaled.sock &
+              sleep 5
+              tailscale up --authkey=${TS_AUTHKEY} --hostname=${TS_HOSTNAME} --accept-dns=${TS_ACCEPT_DNS}
+              tailscale serve --bg --https=443 localhost:3100
+              wait
+
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            - name: tmp
+              mountPath: /tmp
+
+        # Loki Application
+        - name: loki
+          image: grafana/loki:2.9.2
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          args:
+            - "-config.file=/etc/loki/loki.yaml"
+
+          ports:
+            - name: http-metrics
+              containerPort: 3100
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 45
+
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 45
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: storage
+              mountPath: /loki
+            - name: tmp-loki
+              mountPath: /tmp
+
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: loki-storage
+        - name: tailscale-state
+          persistentVolumeClaim:
+            claimName: loki-tailscale-state
+        - name: tmp
+          emptyDir: {}
+        - name: tmp-loki
+          emptyDir: {}

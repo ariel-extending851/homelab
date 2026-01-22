@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # Required for PVC with ReadWriteOnce
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      # Schedule on Oracle Cloud node (more memory available)
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-0
+
+      containers:
+        # Tailscale Sidecar - Provides Zero Trust HTTPS access
+        - name: tailscale
+          image: ghcr.io/tailscale/tailscale:latest
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+            - name: TS_HOSTNAME
+              value: "grafana"
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_ACCEPT_DNS
+              value: "false"
+            # CRITICAL: Disable kube secret storage to prevent TPM attestation errors
+            - name: TS_KUBE_SECRET
+              value: ""
+
+          # Command to expose Grafana via HTTPS
+          command:
+            - sh
+            - -c
+            - |
+              tailscaled --state=${TS_STATE_DIR}/tailscaled.state --socket=/tmp/tailscaled.sock &
+              sleep 5
+              tailscale up --authkey=${TS_AUTHKEY} --hostname=${TS_HOSTNAME} --accept-dns=${TS_ACCEPT_DNS}
+              tailscale serve --bg --https=443 localhost:3000
+              wait
+
+          securityContext:
+            runAsUser: 0 # Required for state directory access
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            - name: tmp
+              mountPath: /tmp
+
+        # Grafana Application
+        - name: grafana
+          image: grafana/grafana:10.2.3
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false # Grafana needs to write to /var/lib/grafana
+            runAsNonRoot: true
+            runAsUser: 472
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-storage
+        - name: tailscale-state
+          persistentVolumeClaim:
+            claimName: grafana-tailscale-state
+        - name: tmp
+          emptyDir: {}

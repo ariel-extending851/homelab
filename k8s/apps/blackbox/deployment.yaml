@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: blackbox
+  labels:
+    app: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      # Schedule on Oracle Cloud control plane (save Raspberry Pi resources)
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.24.0
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+
+          args:
+            - "--config.file=/etc/blackbox_exporter/blackbox.yml"
+
+          ports:
+            - containerPort: 9115
+              name: http
+
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9115
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "10Mi"
+            limits:
+              cpu: "100m"
+              memory: "50Mi"
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox_exporter
+
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config

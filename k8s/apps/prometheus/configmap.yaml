@@ -1,0 +1,184 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules.yml
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.kube-state-metrics.svc.cluster.local:8080']
+            labels:
+              cluster: 'k3s-home'
+
+      # OTEL Collector discovery
+      - job_name: 'otel-collector'
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: opentelemetry
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_ip]
+          regex: (.*)
+          replacement: $1:8889
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+          action: replace
+      
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_endpoints_name]
+          regex: 'node-exporter'
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: instance
+          action: replace
+
+      # Blackbox Exporter - Ping Nodes
+      - job_name: 'blackbox-ping-nodes'
+        metrics_path: /probe
+        params:
+          module: [icmp]
+        static_configs:
+          - targets:
+            - rasp-pi-03
+            - rasp-pi-04
+            - k3s-node-1
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.blackbox.svc.cluster.local:9115
+
+      - job_name: 'blackbox-ping-internet'
+        metrics_path: /probe
+        params:
+          module: [icmp]
+        static_configs:
+          - targets:
+            - 8.8.8.8
+            - 1.1.1.1
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.blackbox.svc.cluster.local:9115
+
+      - job_name: 'blackbox-dns-check'
+        metrics_path: /probe
+        params:
+          module: [dns_google]
+        static_configs:
+          - targets:
+            - 8.8.8.8
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter.blackbox.svc.cluster.local:9115
+
+  rules.yml: |
+    groups:
+      - name: critical-infrastructure
+        rules:
+        - alert: NodeDown
+          expr: up{job="node-exporter"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "URGENTE: O Nó {{ $labels.instance }} caiu!"
+            description: "O servidor parou de responder."
+
+        - alert: PodCrashLooping
+          expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CrashLoop: Pod {{ $labels.pod }}"
+            description: "O container {{ $labels.container }} está reiniciando sem parar."
+
+        - alert: LowDiskSpace
+          expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100) < 15
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disco Cheio em {{ $labels.instance }}"
+
+      - name: hardware-health
+        rules:
+        - alert: HighCPUUsage
+          expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CPU Alta em {{ $labels.instance }}"
+
+        - alert: HighMemoryUsage
+          expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Memória Crítica em {{ $labels.instance }}"
+            description: "Menos de 10% de RAM livre! Risco de OOM."
+
+        - alert: HighTemperature
+          expr: avg by (instance) (node_hwmon_temp_celsius) > 75
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Superaquecimento: {{ $labels.instance }} (>75°C)"
+
+      - name: network-health
+        rules:
+        - alert: NetworkHostDown
+          expr: probe_success == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Falha de Rede: {{ $labels.instance }}"
+
+        - alert: NetworkHighLatency
+          expr: probe_duration_seconds > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Latência Alta: {{ $labels.instance }}"
+            description: "Ping acima de 500ms."
+
+        - alert: NetworkSlowDNS
+          expr: probe_dns_lookup_time_seconds > 0.2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "DNS Lento: {{ $labels.instance }}"

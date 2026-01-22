@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: node-exporter
+  labels:
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      # CRITICAL: Requires hostNetwork for accurate host metrics
+      hostNetwork: true
+      hostPID: true
+      
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      containers:
+        - name: node-exporter
+          image: quay.io/prometheus/node-exporter:v1.7.0
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+
+          args:
+            - "--path.rootfs=/host"
+
+          ports:
+            - containerPort: 9100
+              hostPort: 9100
+              name: metrics
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9100
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9100
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "30Mi"
+            limits:
+              cpu: "100m"
+              memory: "180Mi"
+
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+              readOnly: true
+
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
