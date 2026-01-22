@@ -30,4 +30,5 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: GitOps Implementation with ArgoCD' (Protocol in workflow.md)
 
 ## Phase 4: Applications
-- [ ] Task: Deploy SearXNG to RPi3 (rasp-pi-03) with resource constraints and ARM64 support
+- [x] Task: Deploy SearXNG to RPi3 (rasp-pi-03) with resource constraints and ARM64 support
+- [ ] Task: Deploy GoLink (internal URL shortener)
