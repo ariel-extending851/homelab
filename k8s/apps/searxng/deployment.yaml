@@ -24,14 +24,31 @@ metadata:
 data:
   settings.yml: |
     use_default_settings: true
+
+    # Performance tuning for k3s-node-1 (Oracle Cloud VM)
+    uwsgi:
+      threads: 4
+      workers: 4
+      
     server:
+      # OPTIMIZATION: Disable image proxy to offload bandwidth to client
+      # This fixes slow image loading over Tailscale relays
+      image_proxy: false
       limiter: false
-      image_proxy: true
+      
     ui:
       static_use_hash: true
+      
     search:
       safe_search: 0
       autocomplete: "duckduckgo"
+      max_request_timeout: 1.5    # Aggressive timeout for low latency
+      default_timeout: 1.5        # Aggressive timeout
+    engines:
+      - name: qwant videos
+        disabled: true
+      - name: vimeo
+        disabled: true
     enabled_plugins:
       - 'Hash plugin'
       - 'Self Information'
@@ -128,6 +145,11 @@ spec:
           mountPath: /etc/searxng
           readOnly: true
       volumes:
-      - name: searxng-config
-        configMap:
-          name: searxng-config
+        - name: searxng-config
+          configMap:
+            name: searxng-config
+        - name: tailscale-state
+          persistentVolumeClaim:
+            claimName: hl-searxng-tailscale-state
+        - name: tmp
+          emptyDir: {}
