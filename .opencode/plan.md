@@ -1,6 +1,6 @@
-# Implementation Plan: Setup Oracle Cloud k3s Cluster with Terraform and ArgoCD for GitOps
+# Implementation Plan: Homelab Hybrid Cluster (Oracle Cloud + Raspberry Pi via Tailscale)
 
-This plan outlines the phases and tasks required to provision the cloud infrastructure and set up the GitOps workflow.
+This plan outlines the phases and tasks required to provision the cloud infrastructure, set up GitOps, and manage the hybrid workload distribution.
 
 ## Phase 1: OCI Infrastructure Provisioning with Terraform
 - [x] Task: Initialize Terraform project structure for OCI.
@@ -29,6 +29,16 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Apply the ArgoCD `Application` manifest to the cluster to trigger the first sync.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: GitOps Implementation with ArgoCD' (Protocol in workflow.md)
 
-## Phase 4: Applications
-- [x] Task: Deploy SearXNG to RPi3 (rasp-pi-03) with resource constraints and ARM64 support
-- [ ] Task: Deploy GoLink (internal URL shortener)
+## Phase 4: Applications & Workload Management
+- [x] Task: Deploy GoLink (internal URL shortener) - Production-grade manifests with Tailscale integration
+- [x] Task: **Migrate SearXNG to k3s-node-1** - Moved from RPi3 to Oracle Cloud for 12GB RAM capacity.
+- [x] Task: **Optimize SearXNG** - Disabled image proxy to fix Tailscale relay latency.
+- [ ] Task: **Migrate AdGuard Home** - Move from rasp-pi-03 to rasp-pi-04 to prevent OOMKills.
+- [ ] Task: Deploy *** to rasp-pi-04 (Media Server).
+- [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
+
+## Infrastructure Status
+- **k3s-node-0**: Control Plane (Stable)
+- **k3s-node-1**: Heavy Workload Node (SearXNG Optimized)
+- **rasp-pi-03**: Monitoring Canary (Recovered from OOM)
+- **rasp-pi-04**: General Purpose ARM64 (Target for AdGuard/***)
