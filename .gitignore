@@ -20,3 +20,6 @@ packer/boot-*/
 .signing_key.pub
 
 infra/oci/terraform.tfvars
+
+# Ansible generated inventory (dynamic IPs, should not be committed)
+infra/oci/hosts.ini

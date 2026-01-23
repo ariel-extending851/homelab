@@ -10,7 +10,7 @@ spec:
   selector:
     app: golink
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
-    protocol: TCP
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

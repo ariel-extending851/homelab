@@ -17,7 +17,7 @@ spec:
       # CRITICAL: Requires hostNetwork for accurate host metrics
       hostNetwork: true
       hostPID: true
-      
+
       nodeSelector:
         kubernetes.io/os: linux
 

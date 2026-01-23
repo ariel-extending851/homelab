@@ -18,11 +18,6 @@ variable "private_key_path" {
   description = "The absolute path to the private key file for OCI API authentication."
   sensitive   = true
 }
-variable "public_key_path" {
-  type        = string
-  description = "The absolute path to the public key file for OCI API authentication."
-  sensitive   = true
-}
 variable "region" {
   type        = string
   description = "The OCI region where resources will be provisioned."
@@ -45,4 +40,26 @@ variable "instance_shape" {
   description = "Shape da instancia (ex: VM.Standard3.Flex)"
   type        = string
   default     = "VM.Standard.E4.Flex"
+}
+
+# ==============================================================================
+# GitHub Provider Variables
+# ==============================================================================
+
+variable "github_token" {
+  type        = string
+  description = "GitHub Personal Access Token with 'repo' and 'admin:repo_hook' scopes"
+  sensitive   = true
+}
+
+variable "github_owner" {
+  type        = string
+  description = "GitHub repository owner (username or organization)"
+  default     = "ariel99gf"
+}
+
+variable "ssh_public_key" {
+  type        = string
+  description = "SSH public key for OCI instance access"
+  default     = ""
 }

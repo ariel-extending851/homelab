@@ -15,8 +15,8 @@ spec:
   nodeAffinity:
     required:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - rasp-pi-03
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rasp-pi-03

@@ -23,7 +23,7 @@ data:
         isDefault: true
         editable: true
         version: 1
-      
+
       - name: Loki
         type: loki
         uid: loki

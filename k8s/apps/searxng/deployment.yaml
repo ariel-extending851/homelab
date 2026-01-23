@@ -37,16 +37,16 @@ data:
     uwsgi:
       threads: 4
       workers: 4
-      
+
     server:
       # OPTIMIZATION: Disable image proxy to offload bandwidth to client
       # This fixes slow image loading over Tailscale relays
       image_proxy: false
       limiter: false
-      
+
     ui:
       static_use_hash: true
-      
+
     search:
       safe_search: 0
       autocomplete: "duckduckgo"

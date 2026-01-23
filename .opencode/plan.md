@@ -74,6 +74,30 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - Hosts: Tailscale Operator controller
   - Target: AdGuard Home migration, *** deployment
 
+## Phase 5: Governance & Security Guardrails
+- [x] Task: Initialize GitHub Terraform provider in `infra/oci/github.tf`
+- [x] Task: Define branch protection rules for `main` branch (required checks, 1 approval, signed commits, enforce admins)
+- [x] Task: Define branch protection rules for `develop` branch (same strict policies as main)
+- [x] Task: Configure repository hardening (squash merge only, delete branch on merge)
+- [x] Task: **FIX:** Consolidate duplicate `terraform {}` blocks - moved GitHub provider to `main.tf` (DRY principle)
+- [x] Task: Execute `terraform init` to install GitHub provider
+- [x] Task: Execute `terraform plan` to preview GitHub configuration changes
+- [x] Task: Execute `terraform apply` to enforce branch protection rules
+- [x] Task: **PR Review Adjustments (PR #20):**
+  - **Security:** Remove `hosts.ini` from VCS (exposes dynamic IPs) - added to `.gitignore`
+  - **Refactoring:** Apply DRY principle to branch protection using `for_each` loop
+  - **Documentation:** Fix GitHub Security Log URL (personal repo vs organization)
+  - **Documentation:** Correct misleading comments on `allows_deletions = false`
+  - **Documentation:** Fix GitHub token scope description (`repo` + `admin:repo_hook`)
+  - **Security (Round 2):** Enable `require_last_push_approval = true` to prevent unreviewed code
+  - **Documentation (Round 2):** Update `terraform import` commands for `for_each` syntax
+- [x] Task: Verify branch protection via GitHub UI or `gh api` command
+- [x] Task: Document GitHub PAT generation process in `docs/operations.md`
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
+- [x] Task: **Review Threads Resolved:** 8/8 threads resolved via GraphQL API
+- [ ] Task: **CI Upgrade:** Implement polyglot validation (Terraform + TFLint, YAML Lint, ShellCheck)
+- [ ] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
+
 ## Recent Migrations (2026-01-23)
 - **Tailscale Architecture:** Sidecar → Operator pattern (238m CPU, 178Mi memory, 400Mi storage freed)
 - **GitOps Status:** ArgoCD operational, local sync completed, GitHub fetch pending (OCI egress throttling)

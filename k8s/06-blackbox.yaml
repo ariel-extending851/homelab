@@ -12,7 +12,7 @@ data:
         timeout: 5s
         icmp:
           preferred_ip_protocol: "ip4"
-      
+
       # Módulo 2: Teste de Internet (DNS Google)
       dns_google:
         prober: dns

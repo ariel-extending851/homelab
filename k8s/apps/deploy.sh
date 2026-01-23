@@ -59,7 +59,7 @@ if [ "$SKIP_SECRETS" = false ]; then
   
   for ns in grafana prometheus loki adguard; do
     if ! kubectl get secret tailscale-auth -n $ns &>/dev/null; then
-      MISSING_SECRETS+=($ns)
+      MISSING_SECRETS+=("$ns")
     fi
   done
   
