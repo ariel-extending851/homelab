@@ -23,28 +23,7 @@ stringData:
 #   --from-literal=authkey=tskey-auth-XXXXXXXXXXXX \
 #   -n searxng
 ---
-# Tailscale Authentication Secret
-# IMPORTANT: Create this secret before deployment:
-# kubectl create secret generic searxng-tailscale-auth \
-#   --from-literal=authkey=tskey-auth-XXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYY \
-#   -n searxng
-#
-# Generate at: https://login.tailscale.com/admin/settings/keys
-# Recommended settings:
-#   - Reusable: Yes (for pod restarts)
-#   - Ephemeral: No (maintain persistent identity)
-#   - Pre-approved: Yes
-#   - Tags: tag:k8s,tag:searxng
-apiVersion: v1
-kind: Secret
-metadata:
-  name: searxng-tailscale-auth
-  namespace: searxng
-type: Opaque
-stringData:
-  # PLACEHOLDER - Replace with actual Tailscale auth key
-  authkey: "REPLACE-WITH-TAILSCALE-AUTH-KEY-BEFORE-DEPLOYMENT"
----
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -83,24 +62,7 @@ data:
       - 'Self Information'
       - 'Tracker URL remover'
 ---
-# PersistentVolumeClaim for Tailscale state
-# Ensures the Tailscale node maintains its identity across pod restarts
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hl-searxng-tailscale-state
-  namespace: searxng
-  labels:
-    app: searxng
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      # Minimal storage for Tailscale state (~10MB typical)
-      storage: 100Mi
-  # Uses default storageClass (local-path on k3s)
----
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -126,53 +88,6 @@ spec:
         kubernetes.io/hostname: k3s-node-1
 
       containers:
-        # Tailscale Sidecar - Provides HTTPS access via Tailnet
-        - name: tailscale
-          image: tailscale/tailscale:latest
-          imagePullPolicy: IfNotPresent
-
-          env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: searxng-tailscale-auth
-                  key: authkey
-            - name: TS_HOSTNAME
-              value: "searxng"
-            - name: TS_STATE_DIR
-              value: "/var/lib/tailscale"
-            - name: TS_USERSPACE
-              value: "true"
-            - name: TS_ACCEPT_DNS
-              value: "false"
-            # CRITICAL: Disable kube secret storage to prevent TPM attestation errors
-            - name: TS_KUBE_SECRET
-              value: ""
-            # NOTE: Tailscale Serve must be configured manually after pod starts:
-            # kubectl exec -n searxng deployment/searxng -c tailscale -- \
-            #   tailscale serve --bg 8080
-
-          securityContext:
-            runAsUser: 0 # Required for state directory access
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-
-          resources:
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "128Mi"
-
-          volumeMounts:
-            - name: tailscale-state
-              mountPath: /var/lib/tailscale
-            - name: tmp
-              mountPath: /tmp
-
         # SearXNG Application
         - name: searxng
           image: searxng/searxng:latest
@@ -229,8 +144,3 @@ spec:
         - name: searxng-config
           configMap:
             name: searxng-config
-        - name: tailscale-state
-          persistentVolumeClaim:
-            claimName: hl-searxng-tailscale-state
-        - name: tmp
-          emptyDir: {}

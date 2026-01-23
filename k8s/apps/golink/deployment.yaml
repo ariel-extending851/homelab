@@ -56,21 +56,9 @@ spec:
               name: http
               protocol: TCP
 
-          env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: tailscale-auth-key
-                  key: authkey
-            # Persist Tailscale state across restarts
-            - name: TS_STATE_DIR
-              value: /data/tailscale
-            # Optional: Set hostname for Tailscale node
-            - name: TS_HOSTNAME
-              value: golink
-            # Optional: Accept DNS configuration from Tailscale
-            - name: TS_ACCEPT_DNS
-              value: "false"
+          # Note: Tailscale configuration is now handled by the Tailscale Operator
+          # via the Ingress resource. No Tailscale-specific env vars needed.
+          env: []
 
           # Health checks for self-healing
           # livenessProbe:

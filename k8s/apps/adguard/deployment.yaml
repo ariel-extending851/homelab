@@ -26,60 +26,6 @@ spec:
         kubernetes.io/hostname: rasp-pi-03
 
       containers:
-        # Tailscale Sidecar - Provides Zero Trust HTTPS access to Admin UI
-        - name: tailscale
-          image: ghcr.io/tailscale/tailscale:latest
-          imagePullPolicy: IfNotPresent
-
-          env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: tailscale-auth
-                  key: authkey
-            - name: TS_HOSTNAME
-              value: "adguard"
-            - name: TS_STATE_DIR
-              value: "/var/lib/tailscale"
-            - name: TS_USERSPACE
-              value: "true"
-            - name: TS_ACCEPT_DNS
-              value: "false"
-            - name: TS_KUBE_SECRET
-              value: ""
-
-          # Serve AdGuard Admin UI (port 3000) via HTTPS
-          command:
-            - sh
-            - -c
-            - |
-              tailscaled --state=${TS_STATE_DIR}/tailscaled.state --socket=/tmp/tailscaled.sock &
-              sleep 5
-              tailscale up --authkey=${TS_AUTHKEY} --hostname=${TS_HOSTNAME} --accept-dns=${TS_ACCEPT_DNS}
-              tailscale serve --bg --https=443 localhost:3000
-              wait
-
-          securityContext:
-            runAsUser: 0
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-
-          resources:
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "128Mi"
-
-          volumeMounts:
-            - name: tailscale-state
-              mountPath: /var/lib/tailscale
-            - name: tmp
-              mountPath: /tmp
-
         # AdGuard Home Application
         - name: adguardhome
           image: adguard/adguardhome:v0.107.43
@@ -134,8 +80,3 @@ spec:
         - name: adguard-storage
           persistentVolumeClaim:
             claimName: adguard-pvc
-        - name: tailscale-state
-          persistentVolumeClaim:
-            claimName: adguard-tailscale-state
-        - name: tmp
-          emptyDir: {}

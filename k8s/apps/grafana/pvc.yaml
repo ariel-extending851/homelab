@@ -12,18 +12,3 @@ spec:
   resources:
     requests:
       storage: 1Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: grafana-tailscale-state
-  namespace: grafana
-  labels:
-    app: grafana
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      # Minimal storage for Tailscale state (~10MB typical)
-      storage: 100Mi
