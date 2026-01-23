@@ -28,7 +28,7 @@ spec:
       containers:
         # AdGuard Home Application
         - name: adguardhome
-          image: adguard/adguardhome:v0.107.54  # Upgraded from v0.107.43 to support config schema v32
+          image: adguard/adguardhome:v0.107.71  # Upgraded to latest to support config schema v32
           imagePullPolicy: IfNotPresent
 
           securityContext:
