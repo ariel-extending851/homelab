@@ -42,6 +42,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: **Migrate AdGuard Home** - Move from rasp-pi-03 to rasp-pi-04 to prevent OOMKills.
 - [ ] Task: Deploy *** to rasp-pi-04 (Media Server).
 - [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
+- [x] Task: **Migrate to Tailscale Kubernetes Operator** - Replace manual sidecars with native Ingress (3 atomic commits: system foundation, sidecar cleanup, ingress migration). Reduced codebase by 237 lines.
 
 ## Infrastructure Status
 - **k3s-node-0**: Control Plane (Stable)
