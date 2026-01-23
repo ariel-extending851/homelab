@@ -1,0 +1,10 @@
+oauth:
+  clientId: "REQUIRED"
+  clientSecret: "REQUIRED"
+
+operatorConfig:
+  defaultTags:
+    - "tag:k8s-operator"
+
+proxyConfig:
+  defaultTags: "tag:k8s-operator"
