@@ -1,0 +1,57 @@
+---
+# ArgoCD Application of Applications Pattern
+# Manages all applications in k8s/apps/ recursively
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-apps-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: homelab-apps-root
+    app.kubernetes.io/part-of: homelab
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io # Cascading delete
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/ariel99gf/homelab.git
+    targetRevision: HEAD # Tracks main/master branch (or use 'develop')
+    path: k8s/apps
+    directory:
+      recurse: true # CRITICAL: Discover all subdirectories
+      jsonnet: {}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd # Default namespace for ArgoCD operations
+
+  syncPolicy:
+    automated:
+      prune: true # Delete resources removed from Git
+      selfHeal: true # Auto-sync on drift detection
+      allowEmpty: false # Prevent accidental deletion of all resources
+
+    syncOptions:
+      - CreateNamespace=true # Auto-create namespaces if missing
+      - PrunePropagationPolicy=foreground # Ensure proper cleanup order
+      - PruneLast=true # Prune after sync (safer)
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore differences in resource requests/limits (allow cluster autoscaling)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas # Ignore HPA-managed replicas
+
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data # Ignore secret data changes (managed externally)
