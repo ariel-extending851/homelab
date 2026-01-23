@@ -22,61 +22,6 @@ spec:
         kubernetes.io/hostname: k3s-node-0
 
       containers:
-        # Tailscale Sidecar - Provides Zero Trust HTTPS access
-        - name: tailscale
-          image: ghcr.io/tailscale/tailscale:latest
-          imagePullPolicy: IfNotPresent
-
-          env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: tailscale-auth
-                  key: authkey
-            - name: TS_HOSTNAME
-              value: "grafana"
-            - name: TS_STATE_DIR
-              value: "/var/lib/tailscale"
-            - name: TS_USERSPACE
-              value: "true"
-            - name: TS_ACCEPT_DNS
-              value: "false"
-            # CRITICAL: Disable kube secret storage to prevent TPM attestation errors
-            - name: TS_KUBE_SECRET
-              value: ""
-
-          # Command to expose Grafana via HTTPS
-          command:
-            - sh
-            - -c
-            - |
-              tailscaled --state=${TS_STATE_DIR}/tailscaled.state --socket=/tmp/tailscaled.sock &
-              sleep 5
-              tailscale up --authkey=${TS_AUTHKEY} --hostname=${TS_HOSTNAME} --accept-dns=${TS_ACCEPT_DNS}
-              tailscale serve --bg --https=443 localhost:3000
-              wait
-
-          securityContext:
-            runAsUser: 0 # Required for state directory access
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-
-          resources:
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "128Mi"
-
-          volumeMounts:
-            - name: tailscale-state
-              mountPath: /var/lib/tailscale
-            - name: tmp
-              mountPath: /tmp
-
         # Grafana Application
         - name: grafana
           image: grafana/grafana:10.2.3
@@ -127,13 +72,13 @@ spec:
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
 
       volumes:
         - name: grafana-storage
           persistentVolumeClaim:
             claimName: grafana-storage
-        - name: tailscale-state
-          persistentVolumeClaim:
-            claimName: grafana-tailscale-state
-        - name: tmp
-          emptyDir: {}
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
