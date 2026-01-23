@@ -32,9 +32,10 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Create an ArgoCD `Application` custom resource manifest (App of Apps pattern)
   - **Created:** `k8s/gitops/apps-root.yaml` - Manages all apps in `k8s/apps/` recursively
 - [x] Task: Apply the ArgoCD `Application` manifest to the cluster to trigger the first sync.
-  - **Status:** Applied. ArgoCD is operational but experiencing GitHub fetch timeouts due to OCI egress throttling.
-  - **Workaround:** Local sync via `kubectl apply -k k8s/apps/<app>/` executed successfully (2026-01-23)
-  - **Action Required:** Update ArgoCD to track `develop` branch: `kubectl patch application homelab-apps-root -n argocd --type merge -p '{"spec":{"source":{"targetRevision":"develop"}}}'`
+  - **Status:** ✅ Synced and Healthy (2026-01-23)
+  - **Resolution:** Fixed kustomization pattern (replaced directory.recurse with root kustomization.yaml)
+  - **Resolution:** Migrated to SSH authentication (Phase 6) - OCI egress throttling eliminated
+  - **Current State:** All 10 applications syncing via GitOps (develop branch)
 - [~] Task: Conductor - User Manual Verification 'Phase 3: GitOps Implementation with ArgoCD' (Protocol in workflow.md)
   - **Pending:** ArgoCD network issue resolution and branch configuration
 
@@ -50,11 +51,11 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **Verification Status:** ✅ 5/6 apps operational via MagicDNS (`.tail57bf10.ts.net`)
   - **Prometheus Monitoring:** ✅ All 16 targets scraping successfully across modular namespaces
   - **ProxyClass:** ✅ All 6 proxy pods scheduled on k3s-node-0 (Oracle Cloud) as configured
-- [!] Task: **FIX AdGuard Home** - Currently in CrashLoopBackOff (154 restarts over 12h)
+- [x] Task: **FIXED AdGuard Home** - Resolved CrashLoopBackOff (2026-01-23)
   - **Root Cause:** Config schema version mismatch (v32 not supported by v0.107.43)
+  - **Solution:** Upgraded image from v0.107.43 → v0.107.71 (latest stable)
+  - **Status:** ✅ Running (1/1 Ready, DNS proxy operational on port 53)
   - **Location:** rasp-pi-03
-  - **Action Required:** Upgrade AdGuard Home image or downgrade config schema
-  - **Priority:** HIGH (DNS service unavailable)
 - [ ] Task: **Migrate AdGuard Home** - Move from rasp-pi-03 to rasp-pi-04 (blocked by crash issue above)
 - [ ] Task: Deploy *** to rasp-pi-04 (Media Server).
 - [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
@@ -66,9 +67,9 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - **k3s-node-1** (Oracle Cloud, 4 cores, 24GB RAM): Heavy Workload Node (Stable)
   - CPU: 28m (1%), Memory: 1212Mi (5%)
   - Hosts: SearXNG (optimized for 12GB RAM capacity)
-- **rasp-pi-03** (RPi3, 4 cores, 4GB RAM): Monitoring Canary + AdGuard Home (DEGRADED)
+- **rasp-pi-03** (RPi3, 4 cores, 4GB RAM): Monitoring Canary + AdGuard Home (Stable)
   - CPU: 269m (7%), Memory: 474Mi (12%)
-  - Issue: AdGuard Home in CrashLoopBackOff (config schema v32 unsupported by v0.107.43)
+  - Status: ✅ AdGuard Home v0.107.71 operational (DNS proxy running)
 - **rasp-pi-04** (RPi4, 4 cores, 8GB RAM): General Purpose ARM64 (Stable)
   - CPU: 298m (7%), Memory: 1153Mi (14%)
   - Hosts: Tailscale Operator controller
