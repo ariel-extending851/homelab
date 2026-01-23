@@ -18,18 +18,22 @@ data:
         type: prometheus
         uid: prometheus
         orgId: 1
-        url: http://prometheus.prometheus.svc.cluster.local:9090
+        url: http://prometheus.prometheus.svc.cluster.local.:9090
         access: proxy
         isDefault: true
         editable: true
         version: 1
+        jsonData:
+          timeInterval: "30s"  # Match Prometheus scrape interval
 
       - name: Loki
         type: loki
         uid: loki
         orgId: 1
-        url: http://loki.loki.svc.cluster.local:3100
+        url: http://loki.loki.svc.cluster.local.:3100
         access: proxy
         isDefault: false
         editable: true
         version: 1
+        jsonData:
+          maxLines: 1000  # Limit log lines returned per query
