@@ -15,8 +15,8 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/ariel99gf/homelab.git
-    targetRevision: HEAD # Tracks main/master branch (or use 'develop')
+    repoURL: git@github.com:ariel99gf/homelab.git
+    targetRevision: develop # Tracks develop branch (primary development branch)
     path: k8s/apps
     directory:
       recurse: true # CRITICAL: Discover all subdirectories

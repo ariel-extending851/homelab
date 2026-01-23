@@ -2,6 +2,12 @@
 
 This directory contains ArgoCD Application manifests that implement the App of Apps pattern.
 
+## 📋 Quick Links
+
+- **[Phase 6 Validation Guide](PHASE6_VALIDATION.md)** - Post-deployment validation steps
+- **[Helm Migration Proposal](HELM_MIGRATION_PROPOSAL.md)** - Optional upgrade to Helm-based ArgoCD
+- **[SSH Authentication Setup](ssh/README.md)** - GitHub Deploy Key configuration
+
 ## Prerequisites
 
 1. **ArgoCD Installed:**
@@ -20,7 +26,61 @@ This directory contains ArgoCD Application manifests that implement the App of A
    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
    ```
 
-## Deploy App of Apps
+## Phase 6: SSH Authentication Setup (Recommended)
+
+**Resolves OCI egress throttling by using SSH instead of HTTPS.**
+
+### Automated Setup (Recommended)
+
+```bash
+# Execute the Phase 6 orchestration script
+cd k8s/gitops
+./apply-phase6-gitops.sh
+```
+
+This script will:
+1. ✅ Guide you through adding the SSH Deploy Key to GitHub
+2. ✅ Create the ArgoCD repository secret
+3. ✅ Update the App-of-Apps to use SSH and the `develop` branch
+4. ✅ Trigger ArgoCD refresh
+5. ✅ Verify the migration
+
+### Manual Setup (Alternative)
+
+If you prefer manual configuration:
+
+1. **Add SSH Deploy Key to GitHub:**
+   ```bash
+   cat k8s/gitops/ssh/argocd.pub
+   # Add to: https://github.com/ariel99gf/homelab/settings/keys/new
+   # Title: ArgoCD Deploy Key (Read-Only)
+   # ✗ Uncheck "Allow write access"
+   ```
+
+2. **Create ArgoCD repository secret:**
+   ```bash
+   ./create-argocd-ssh-secret.sh
+   ```
+
+3. **Apply updated App-of-Apps:**
+   ```bash
+   kubectl apply -f k8s/gitops/apps-root.yaml
+   ```
+
+4. **Force ArgoCD refresh:**
+   ```bash
+   kubectl patch application homelab-apps-root -n argocd \
+     --type merge \
+     -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"normal"}}}'
+   ```
+
+5. **Validate:** Follow the [Phase 6 Validation Guide](PHASE6_VALIDATION.md)
+
+---
+
+## Deploy App of Apps (Legacy HTTPS Method)
+
+⚠️ **Warning:** HTTPS method is subject to OCI egress throttling. Use SSH method above.
 
 Apply the root application that manages all apps in `k8s/apps/`:
 

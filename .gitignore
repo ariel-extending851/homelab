@@ -23,3 +23,9 @@ infra/oci/terraform.tfvars
 
 # Ansible generated inventory (dynamic IPs, should not be committed)
 infra/oci/hosts.ini
+
+# ArgoCD SSH private keys (NEVER commit private keys to VCS)
+k8s/gitops/ssh/*
+!k8s/gitops/ssh/.gitkeep
+!k8s/gitops/ssh/README.md
+!k8s/gitops/ssh/*.pub

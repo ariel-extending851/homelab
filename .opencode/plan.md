@@ -102,6 +102,21 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: **PR #20 Merged:** Successfully merged to `develop` branch with squash commit
 - [x] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
 
+## Phase 6: Advanced GitOps & App Lifecycle
+- [x] Task: Generate ED25519 SSH keypair for ArgoCD authentication
+- [x] Task: Create SSH directory structure and security guardrails (.gitignore exclusions)
+- [x] Task: Develop `create-argocd-ssh-secret.sh` script for Kubernetes secret generation
+- [x] Task: Update `apps-root.yaml` to use SSH URL (`git@github.com:ariel99gf/homelab.git`)
+- [x] Task: Change ArgoCD target branch from `HEAD` to `develop` for alignment with governance
+- [x] Task: Create `apply-phase6-gitops.sh` orchestration script for automated deployment
+- [ ] Task: **USER ACTION:** Add SSH public key to GitHub Deploy Keys (read-only)
+- [ ] Task: Execute `k8s/gitops/apply-phase6-gitops.sh` to apply Phase 6 changes
+- [ ] Task: Verify ArgoCD repository connection via SSH (no more OCI throttling)
+- [ ] Task: Monitor all applications reach 'Healthy' and 'Synced' state
+- [ ] Task: (Optional) Migrate ArgoCD base installation from YAML to Helm Chart
+- [ ] Task: Conductor - User Manual Verification 'Phase 6: Advanced GitOps & App Lifecycle'
+
 ## Recent Migrations (2026-01-23)
 - **Tailscale Architecture:** Sidecar → Operator pattern (238m CPU, 178Mi memory, 400Mi storage freed)
 - **GitOps Status:** ArgoCD operational, local sync completed, GitHub fetch pending (OCI egress throttling)
+- **Phase 6 Initiated:** SSH authentication configured to resolve OCI egress throttling (awaiting user deployment)
