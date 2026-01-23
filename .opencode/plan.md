@@ -95,8 +95,12 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Document GitHub PAT generation process in `docs/operations.md`
 - [x] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
 - [x] Task: **Review Threads Resolved:** 8/8 threads resolved via GraphQL API
-- [ ] Task: **CI Upgrade:** Implement polyglot validation (Terraform + TFLint, YAML Lint, ShellCheck)
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
+- [x] Task: **CI Upgrade:** Implement polyglot validation (Terraform + TFLint, YAML Lint, ShellCheck)
+- [x] Task: **Linting Remediation:** Fixed 32 errors (Terraform, YAML indentation, ShellCheck warnings)
+- [x] Task: **Pipeline Gate:** Implemented aggregation pattern for status checks
+- [x] Task: **State Migration:** Executed `terraform state mv` for `for_each` refactoring
+- [x] Task: **PR #20 Merged:** Successfully merged to `develop` branch with squash commit
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
 
 ## Recent Migrations (2026-01-23)
 - **Tailscale Architecture:** Sidecar → Operator pattern (238m CPU, 178Mi memory, 400Mi storage freed)
