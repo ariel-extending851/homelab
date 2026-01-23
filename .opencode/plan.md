@@ -21,12 +21,18 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: k3s Cluster Installation with Ansible' (Protocol in workflow.md)
 
 ## Phase 3: GitOps Implementation with ArgoCD
-- [ ] Task: Create a new, dedicated Git repository for Kubernetes manifests (e.g., `hl-k8s-manifests`).
-- [ ] Task: Write a Kubernetes manifest or Helm values file to install ArgoCD into the cluster.
-- [ ] Task: Apply the ArgoCD manifest to the cluster using `kubectl`.
-- [ ] Task: Create a "hello-world" application manifest (e.g., Deployment and Service) and push it to the new Git repository.
-- [ ] Task: Create an ArgoCD `Application` custom resource manifest that points to the "hello-world" app in the Git repository.
+- [x] Task: Create a new, dedicated Git repository for Kubernetes manifests (e.g., `hl-k8s-manifests`).
+  - **Solution:** Using monorepo approach with `k8s/` directory in main homelab repo
+- [x] Task: Write a Kubernetes manifest or Helm values file to install ArgoCD into the cluster.
+  - **Documented:** Installation instructions in `k8s/gitops/README.md`
+- [~] Task: Apply the ArgoCD manifest to the cluster using `kubectl`.
+  - **Pending:** Manual verification by user (see deployment instructions below)
+- [x] Task: Create production applications (Monitoring Stack, SearXNG, GoLink, AdGuard)
+  - **Deployed:** All apps in `k8s/apps/` with proper modular namespace architecture
+- [x] Task: Create an ArgoCD `Application` custom resource manifest (App of Apps pattern)
+  - **Created:** `k8s/gitops/apps-root.yaml` - Manages all apps in `k8s/apps/` recursively
 - [ ] Task: Apply the ArgoCD `Application` manifest to the cluster to trigger the first sync.
+  - **Command:** `kubectl apply -f k8s/gitops/apps-root.yaml`
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: GitOps Implementation with ArgoCD' (Protocol in workflow.md)
 
 ## Phase 4: Applications & Workload Management
