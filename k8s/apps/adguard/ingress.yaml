@@ -1,17 +1,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: golink-ingress
-  namespace: golink
+  name: adguard-ingress
+  namespace: adguard
   labels:
-    app: golink
+    app: adguardhome
 spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: golink-service
+      name: adguard-service
       port:
-        number: 8080
+        number: 3000
   tls:
     - hosts:
-        - golink.tail57bf10.ts.net
+        - adguard.tail57bf10.ts.net

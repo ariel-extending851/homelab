@@ -1,17 +1,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: golink-ingress
-  namespace: golink
+  name: loki-ingress
+  namespace: loki
   labels:
-    app: golink
+    app: loki
 spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: golink-service
+      name: loki
       port:
-        number: 8080
+        number: 3100
   tls:
     - hosts:
-        - golink.tail57bf10.ts.net
+        - loki.tail57bf10.ts.net
