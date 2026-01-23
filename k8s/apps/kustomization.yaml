@@ -1,0 +1,19 @@
+# Root Kustomization for All Applications
+# Aggregates all app-specific kustomizations for ArgoCD App-of-Apps pattern
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Observability Stack
+  - ./prometheus
+  - ./grafana
+  - ./loki
+  - ./blackbox
+  - ./kube-state-metrics
+  - ./node-exporter
+  - ./otel-collector
+
+  # Applications
+  - ./searxng
+  - ./golink
+  - ./adguard
