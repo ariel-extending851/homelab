@@ -65,7 +65,7 @@ cat k8s/gitops/ssh/argocd.pub
 
 **Output:**
 ```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOWciCEYOOQ8xIib0Dy26cM4ue0ALGZOG7ZbLdy3tQfQ argocd@homelab-cluster
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE4X9ISUvhU7a61vpYPa1iTc1K2l+ClnXMK5IVgflI9R argocd@homelab
 ```
 
 ### Steps to Add Deploy Key

@@ -3,6 +3,7 @@
 This plan outlines the phases and tasks required to provision the cloud infrastructure, set up GitOps, and manage the hybrid workload distribution.
 
 ## Phase 1: OCI Infrastructure Provisioning with Terraform
+
 - [x] Task: Initialize Terraform project structure for OCI.
 - [x] Task: Define OCI provider, authentication variables, and remote backend configuration.
 - [x] Task: Create a reusable Terraform module for the OCI Virtual Cloud Network (VCN), subnets, and security groups.
@@ -12,6 +13,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: OCI Infrastructure Provisioning with Terraform' (Protocol in workflow.md)
 
 ## Phase 2: k3s Cluster Installation with Ansible
+
 - [ ] Task: Create a new Ansible role for k3s installation and configuration.
 - [ ] Task: Write a playbook that uses the dynamic inventory to target the OCI instances.
 - [ ] Task: Write Ansible tasks to install k3s on the first node, designating it as the server.
@@ -21,6 +23,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: k3s Cluster Installation with Ansible' (Protocol in workflow.md)
 
 ## Phase 3: GitOps Implementation with ArgoCD
+
 - [x] Task: Create a new, dedicated Git repository for Kubernetes manifests (e.g., `hl-k8s-manifests`).
   - **Solution:** Using monorepo approach with `k8s/` directory in main homelab repo
 - [x] Task: Write a Kubernetes manifest or Helm values file to install ArgoCD into the cluster.
@@ -40,6 +43,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **Pending:** ArgoCD network issue resolution and branch configuration
 
 ## Phase 4: Applications & Workload Management
+
 - [x] Task: Deploy GoLink (internal URL shortener) - Production-grade manifests with Tailscale integration
 - [x] Task: **Migrate SearXNG to k3s-node-1** - Moved from RPi3 to Oracle Cloud for 12GB RAM capacity.
 - [x] Task: **Optimize SearXNG** - Disabled image proxy to fix Tailscale relay latency.
@@ -61,6 +65,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
 
 ## Infrastructure Status
+
 - **k3s-node-0** (Oracle Cloud, 4 cores, 24GB RAM): Control Plane + Tailscale Proxy Hub (Stable)
   - CPU: 90m (2%), Memory: 2302Mi (10%)
   - Hosts: 6 Tailscale Operator proxy pods (adguard, grafana, loki, prometheus, searxng, golink)
@@ -76,6 +81,7 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - Target: AdGuard Home migration, *** deployment
 
 ## Phase 5: Governance & Security Guardrails
+
 - [x] Task: Initialize GitHub Terraform provider in `infra/oci/github.tf`
 - [x] Task: Define branch protection rules for `main` branch (required checks, 1 approval, signed commits, enforce admins)
 - [x] Task: Define branch protection rules for `develop` branch (same strict policies as main)
@@ -104,20 +110,22 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Conductor - User Manual Verification 'Phase 5: Governance & Security Guardrails'
 
 ## Phase 6: Advanced GitOps & App Lifecycle
+
 - [x] Task: Generate ED25519 SSH keypair for ArgoCD authentication
 - [x] Task: Create SSH directory structure and security guardrails (.gitignore exclusions)
 - [x] Task: Develop `create-argocd-ssh-secret.sh` script for Kubernetes secret generation
 - [x] Task: Update `apps-root.yaml` to use SSH URL (`git@github.com:ariel99gf/homelab.git`)
 - [x] Task: Change ArgoCD target branch from `HEAD` to `develop` for alignment with governance
 - [x] Task: Create `apply-phase6-gitops.sh` orchestration script for automated deployment
-- [ ] Task: **USER ACTION:** Add SSH public key to GitHub Deploy Keys (read-only)
-- [ ] Task: Execute `k8s/gitops/apply-phase6-gitops.sh` to apply Phase 6 changes
-- [ ] Task: Verify ArgoCD repository connection via SSH (no more OCI throttling)
-- [ ] Task: Monitor all applications reach 'Healthy' and 'Synced' state
-- [ ] Task: (Optional) Migrate ArgoCD base installation from YAML to Helm Chart
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: Advanced GitOps & App Lifecycle'
+- [x] Task: **USER ACTION:** Add SSH public key to GitHub Deploy Keys (read-only)
+- [x] Task: Execute `k8s/gitops/apply-phase6-gitops.sh` to apply Phase 6 changes
+- [x] Task: Verify ArgoCD repository connection via SSH (no more OCI throttling)
+- [x] Task: Monitor all applications reach 'Healthy' and 'Synced' state
+- [x] Task: (Optional) Migrate ArgoCD base installation from YAML to Helm Chart
+- [x] Task: Conductor - User Manual Verification 'Phase 6: Advanced GitOps & App Lifecycle'
 
 ## Recent Migrations (2026-01-23)
+
 - **Tailscale Architecture:** Sidecar → Operator pattern (238m CPU, 178Mi memory, 400Mi storage freed)
 - **GitOps Status:** ArgoCD operational, local sync completed, GitHub fetch pending (OCI egress throttling)
 - **Phase 6 Initiated:** SSH authentication configured to resolve OCI egress throttling (awaiting user deployment)
