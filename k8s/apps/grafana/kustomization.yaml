@@ -8,6 +8,8 @@ resources:
   - secret.yaml
   - pvc.yaml
   - datasources.yaml
+  - dashboard-provider.yaml
+  - dashboard-homelab-k3s-overview.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml

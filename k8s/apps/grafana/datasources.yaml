@@ -18,7 +18,7 @@ data:
         type: prometheus
         uid: prometheus
         orgId: 1
-        url: http://prometheus.prometheus.svc.cluster.local.:9090
+        url: http://prometheus.prometheus.svc.cluster.local:9090
         access: proxy
         isDefault: true
         editable: true
@@ -30,7 +30,7 @@ data:
         type: loki
         uid: loki
         orgId: 1
-        url: http://loki.loki.svc.cluster.local.:3100
+        url: http://loki.loki.svc.cluster.local:3100
         access: proxy
         isDefault: false
         editable: true

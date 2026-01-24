@@ -41,7 +41,7 @@ spec:
               cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "500m"
+              cpu: "1000m"  # Increased from 500m to eliminate CFS throttling (was 0.38% throttled)
               memory: "512Mi"
 
           ports:
@@ -74,6 +74,14 @@ spec:
               mountPath: /var/lib/grafana
             - name: grafana-datasources
               mountPath: /etc/grafana/provisioning/datasources
+            # Dashboard provider configuration (tells Grafana where to find dashboards)
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            # Actual dashboard JSON file (mounted in the same directory as provider expects)
+            - name: grafana-dashboard-homelab-k3s-overview
+              mountPath: /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json
+              subPath: homelab-k3s-overview.json
 
       volumes:
         - name: grafana-storage
@@ -82,3 +90,9 @@ spec:
         - name: grafana-datasources
           configMap:
             name: grafana-datasources
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboard-homelab-k3s-overview
+          configMap:
+            name: grafana-dashboard-homelab-k3s-overview
