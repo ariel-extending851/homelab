@@ -1,0 +1,36 @@
+---
+# ansible/roles/k3s/meta/main.yml
+# Role metadata and dependencies
+
+galaxy_info:
+  role_name: k3s
+  author: homelab
+  description: Install and configure k3s (Lightweight Kubernetes) on ARM64 architecture
+  company: homelab
+  license: MIT
+  min_ansible_version: "2.12"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Fedora
+      versions:
+        - 38
+        - 39
+
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - containers
+    - orchestration
+    - arm64
+    - homelab
+    - hybrid-cloud
+
+dependencies: []

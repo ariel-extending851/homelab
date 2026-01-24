@@ -1,0 +1,58 @@
+---
+# ansible/roles/k3s/tasks/preflight.yml
+# Pre-flight checks before k3s installation
+
+- name: Check if running on ARM64 architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture == "aarch64"
+    fail_msg: "This role is designed for ARM64 (aarch64) architecture only"
+    success_msg: "Architecture check passed: {{ ansible_architecture }}"
+
+- name: Verify minimum system requirements
+  ansible.builtin.assert:
+    that:
+      - ansible_memtotal_mb >= 512
+    fail_msg: "Minimum 512MB RAM required for k3s"
+    success_msg: "Memory check passed: {{ ansible_memtotal_mb }}MB"
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Get installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_installed_version
+  changed_when: false
+  failed_when: false
+  when: k3s_binary.stat.exists
+
+- name: Display current k3s installation status
+  ansible.builtin.debug:
+    msg: >-
+      k3s is {{ 'already installed: ' + k3s_installed_version.stdout.split()[2]
+      if k3s_binary.stat.exists else 'not installed' }}
+
+- name: Ensure required directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ k3s_config_dir }}"
+    - "{{ k3s_data_dir }}"
+
+- name: Check if Tailscale is active (when k3s_use_tailscale is enabled)
+  ansible.builtin.systemd:
+    name: tailscaled
+  register: tailscale_status
+  failed_when: false
+  when: k3s_use_tailscale | bool
+
+- name: Warn if Tailscale is not running
+  ansible.builtin.debug:
+    msg: "WARNING: Tailscale is not active but k3s_use_tailscale is enabled"
+  when:
+    - k3s_use_tailscale | bool
+    - tailscale_status.status.ActiveState | default('inactive') != 'active'

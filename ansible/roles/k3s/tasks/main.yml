@@ -1,0 +1,24 @@
+---
+# ansible/roles/k3s/tasks/main.yml
+# Main tasks for k3s installation and configuration
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+  ignore_errors: true
+
+- name: Pre-flight checks
+  ansible.builtin.include_tasks: preflight.yml
+
+- name: Install k3s server (control plane)
+  ansible.builtin.include_tasks: install_server.yml
+  when: k3s_control_node | bool
+
+- name: Install k3s agent (worker)
+  ansible.builtin.include_tasks: install_agent.yml
+  when: not k3s_control_node | bool
+
+- name: Post-installation configuration
+  ansible.builtin.include_tasks: post_install.yml
+
+- name: Verify k3s installation
+  ansible.builtin.include_tasks: verify.yml

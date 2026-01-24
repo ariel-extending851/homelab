@@ -1,0 +1,51 @@
+---
+# ansible/roles/k3s/tasks/post_install.yml
+# Post-installation configuration tasks
+
+- name: Apply Raspberry Pi optimizations (if applicable)
+  when:
+    - k3s_pi_optimizations | bool
+    - ansible_memtotal_mb < 8192  # Less than 8GB RAM
+  block:
+    - name: Add node label for Raspberry Pi
+      ansible.builtin.command: >
+        kubectl --kubeconfig={{ k3s_kubeconfig_path }}
+        label node {{ ansible_hostname }}
+        node.kubernetes.io/instance-type=raspberry-pi
+        --overwrite
+      delegate_to: "{{ groups['k3s_server'][0] }}"
+      changed_when: true
+      when: k3s_control_node | bool
+
+    - name: Set max pods for Raspberry Pi
+      ansible.builtin.lineinfile:
+        path: "{{ k3s_config_dir }}/config.yaml"
+        regexp: '^max-pods:'
+        line: "max-pods: {{ k3s_pi_max_pods }}"
+      notify: Restart k3s
+
+- name: Label Oracle Cloud nodes
+  ansible.builtin.command: >
+    kubectl --kubeconfig={{ k3s_kubeconfig_path }}
+    label node {{ ansible_hostname }}
+    node.kubernetes.io/instance-type=oracle-cloud
+    --overwrite
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  changed_when: true
+  when:
+    - k3s_control_node | bool
+    - ansible_memtotal_mb >= 8192  # 8GB+ RAM (Oracle Cloud instances)
+
+- name: Ensure k3s service is enabled
+  ansible.builtin.systemd:
+    name: "{{ k3s_service_name if k3s_control_node else k3s_agent_service_name }}"
+    enabled: true
+    state: started
+
+- name: Set kubectl alias (server only)
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    line: "export KUBECONFIG={{ k3s_kubeconfig_path }}"
+    create: true
+    mode: '0644'
+  when: k3s_control_node | bool

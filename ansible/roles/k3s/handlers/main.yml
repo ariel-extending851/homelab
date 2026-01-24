@@ -1,0 +1,29 @@
+---
+# ansible/roles/k3s/handlers/main.yml
+# Handlers for k3s service management
+
+- name: Restart k3s
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: true
+  when: k3s_control_node | bool
+
+- name: Restart k3s agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+    daemon_reload: true
+  when: not k3s_control_node | bool
+
+- name: Reload k3s
+  ansible.builtin.systemd:
+    name: k3s
+    state: reloaded
+  when: k3s_control_node | bool
+
+- name: Reload k3s agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: reloaded
+  when: not k3s_control_node | bool

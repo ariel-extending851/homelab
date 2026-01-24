@@ -1,0 +1,56 @@
+---
+# ansible/roles/k3s/tasks/verify.yml
+# Verification tasks to ensure k3s is working correctly
+
+- name: Verify k3s binary is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary_check
+  failed_when: not k3s_binary_check.stat.exists
+
+- name: Check k3s service status
+  ansible.builtin.systemd:
+    name: "{{ k3s_service_name if k3s_control_node else k3s_agent_service_name }}"
+  register: k3s_service_status
+  failed_when: k3s_service_status.status.ActiveState != "active"
+
+- name: Get k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_version_output
+  changed_when: false
+
+- name: Display k3s installation summary
+  ansible.builtin.debug:
+    msg:
+      - "=== k3s Installation Verification ==="
+      - "Role: {{ 'Server (Control Plane)' if k3s_control_node else 'Agent (Worker)' }}"
+      - "Version: {{ k3s_version_output.stdout.split()[2] }}"
+      - "Service: {{ k3s_service_status.status.ActiveState }}"
+      - "Architecture: {{ ansible_architecture }}"
+      - "Memory: {{ ansible_memtotal_mb }}MB"
+      - "====================================="
+
+- name: Verify node appears in cluster (server only)
+  when: k3s_control_node | bool
+  block:
+    - name: Get cluster nodes
+      ansible.builtin.command: >
+        kubectl --kubeconfig={{ k3s_kubeconfig_path }} get nodes -o wide
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Display cluster status
+      ansible.builtin.debug:
+        msg: "{{ cluster_nodes.stdout_lines }}"
+
+    - name: Check if node is Ready
+      ansible.builtin.command: >
+        kubectl --kubeconfig={{ k3s_kubeconfig_path }}
+        get node {{ ansible_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: node_ready_status
+      changed_when: false
+      failed_when: node_ready_status.stdout != "True"
+
+    - name: Verification successful
+      ansible.builtin.debug:
+        msg: "✅ k3s installation verified successfully - node is Ready"
