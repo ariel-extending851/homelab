@@ -23,8 +23,8 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **Network:** VCN (hl-main-vcn) and all components in AVAILABLE state
   - **Kubernetes Integration:** Both OCI nodes registered in k3s cluster (Ready status, 9d uptime)
   - **Resource Usage:** k3s-node-0: 2% CPU/27% Memory, k3s-node-1: 0% CPU/16% Memory
-  - **Public IPs:** 144.22.184.6, 163.176.141.254
-  - **Private IPs:** 10.0.1.7, 10.0.1.40 (Tailscale: 100.111.242.44, 100.113.22.52)
+  - **Public IPs:** [REDACTED]
+  - **Private IPs:** [REDACTED] (Tailscale: [REDACTED])
 
 ## Phase 2: k3s Cluster Installation with Ansible
 

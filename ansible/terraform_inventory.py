@@ -40,13 +40,6 @@ class TerraformInventory:
 
     def get_terraform_outputs(self) -> dict:
         """Execute terraform output -json and parse results"""
-        if not (self.terraform_dir / "terraform.tfstate").exists():
-            print(
-                f"ERROR: Terraform state not found at {self.terraform_dir}/terraform.tfstate",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
         try:
             result = subprocess.run(
                 ["terraform", "output", "-json"],
