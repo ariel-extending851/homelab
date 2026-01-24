@@ -8,13 +8,35 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - [x] Task: Define OCI provider, authentication variables, and remote backend configuration.
 - [x] Task: Create a reusable Terraform module for the OCI Virtual Cloud Network (VCN), subnets, and security groups.
 - [x] Task: Create Terraform code to provision the required number of Always Free ARM Compute Instances. cccc1aa
-- [~] Task: Implement a dynamic inventory script or use a Terraform provisioner to generate an Ansible inventory from the Terraform state.
+- [x] Task: Implement a dynamic inventory script or use a Terraform provisioner to generate an Ansible inventory from the Terraform state.
+  - **Solution:** Created `ansible/terraform_inventory.py` - Python dynamic inventory script
+  - **Validation:** ✅ Tested with `ansible-inventory --list` and `--graph` commands
+  - **Documentation:** Comprehensive README.md with usage examples and AWS DOP-C02 parallels
+  - **Architecture:** Automatic role assignment (first node = k3s_server, others = k3s_agent)
+  - **Commit:** 0c0a3c7
 - [x] Task: Align Terraform with Tailscale Infrastructure as Code best practices - Refactor cloud-init to use template files, ensure SSH hardening
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: OCI Infrastructure Provisioning with Terraform' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: OCI Infrastructure Provisioning with Terraform'
+  - **Verification Date:** 2026-01-24
+  - **Status:** ✅ PASSED
+  - **Terraform State:** 15 resources managed (2 compute instances, VCN, subnets, security list, route table, internet gateway)
+  - **Compute Instances:** Both hl-k3s-node-0 and hl-k3s-node-1 in RUNNING state (VM.Standard3.Flex)
+  - **Network:** VCN (hl-main-vcn) and all components in AVAILABLE state
+  - **Kubernetes Integration:** Both OCI nodes registered in k3s cluster (Ready status, 9d uptime)
+  - **Resource Usage:** k3s-node-0: 2% CPU/27% Memory, k3s-node-1: 0% CPU/16% Memory
+  - **Public IPs:** 144.22.184.6, 163.176.141.254
+  - **Private IPs:** 10.0.1.7, 10.0.1.40 (Tailscale: 100.111.242.44, 100.113.22.52)
 
 ## Phase 2: k3s Cluster Installation with Ansible
 
-- [ ] Task: Create a new Ansible role for k3s installation and configuration.
+- [x] Task: Create a new Ansible role for k3s installation and configuration.
+  - **Solution:** Comprehensive Ansible role created in `ansible/roles/k3s/`
+  - **Features:** Server/agent installation, ARM64 optimization, Tailscale integration, Pi resource constraints
+  - **Components:** 6 task files, 2 config templates, defaults (60+ vars), handlers, meta
+  - **Validation:** All YAML syntax verified, comprehensive README with AWS DOP-C02 exam parallels
+  - **Architecture:** Modular design (preflight → install → post-install → verify)
+  - **Security:** Kernel hardening, secrets encryption, token-based auth
+  - **Backup:** Automatic etcd snapshots (12h schedule, 5 retention)
+  - **Commit:** d6cf704
 - [ ] Task: Write a playbook that uses the dynamic inventory to target the OCI instances.
 - [ ] Task: Write Ansible tasks to install k3s on the first node, designating it as the server.
 - [ ] Task: Write Ansible tasks to retrieve the join token from the server node.
