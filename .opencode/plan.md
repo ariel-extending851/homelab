@@ -61,7 +61,17 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **Status:** ✅ Running (1/1 Ready, DNS proxy operational on port 53)
   - **Location:** rasp-pi-03
 - [ ] Task: **Migrate AdGuard Home** - Move from rasp-pi-03 to rasp-pi-04 (blocked by crash issue above)
-- [ ] Task: Deploy *** to rasp-pi-04 (Media Server).
+- [x] Task: Deploy *** to rasp-pi-04 (Media Server) - **COMPLETED (2026-01-24)**
+  - **PR:** #32 (merged to develop)
+  - **Status:** ✅ OPERATIONAL
+    - Pod: ***-69847ddbf-2zrjz (1/1 Ready, rasp-pi-04)
+    - Tailscale Ingress: ***.tail57bf10.ts.net (ts-***-ingress-w6cc4-0)
+    - Storage: 10Gi config PVC (***-config-pvc) + 5Gi cache
+    - Resources: 500m-2000m CPU, 1Gi-3Gi memory
+  - **Manifests:** k8s/apps/***/ (namespace, deployment, service, ingress, PVC)
+  - **GitOps:** Integrated with ArgoCD App-of-Apps pattern
+  - **Verification:** Health endpoint operational, Tailscale proxy routing active
+  - **AWS Exam Parallel:** ECS Fargate placement (nodeSelector), EBS provisioning (PVC), ALB health checks (probes)
 - [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
 
 ## Infrastructure Status
