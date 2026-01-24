@@ -30,3 +30,9 @@ k8s/gitops/ssh/*
 !k8s/gitops/ssh/.gitkeep
 !k8s/gitops/ssh/README.md
 !k8s/gitops/ssh/*.pub
+
+# Ralph Wiggum Loop (autonomous execution artifacts)
+.ralph/*
+!.ralph/PROMPT.md
+!.ralph/ralph.sh
+!.ralph/.gitkeep
