@@ -20,7 +20,7 @@ spec:
       serviceAccountName: golink
       containers:
         - name: golink
-          image: ghcr.io/tailscale/golink:v1.0.0
+          image: ghcr.io/tailscale/golink:main
           imagePullPolicy: IfNotPresent
 
           env:
