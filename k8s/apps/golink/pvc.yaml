@@ -13,4 +13,4 @@ spec:
       # Minimal storage for SQLite database
       # GoLink uses a small SQLite database for link storage
       storage: 1Gi
-  # Uses default storageClass (local-path on k3s)
+    # Uses default storageClass (local-path on k3s)

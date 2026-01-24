@@ -23,7 +23,7 @@ spec:
 
       # Pin to Raspberry Pi with local PV
       nodeSelector:
-        kubernetes.io/hostname: rasp-pi-03
+        kubernetes.io/hostname: rasp-pi-04
 
       containers:
         # AdGuard Home Application
