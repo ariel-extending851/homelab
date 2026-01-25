@@ -20,3 +20,11 @@ spec:
               operator: In
               values:
                 - rasp-pi-04
+---
+# IMPORTANT: Host path ownership requirement
+# The directory /mnt/ssd/k3s-storage/adguard on rasp-pi-04 must be owned by UID:GID 65534:65534
+# to match the container's security context (nobody:nogroup).
+#
+# One-time setup on rasp-pi-04:
+#   sudo chown -R 65534:65534 /mnt/ssd/k3s-storage/adguard
+#   sudo chmod -R u+rwX,g+rX,o-rwx /mnt/ssd/k3s-storage/adguard
