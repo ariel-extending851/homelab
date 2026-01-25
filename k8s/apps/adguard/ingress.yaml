@@ -6,9 +6,9 @@ metadata:
   labels:
     app: adguardhome
   annotations:
-    # Fix for AdGuard Home blank page issue
-    # Ensures proper cookie/session handling through HTTPS proxy
-    tailscale.com/experimental-forward-cluster-traffic-via-ingress: "true"
+    # Disable cluster traffic forwarding since AdGuard uses hostNetwork
+    # This allows Tailscale to route directly to the pod IP for better performance
+    tailscale.com/experimental-forward-cluster-traffic-via-ingress: "false"
 spec:
   ingressClassName: tailscale
   defaultBackend:
