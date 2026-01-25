@@ -47,6 +47,45 @@ You have access to powerful tools. Use them logically:
 * **Memory:** The on-prem nodes have limited RAM. Always check `resources.requests` and `resources.limits` in manifests.
 * **Storage:** Avoid high I/O operations on the SD cards. Suggest `emptyDir` in RAM or network storage where possible.
 
+## 6. Environment Detection & Guardrails
+
+Before executing destructive cluster operations (kubectl delete, apply, scale), detect the environment and apply safety checks.
+
+**Environment Detection:**
+```bash
+NODE=$(kubectl get nodes -o json | jq -r '.items[0].metadata.name')
+```
+
+**Environment Classification:**
+
+| Node Pattern | Environment | Guardrails |
+|--------------|-------------|------------|
+| `k3s-node-*` | Production (Oracle) | Require typed confirmation for deletes; block :latest tags |
+| `rasp-pi-03` | Raspberry Pi 3 (4GB) | Block if missing memory limits; warn if request >512Mi |
+| `rasp-pi-04` | Raspberry Pi 4 (8GB) | Block if missing memory limits; warn if request >1Gi |
+| `docker-desktop`, `minikube` | Local Dev | No restrictions |
+
+**Key Rules:**
+* **DELETE on Production:** User must type full resource name (e.g., "deployment/***") to confirm
+* **APPLY to Pi nodes:** BLOCK if `resources.limits.memory` is missing from any container
+* **APPLY to Production:** BLOCK if image uses `:latest` tag (require specific versions)
+* **SCALE to 0:** Show warning about downtime, require confirmation
+* **hostPath on Pi:** Warn about SD card I/O limitations, suggest alternatives
+
+**Read-Only Operations (no guardrails needed):**
+* `kubectl get`, `kubectl describe`, `kubectl logs`, `kubectl top`
+
+**Example:**
+```
+User: kubectl delete deployment *** -n media
+Agent: [Detects k3s-node-0 = Production]
+
+⚠️  PRODUCTION ENVIRONMENT DETECTED
+Type resource name to confirm: _____
+
+[User must type: deployment/***]
+```
+
 # Commits & Documentation
 * **Format:** Follow Conventional Commits: `<type>(<scope>): <description>`.
     * Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
