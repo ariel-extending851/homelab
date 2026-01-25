@@ -24,9 +24,9 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
-      # Pin to Raspberry Pi with local PV and available resources (rasp-pi-04 has 8GB RAM)
+      # Pin to Raspberry Pi with local PV and available resources
       nodeSelector:
-        kubernetes.io/hostname: rasp-pi-04
+        kubernetes.io/hostname: rasp-pi-03
 
       # Security context: Run as nobody user (UID 65534) to match image ownership
       # fsGroup ensures mounted volumes are accessible by the container user
