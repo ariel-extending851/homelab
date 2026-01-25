@@ -5,6 +5,10 @@ metadata:
   namespace: adguard
   labels:
     app: adguardhome
+  annotations:
+    # Fix for AdGuard Home blank page issue
+    # Ensures proper cookie/session handling through HTTPS proxy
+    tailscale.com/experimental-forward-cluster-traffic-via-ingress: "true"
 spec:
   ingressClassName: tailscale
   defaultBackend:

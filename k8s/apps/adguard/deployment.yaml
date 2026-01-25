@@ -18,10 +18,13 @@ spec:
         app: adguardhome
     spec:
       # CRITICAL: Must use hostNetwork for DNS (UDP 53) to function as LAN DNS server
+      # PREREQUISITE: systemd-resolved must be disabled on target node to free port 53
+      #   sudo systemctl disable --now systemd-resolved
+      #   sudo rm /etc/resolv.conf && echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
-      # Pin to Raspberry Pi with local PV
+      # Pin to Raspberry Pi with local PV and available resources (rasp-pi-04 has 8GB RAM)
       nodeSelector:
         kubernetes.io/hostname: rasp-pi-04
 
@@ -32,9 +35,13 @@ spec:
           imagePullPolicy: IfNotPresent
 
           securityContext:
-            # Requires elevated privileges for DNS (port 53) on hostNetwork
-            privileged: true
-            allowPrivilegeEscalation: true
+            # With hostNetwork=true, container uses host's network namespace for port 53
+            # Apply least privilege principle: drop all capabilities
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
 
           resources:
             requests:
@@ -75,8 +82,14 @@ spec:
             - name: adguard-storage
               mountPath: /opt/adguardhome/work
               subPath: data
+            - name: adguard-config-docs
+              mountPath: /opt/adguardhome/docs
+              readOnly: true
 
       volumes:
         - name: adguard-storage
           persistentVolumeClaim:
             claimName: adguard-pvc
+        - name: adguard-config-docs
+          configMap:
+            name: adguard-config
