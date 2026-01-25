@@ -5,10 +5,6 @@ metadata:
   namespace: adguard
   labels:
     app: adguardhome
-  annotations:
-    # Disable cluster traffic forwarding since AdGuard uses hostNetwork
-    # This allows Tailscale to route directly to the pod IP for better performance
-    tailscale.com/experimental-forward-cluster-traffic-via-ingress: "false"
 spec:
   ingressClassName: tailscale
   defaultBackend:
