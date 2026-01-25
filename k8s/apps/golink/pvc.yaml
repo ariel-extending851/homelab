@@ -10,7 +10,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      # Minimal storage for SQLite database
-      # GoLink uses a small SQLite database for link storage
+      # GoLink database size is minimal (< 100MB for typical use)
+      # Allocating 1Gi provides ample room for growth
       storage: 1Gi
-    # Uses default storageClass (local-path on k3s)
+  # Uses default storageClass (local-path on k3s)
