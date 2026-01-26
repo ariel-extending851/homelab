@@ -96,22 +96,6 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **AWS Exam Parallel:** ECS Fargate placement (nodeSelector), EBS provisioning (PVC), ALB health checks (probes)
 - [x] Task: Optimize SearXNG engine timeouts and image proxy settings to reduce latency < 1.0s
 
-## Infrastructure Status
-
-- **k3s-node-0** (Oracle Cloud, 4 cores, 24GB RAM): Control Plane + Tailscale Proxy Hub (Stable)
-  - CPU: 90m (2%), Memory: 2302Mi (10%)
-  - Hosts: 6 Tailscale Operator proxy pods (adguard, grafana, loki, prometheus, searxng, golink)
-- **k3s-node-1** (Oracle Cloud, 4 cores, 24GB RAM): Heavy Workload Node (Stable)
-  - CPU: 28m (1%), Memory: 1212Mi (5%)
-  - Hosts: SearXNG (optimized for 12GB RAM capacity)
-- **rasp-pi-03** (RPi3, 4 cores, 4GB RAM): Monitoring Canary + AdGuard Home (Stable)
-  - CPU: 269m (7%), Memory: 474Mi (12%)
-  - Status: ✅ AdGuard Home v0.107.71 operational (DNS proxy running)
-- **rasp-pi-04** (RPi4, 4 cores, 8GB RAM): General Purpose ARM64 (Stable)
-  - CPU: 298m (7%), Memory: 1153Mi (14%)
-  - Hosts: Tailscale Operator controller
-  - Target: AdGuard Home migration, *** deployment
-
 ## Phase 5: Governance & Security Guardrails
 
 - [x] Task: Initialize GitHub Terraform provider in `infra/oci/github.tf`
@@ -188,6 +172,67 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
   - **Incident Response:** 1-hour and 24-hour action plans defined
 - [x] Task: Update `.opencode/plan.md` to track Phase 7 implementation
   - **Status:** ✅ COMPLETED (2026-01-25)
+
+## Phase 8: Hybrid Arr Stack Implementation
+
+**Objective:** Deploy a full Media Stack (***, ***, ***, ***) on Hybrid Cluster (OCI + RPi)
+
+- [x] Task: Create `***` manifests (Namespace, Shared PV/PVC for atomic moves).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commits:** e949b77, 6faed49
+  - **Components:** Namespace, PV (2Ti), PVC, Storage setup job
+- [x] Task: Create `***` manifests (Deployment with *** sidecar, Service, Ingress).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commit:** e949b77
+  - **Security:** *** VPN sidecar with NET_ADMIN capability, killswitch enabled
+  - **Resources:** Combined limit 600Mi (***: 200Mi, ***: 400Mi)
+- [x] Task: Create `***` manifests (Deployment, Service, Ingress).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commit:** e949b77
+  - **Image:** lscr.io/linuxserver/***:4.0.13
+  - **Resources:** 100m/150Mi requests, 500m/500Mi limits
+- [x] Task: Create `***` manifests (Deployment, Service, Ingress).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commit:** e949b77
+  - **Image:** lscr.io/linuxserver/***:5.19.3
+  - **Resources:** 100m/150Mi requests, 500m/500Mi limits
+- [x] Task: Create `***` manifests (Deployment, Service, Ingress).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commit:** e949b77
+  - **Image:** lscr.io/linuxserver/***:1.31.2
+  - **Resources:** 100m/150Mi requests, 500m/500Mi limits
+- [x] Task: Update root `kustomization.yaml` to include new apps.
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commit:** e949b77
+- [x] Task: Verify deployment (dry-run/linting).
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Validation:** yamllint, kubectl dry-run (client & server)
+- [x] Task: Commit and Push changes.
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Commits:** e949b77 (initial), 2ab82dd (version pins), 6faed49 (storage job)
+- [x] Task: PR Review & Remediation.
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **PR:** #78 - feat: implement hybrid arr stack
+  - **Remediations:** Pinned image versions, added storage setup job
+- [x] Task: SRE Verification Gate
+  - **Status:** ✅ COMPLETED (2026-01-26)
+  - **Verification Date:** 2026-01-26
+  - **Static Validation:** ✅ PASSED
+    - YAML Lint: No errors
+    - PUID/PGID: All containers set to 1000:1000
+    - Resource Limits: All within constraints (< 2GB total RAM)
+    - Manifest Validation: kubectl dry-run successful
+  - **Pre-Deployment Checks:** ✅ PASSED
+    - Node Availability: rasp-pi-04 Ready
+    - Storage Path: /mnt/storage verified on target node
+    - Setup Job: Created to initialize directory structure
+  - **Findings:**
+    - ✅ Fixed: Missing storage initialization job (added setup-storage-job.yaml)
+    - ✅ Fixed: Image version pinning (latest → specific versions)
+  - **Post-Deployment Requirements:**
+    - ⚠️ PENDING: Populate ***-secret with Wireguard credentials
+    - ⚠️ PENDING: Merge PR #78 to trigger ArgoCD sync
+    - ⚠️ PENDING: Runtime verification (PVC binding, Pod status, VPN tunnel)
 
 **Implementation Philosophy:**
 - ✅ Keep it simple: 20-80 lines per command file (achieved: 79-157 lines)

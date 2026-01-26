@@ -18,3 +18,10 @@ resources:
   - ./golink
   - ./adguard
   - ./***
+
+  # Media Stack
+  - ./***
+  - ./***
+  - ./***
+  - ./***
+  - ./***
