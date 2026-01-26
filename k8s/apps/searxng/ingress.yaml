@@ -5,6 +5,8 @@ metadata:
   namespace: searxng
   labels:
     app: searxng
+  annotations:
+    tailscale.com/proxy-class: "high-bandwidth"
 spec:
   ingressClassName: tailscale
   defaultBackend:

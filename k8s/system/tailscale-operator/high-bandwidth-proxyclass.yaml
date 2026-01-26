@@ -1,0 +1,33 @@
+---
+# High-bandwidth ProxyClass for Tailscale ingress proxies
+# Fixes performance degradation caused by MTU fragmentation
+#
+# Root Cause Analysis:
+# - Pod eth0 MTU: 1230 bytes (CNI limitation)
+# - Standard packets: 1500 bytes
+# - Fragmentation overhead: ~95% throughput loss (18 KB/s → should be 250+ KB/s)
+# - Solution: Force Tailscale to use MTU 1100 via TS_DEBUG_MTU environment variable
+#
+# Workaround for operator v1.92.5:
+# - Cannot set container-level resources due to StatefulSet validation bug
+# - MTU fix via env variable works without resource changes
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: high-bandwidth
+spec:
+  statefulSet:
+    pod:
+      # Pin to same node as default ProxyClass for consistency
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node-0
+
+      # Tailscale container configuration
+      tailscaleContainer:
+        # Environment variables for Tailscale container
+        env:
+          # Force MTU to 1100 to avoid fragmentation
+          # Pod interface (eth0) has MTU 1230, so we set Tailscale MTU to 1100
+          # This provides 130 bytes margin for WireGuard headers/overhead
+          - name: TS_DEBUG_MTU
+            value: "1100"

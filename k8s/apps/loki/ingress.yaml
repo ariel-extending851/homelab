@@ -5,6 +5,8 @@ metadata:
   namespace: loki
   labels:
     app: loki
+  annotations:
+    tailscale.com/proxy-class: "high-bandwidth"
 spec:
   ingressClassName: tailscale
   defaultBackend:

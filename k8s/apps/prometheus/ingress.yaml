@@ -5,6 +5,8 @@ metadata:
   namespace: prometheus
   labels:
     app: prometheus
+  annotations:
+    tailscale.com/proxy-class: "high-bandwidth"
 spec:
   ingressClassName: tailscale
   defaultBackend:
