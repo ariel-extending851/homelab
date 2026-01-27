@@ -234,6 +234,59 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
     - ⚠️ PENDING: Merge PR #78 to trigger ArgoCD sync
     - ⚠️ PENDING: Runtime verification (PVC binding, Pod status, VPN tunnel)
 
+## Phase 9: *** P2P Connectivity Fix
+
+**Objective:** Resolve "Firewalled" status and enable P2P traffic through *** VPN sidecar
+
+**Context:** VPN tunnel established (CH exit IP confirmed), HTTP works, but BitTorrent traffic stalled (0 DHT nodes, 0 peers).
+
+**Root Cause:** *** firewall defaults to DROP for incoming traffic on `tun0` interface. No ports whitelisted for P2P.
+
+- [x] Task: Document P2P connectivity fix in `.opencode/plan.md`
+  - **Status:** ✅ COMPLETED (2026-01-27)
+  - **Branch:** fix/***-dns
+- [ ] Task: Create Kustomize patch for `FIREWALL_VPN_INPUT_PORTS` environment variable
+  - **File:** `k8s/apps/***/kustomization.yaml`
+  - **Action:** Add strategic merge patch to inject `FIREWALL_VPN_INPUT_PORTS: "6881"` into *** container
+  - **Reason:** Keep base manifest generic, allow environment-specific overrides (DOP-C02 best practice)
+- [ ] Task: Configure *** via WebAPI to align with firewall rules
+  - **Actions:**
+    - Set `listen_port: 6881` (matches firewall whitelist)
+    - Set `current_network_interface: tun0` (strict binding for security)
+  - **Method:** Automated curl sequence with session cookie handling
+- [ ] Task: Commit IaC changes to `fix/***-dns` branch
+  - **Commit Message:** `fix(***): open port 6881 for P2P traffic through *** firewall`
+  - **Files Changed:**
+    - `k8s/apps/***/kustomization.yaml` (new/modified)
+    - `.opencode/plan.md` (this file)
+- [ ] Task: Push to origin and trigger ArgoCD hard refresh
+  - **Command:** `argocd app sync homelab-apps-root --force --prune`
+- [ ] Task: Post-deployment validation
+  - **Checks:**
+    - ✅ iptables shows ACCEPT rule for port 6881 on tun0
+    - ✅ *** connection_status changes from "firewalled" to "connected"
+    - ✅ DHT nodes > 0
+    - ✅ Torrent state transitions from "metaDL" to "downloading" with active seeds/peers
+ - [ ] Task: Resolve PR review feedback for *** stack
+   - **Scope:** deployment securityContext, imagePullPolicy, CPU limits, TZ env
+   - **Docs:** Align README/DEPLOY.sh IPs with current *** endpoint and exit IP
+   - **Governance:** Clean kustomization comment and document PVC name migration
+
+**Implementation Philosophy:**
+- ✅ GitOps-first: All config changes via Kustomize patches (no manual kubectl edits)
+- ✅ Security: Strict interface binding (tun0) prevents leaks if VPN drops
+- ✅ Clarity: Environment variables documented inline with comments
+
+**AWS Exam Parallel (DOP-C02):**
+- Kustomize patches = CloudFormation stack sets (environment-specific overrides)
+- Firewall rules = Security Group ingress rules (port whitelisting)
+- API configuration = Systems Manager Parameter Store (runtime config)
+
+**Implementation Note:**
+- Real "Green" connectivity requires VPN provider port forwarding (*** API).
+- Since we use "custom" provider mode, we lack automatic port forwarding.
+- This fix enables **best-effort P2P** (outbound + DHT), sufficient for popular torrents.
+
 **Implementation Philosophy:**
 - ✅ Keep it simple: 20-80 lines per command file (achieved: 79-157 lines)
 - ✅ No over-engineering: Manual commands > automation for homelab scale

@@ -25,6 +25,7 @@ data:
           - /var/log/pods/*/*/*.log
         exclude:
           - /var/log/pods/otel-collector_otel-collector*/*/*.log
+          - /var/log/pods/media_*/*/*.log
         start_at: end
         include_file_path: true
         include_file_name: false
