@@ -314,3 +314,32 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
 - **Tailscale Architecture:** Sidecar → Operator pattern (238m CPU, 178Mi memory, 400Mi storage freed)
 - **GitOps Status:** ArgoCD operational, local sync completed, GitHub fetch pending (OCI egress throttling)
 - **Phase 6 Initiated:** SSH authentication configured to resolve OCI egress throttling (awaiting user deployment)
+
+## Phase 10: *** Integration for Arr Stack
+
+**Objective:** Deploy *** to bypass Cloudflare challenges for indexers used by ***, ***, and ***.
+
+- [x] Task: Create *** Kubernetes manifests.
+  - **Action:** Create `k8s/apps/***/` directory.
+  - **Action:** Create `deployment.yaml` for *** using `ghcr.io/***/***:latest` image in the `media` namespace, with `nodeSelector` for `rasp-pi-04`.
+  - **Action:** Define resource requests (e.g., 256Mi memory) and limits (e.g., 1Gi memory) appropriate for a headless browser on a Raspberry Pi.
+  - **Action:** Create `service.yaml` to expose *** on port `8191` as a `ClusterIP` service named `***`.
+  - **Action:** Create `kustomization.yaml` for the *** application.
+  - **Action:** Update `k8s/apps/kustomization.yaml` to include the new `***` resource.
+
+- [x] Task: Implement GitOps-friendly configuration for ***.
+  - **Action:** Document a one-time manual step to retrieve the *** API key from its Web UI (`Settings > General`).
+  - **Action:** Create a `***-secret.yaml` manifest to store the API key as a Kubernetes secret in the `media` namespace. (The file should contain a placeholder and be managed with SOPS or added to `.gitignore` if it contains a real key).
+  - **Action:** Create a `ConfigMap` (`k8s/apps/***/bootstrap-***-configmap.yaml`) containing an idempotent shell script to configure ***.
+  - **Action:** Create a Kubernetes `Job` (`k8s/apps/***/bootstrap-***-job.yaml`) as an ArgoCD `PostSync` hook.
+    - The Job will mount the script and the API key secret.
+    - The script will use `curl` to call the *** API (`/api/v1/indexerproxy`) and add *** if it doesn't already exist, using the service URL `http://***:8191`.
+  - **Action:** Update `k8s/apps/***/kustomization.yaml` to include the bootstrap job, configmap, and secret manifests.
+
+- [x] Task: Verification and Documentation.
+  - **Action:** Create a verification plan:
+    1. Check *** and bootstrap job logs.
+    2. Verify the proxy is configured in the *** UI.
+    3. Test an indexer known to be behind Cloudflare.
+  - **Action:** Create `k8s/apps/***/README.md` to document the service and its purpose.
+  - **Action:** Update the *** documentation to explain the *** integration and the API key secret setup.

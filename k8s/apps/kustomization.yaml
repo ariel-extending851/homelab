@@ -20,6 +20,8 @@ resources:
   - ./***
 
   # Media Stack
+  - ./***/network-policy.yaml
+  - ./***
   - ./***
   - ./***
   - ./***
