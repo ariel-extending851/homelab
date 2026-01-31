@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cmp-plugin
+  namespace: argocd
+data:
+  plugin.yaml: |
+    apiVersion: argoproj.io/v1alpha1
+    kind: ConfigManagementPlugin
+    metadata:
+      name: argocd-vault-plugin-helm-with-args
+    spec:
+      allowConcurrency: true
+      discover:
+        find:
+          command:
+            - sh
+            - "-c"
+            - "find . -name '.sops.yaml'"
+      generate:
+        command:
+          - bash
+          - "-c"
+          - |
+            # Set SOPS_AGE_KEY_FILE environment variable
+            export SOPS_AGE_KEY_FILE=/helm-sops-tools/age-key/keys.txt
+
+            # Process all YAML files in the directory
+            for file in $(find . -name '*.yaml' -o -name '*.yml'); do
+              if grep -q "sops:" "$file"; then
+                echo "Decrypting $file with SOPS..."
+                sops -d "$file" > "${file}.dec"
+                mv "${file}.dec" "$file"
+              fi
+            done
+
+            # Run helm template or kustomize build
+            if [ -f "Chart.yaml" ]; then
+              helm template .
+            elif [ -f "kustomization.yaml" ]; then
+              kustomize build .
+            else
+              cat *.yaml
+            fi
+      lockRepo: false

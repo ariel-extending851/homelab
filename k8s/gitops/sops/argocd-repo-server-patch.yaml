@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+spec:
+  template:
+    spec:
+      # Add init container to install SOPS and Age
+      initContainers:
+        - name: install-sops
+          image: alpine:3.18
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache curl age
+              curl -Lo /custom-tools/sops https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+              chmod +x /custom-tools/sops
+          volumeMounts:
+            - name: custom-tools
+              mountPath: /custom-tools
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+            limits:
+              cpu: 50m
+              memory: 50Mi
+
+      # Main repo-server container
+      containers:
+        - name: argocd-repo-server
+          env:
+            # Set SOPS_AGE_KEY_FILE to point to the Age key
+            - name: SOPS_AGE_KEY_FILE
+              value: /helm-sops-tools/age-key/keys.txt
+            # Enable SOPS decryption via environment variable
+            - name: HELM_PLUGINS
+              value: /helm-sops-tools/helm-plugins/
+            - name: KUSTOMIZE_PLUGIN_HOME
+              value: /helm-sops-tools/kustomize-plugins/
+
+          volumeMounts:
+            # Mount the Age private key
+            - name: sops-age-key
+              mountPath: /helm-sops-tools/age-key
+              readOnly: true
+            # Mount custom tools (SOPS binary)
+            - name: custom-tools
+              mountPath: /usr/local/bin/sops
+              subPath: sops
+
+      volumes:
+        # Volume for Age private key
+        - name: sops-age-key
+          secret:
+            secretName: sops-age-key
+            defaultMode: 0400
+        # Volume for custom tools
+        - name: custom-tools
+          emptyDir: {}
