@@ -67,7 +67,7 @@ module "k3s_nodes" {
 
   compartment_id = local.secrets["compartment_id"]
   subnet_id      = module.main_network.public_subnet_id
-  ssh_public_key = file(local.secrets["public_key_path"])
+  ssh_public_key = local.secrets["ssh_public_key"]
   label_prefix   = "hl"
 
   instance_shape = var.instance_shape
