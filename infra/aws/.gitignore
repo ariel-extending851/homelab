@@ -46,3 +46,5 @@ secrets.yml
 *.unencrypted
 terraform.tfvars.sops.yaml.bak
 *.tfplan
+tfplan*
+*tfplan*

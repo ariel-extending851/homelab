@@ -69,12 +69,13 @@ resource "github_branch_protection" "default" {
     contexts = ["Pipeline Gate"]
   }
 
-  # Peer Review Requirement
+  # Peer Review Requirement (Solo Developer Mode)
+  # Note: For single-person repos, set approvals to 0 since GitHub prevents self-approval via API
   required_pull_request_reviews {
-    required_approving_review_count = 1
+    required_approving_review_count = 0 # No approvals needed for solo work
     dismiss_stale_reviews           = true
     require_code_owner_reviews      = false
-    require_last_push_approval      = true
+    require_last_push_approval      = false
   }
 
   # Security: GPG Signing Enforcement
