@@ -31,7 +31,7 @@
     "remoteEnv": {
         "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
     },
-    
+
     "remoteUser": "dev",
 
     "postCreateCommand": "mise trust && (test -d ~/.config/nvim || git clone https://github.com/LazyVim/starter ~/.config/nvim) && /home/dev/.local/share/mise/shims/nvim --headless +LazySync +qa"

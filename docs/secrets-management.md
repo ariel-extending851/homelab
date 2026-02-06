@@ -211,6 +211,6 @@ When adding new secrets to the homelab infrastructure:
 
 ---
 
-**Last Updated:** 2026-01-25  
-**Document Owner:** Tech Lead  
+**Last Updated:** 2026-01-25
+**Document Owner:** Tech Lead
 **Review Frequency:** Quarterly

@@ -65,14 +65,14 @@ POD_NAME=$(kubectl get pods -n $NAMESPACE -o name | grep "ts-.*-ingress" | head 
 if [ -n "$POD_NAME" ]; then
   echo -e "${BLUE}Checking pod: $POD_NAME${NC}"
   echo ""
-  
+
   echo -e "${YELLOW}Pod interface MTU (eth0):${NC}"
   kubectl exec -n $NAMESPACE $POD_NAME -- ip addr show eth0 | grep mtu || echo "Could not read eth0 MTU"
-  
+
   echo ""
   echo -e "${YELLOW}Tailscale interface MTU (tailscale0):${NC}"
   kubectl exec -n $NAMESPACE $POD_NAME -- ip addr show tailscale0 | grep mtu || echo "tailscale0 not found (normal if pod just started)"
-  
+
   echo ""
 else
   echo -e "${YELLOW}⚠️ No ingress pods found (they may have been deleted)${NC}"
@@ -191,16 +191,16 @@ if [ -n "$NEW_POD_NAME" ]; then
   echo ""
   echo -e "${BLUE}Checking MTU on new pod: $NEW_POD_NAME${NC}"
   echo ""
-  
+
   echo -e "${YELLOW}Tailscale interface MTU (should be ~1100):${NC}"
   kubectl exec -n $NAMESPACE $NEW_POD_NAME -- ip addr show tailscale0 2>/dev/null | grep mtu || echo "tailscale0 not ready yet (normal, may take 1-2 minutes)"
-  
+
   echo ""
-  
+
   # Check environment variable
   echo -e "${YELLOW}TS_DEBUG_MTU environment variable:${NC}"
   kubectl exec -n $NAMESPACE $NEW_POD_NAME -- sh -c 'echo $TS_DEBUG_MTU' 2>/dev/null || echo "Could not read environment variable"
-  
+
   echo ""
 fi
 

@@ -97,7 +97,7 @@ k8s/gitops/
    ```yaml
    global:
      domain: argocd.tail57bf10.ts.net  # Optional: Tailscale MagicDNS
-   
+
    server:
      resources:
        limits:
@@ -106,7 +106,7 @@ k8s/gitops/
        requests:
          cpu: 50m
          memory: 128Mi
-   
+
    repoServer:
      resources:
        limits:
@@ -115,7 +115,7 @@ k8s/gitops/
        requests:
          cpu: 50m
          memory: 128Mi
-   
+
    controller:
      resources:
        limits:
@@ -124,7 +124,7 @@ k8s/gitops/
        requests:
          cpu: 100m
          memory: 256Mi
-   
+
    # SSH repository credentials (reference existing secret)
    configs:
      repositoryCredentials:
@@ -330,7 +330,7 @@ Before proceeding with this migration:
 
 ---
 
-**Author:** Claude (Tech Lead)  
-**Date:** 2026-01-23  
-**Phase:** 6+ (Post-SSH Migration)  
+**Author:** Claude (Tech Lead)
+**Date:** 2026-01-23
+**Phase:** 6+ (Post-SSH Migration)
 **Status:** 🟡 Pending User Approval

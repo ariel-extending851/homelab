@@ -70,6 +70,9 @@ spec:
             items:
               - key: otel-collector-config
                 path: otel-collector-config
+        # SECURITY NOTE: hostPath mounts required for log/metric collection
+        # All mounts are readOnly. Privileged mode removed (using securityContext instead).
+        # Risk accepted: read-only host filesystem access for observability.
         - name: hostfs
           hostPath:
             path: /

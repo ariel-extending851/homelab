@@ -46,11 +46,11 @@ do
     echo -e "${YELLOW}--------------------------------------------------${NC}"
     echo -e "${YELLOW}   Tentativa de Nuke $i de $TOTAL_ATTEMPTS ${NC}"
     echo -e "${YELLOW}--------------------------------------------------${NC}"
-    
-    # Executa o nuke. 
+
+    # Executa o nuke.
     # --force é usado para não pedir o alias a cada loop
     aws-nuke run --config config.yml --profile default --no-dry-run --force
-    
+
     if [ $i -lt $TOTAL_ATTEMPTS ]; then
         echo ""
         echo -e "${GREEN}⏳ Aguardando 10 segundos para estabilização da AWS...${NC}"

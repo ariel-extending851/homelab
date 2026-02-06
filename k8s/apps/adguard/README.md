@@ -1,13 +1,13 @@
 # AdGuard Home Deployment
 
 ## Overview
-AdGuard Home DNS server running on `rasp-pi-04` with hostNetwork for LAN-wide DNS filtering.
+AdGuard Home DNS server running on `rasp-pi-03` with hostNetwork for LAN-wide DNS filtering.
 
 ## Security Context
 
 ### Pod-level SecurityContext
 - **runAsUser: 65534** - Run as `nobody` user
-- **runAsGroup: 65534** - Run as `nogroup` group  
+- **runAsGroup: 65534** - Run as `nogroup` group
 - **fsGroup: 65534** - Ensure volume ownership matches
 
 ### Container Capabilities

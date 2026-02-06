@@ -6,10 +6,11 @@
 # Security: Requires github_token with 'repo' and 'admin:repo_hook' scopes
 # ==============================================================================
 # NOTE: Provider version is declared in main.tf (DRY principle)
+# Secrets loaded from SOPS-encrypted file via data.sops_file.secrets
 # ==============================================================================
 
 provider "github" {
-  token = var.github_token
+  token = local.secrets["github_token"]
   owner = var.github_owner
 }
 
@@ -20,7 +21,7 @@ provider "github" {
 resource "github_repository" "homelab" {
   name        = "homelab"
   description = "Production-grade hybrid cloud platform (Oracle Cloud + Raspberry Pi)"
-  visibility  = "public"
+  visibility  = "private"
 
   # Git Flow Configuration
   allow_merge_commit     = false

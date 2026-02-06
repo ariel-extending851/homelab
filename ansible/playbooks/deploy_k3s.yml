@@ -1,0 +1,79 @@
+---
+# ansible/playbooks/deploy_k3s.yml
+# Deploy k3s cluster on AWS EC2 instances managed by Terraform
+
+- name: Deploy k3s Server (Control Plane)
+  hosts: k3s_server
+  become: yes
+  vars:
+    k3s_control_node: true
+  roles:
+    - k3s
+  tags:
+    - server
+    - k3s
+
+- name: Deploy k3s Agent (Worker Node)
+  hosts: k3s_agent
+  become: yes
+  vars:
+    k3s_control_node: false
+  pre_tasks:
+    - name: Retrieve k3s token from server
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_result
+      delegate_to: "{{ groups['k3s_server'][0] }}"
+      become: yes
+      no_log: true
+
+    - name: Set k3s token fact
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_result.content | b64decode | trim }}"
+      no_log: true
+
+    - name: Set k3s server URL fact
+      ansible.builtin.set_fact:
+        k3s_server_url: "https://{{ hostvars[groups['k3s_server'][0]]['private_ip'] }}:6443"
+  roles:
+    - k3s
+  tags:
+    - agent
+    - k3s
+
+- name: Verify Cluster
+  hosts: k3s_server
+  become: yes
+  tasks:
+    - name: Wait for agent to join
+      ansible.builtin.command: >
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get nodes
+      register: nodes_result
+      until: "'k3s-agent' in nodes_result.stdout"
+      retries: 12
+      delay: 10
+      changed_when: false
+
+    - name: Display cluster nodes
+      ansible.builtin.debug:
+        msg: "{{ nodes_result.stdout_lines }}"
+
+    - name: Get kubeconfig command
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          k3s Cluster Deployed Successfully!
+          =========================================
+
+          To access your cluster:
+
+          1. Copy kubeconfig to your local machine:
+             scp -i ~/.ssh/homelab-aws ec2-user@{{ hostvars[groups['k3s_server'][0]]['public_ip'] }}:/etc/rancher/k3s/k3s.yaml ~/.kube/config-homelab
+
+          2. Update the server address in kubeconfig:
+             server: https://{{ hostvars[groups['k3s_server'][0]]['public_ip'] }}:6443
+
+          3. Test connection:
+             kubectl --kubeconfig ~/.kube/config-homelab get nodes
+
+          =========================================

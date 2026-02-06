@@ -29,7 +29,7 @@ For the specified application, retrieve deployment history:
 APP_NAME="<application-name>"
 
 # Get current revision
-kubectl get application $APP_NAME -n argocd -o jsonpath='{.status.sync.revision}' 
+kubectl get application $APP_NAME -n argocd -o jsonpath='{.status.sync.revision}'
 
 # Get history (last 10 revisions)
 kubectl get application $APP_NAME -n argocd -o jsonpath='{.status.history}' | jq -r '.[] | "\(.id) | \(.deployedAt) | \(.source.targetRevision) | Sync: \(.source.repoURL)"' | tail -10

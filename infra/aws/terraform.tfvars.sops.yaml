@@ -1,0 +1,22 @@
+# ==============================================================================
+# SOPS-Encrypted Terraform Variables for AWS Homelab
+# ==============================================================================
+# SSH Public Key (will be encrypted by SOPS)
+ssh_public_key: ENC[AES256_GCM,data:dAKzVivhfbhjSiUnw2zru/754RZ+bSGGzQfq+H1x+G+fWIcTVaN8UEgRK4V7hxQKXjKPlBM+XmwmF8sHOMNnOKRh6j8mmmP95yiViBQlIko=,iv:so72PdTtLfkBmpX2E8xvydku4pTUCmlqO7uZ5qQkObM=,tag:aJTe46S29QEVZt4GFfqnqw==,type:str]
+# k3s Cluster Token (will be encrypted by SOPS)
+k3s_token: ENC[AES256_GCM,data:4XuDbvz9Ang7oemn7u/JnrSnLvjHV7sxyUY6i+HBFL3vxYtWvxSLAR357BE=,iv:pbKcY5a97wRI5cQk0m6mfXeegtU2ccq4+fpwVn7godc=,tag:JzNVPnPYPbhQ8zUoUD0lhg==,type:str]
+sops:
+    age:
+        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA2N0Zna0hHUm4wUXhZM05a
+            LzZaS1FMM0NsQUtCZDhPYzVSd3ZKaUViWUIwClIvaGt3c1k3djhNcnEraWU1OHBi
+            dmtlc0xPeDRsM3cyOWtDeXZ5QktvNWcKLS0tIHY2bHRvdUZMVWhlb1ZsVzVPSCtp
+            K213WnlzdVp2c3BWV3JBd0NNUitTVTAK5o22+eHY4Afdm87+wyhrx5JA7fy95dya
+            HbIH0Mby8QBlSg7UpxrhmHDkCc6sneVkUVjZ3gvwM5SVw0cMLpBd1w==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-02-04T19:58:56Z"
+    mac: ENC[AES256_GCM,data:E25+bmWbxQ2D8urfxEuz5vNiPkLcwvZGBHdDw1746yYRA8GC/JnyOVB8/42L6pGMLZo4meYA/09Zj6/lJPKA9w3vnSwmctWGwhCKZPaPHAE3mGyAV7/uNBovGwRaa3A63ApLvZ6HaoAT+w7WLTOZ5gfrz8sAPWAOlPaNld7wkhU=,iv:9oXyY+bb+57PRcejbV1BC0haiNOjtthJMEQL9bWOnwc=,tag:i+PTffrUH/mwwu5LQQKwYQ==,type:str]
+    encrypted_regex: ^(ssh_public_key|k3s_token)$
+    version: 3.11.0

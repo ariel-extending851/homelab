@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-added-large-files
+
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.82.6 # Use sempre uma versão recente
+    hooks:
+      - id: trufflehog
+        name: TruffleHog
+        description: Detect secrets in your data.
+        entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail'
+        # O '--only-verified' reduz falso-positivos checando se a chave funciona.
+        # Se quiser bloquear TUDO que pareça senha (mais paranoico), remova essa flag.
+        language: system
+        stages: ["pre-commit", "pre-push"]

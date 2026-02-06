@@ -12,4 +12,3 @@ output "instance_names" {
   value       = oci_core_instance.k3s_node[*].display_name
   description = "Display names of the created instances"
 }
-

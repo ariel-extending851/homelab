@@ -1,8 +1,8 @@
 # Ralph Loop v2.0 - Comprehensive Test Plan
 
-**Version:** 2.0  
-**Date Created:** 2026-01-25  
-**Author:** Tech Lead (AWS DevOps Engineer - Professional)  
+**Version:** 2.0
+**Date Created:** 2026-01-25
+**Author:** Tech Lead (AWS DevOps Engineer - Professional)
 **Purpose:** Validate all safety guardrails, integrations, and failure scenarios before production deployment
 
 ---
@@ -84,8 +84,8 @@ echo "✅ Test environment ready"
 ### Test Category 1: Safety Guardrails (Critical) 🔴
 
 #### TEST-001: Pre-Commit Review Blocks Secrets
-**Priority:** CRITICAL  
-**Estimated Time:** 5 minutes  
+**Priority:** CRITICAL
+**Estimated Time:** 5 minutes
 **Objective:** Verify `/review` blocks commits containing secrets
 
 **Steps:**
@@ -139,8 +139,8 @@ jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.
 ---
 
 #### TEST-002: Pre-Commit Review Blocks Missing Memory Limits on Pi Nodes
-**Priority:** CRITICAL  
-**Estimated Time:** 5 minutes  
+**Priority:** CRITICAL
+**Estimated Time:** 5 minutes
 **Objective:** Verify `/review` blocks deployments without memory limits targeting Pi nodes
 
 **Steps:**
@@ -207,8 +207,8 @@ jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.
 ---
 
 #### TEST-003: Pre-Commit Review Blocks :latest Tags in Production
-**Priority:** CRITICAL  
-**Estimated Time:** 5 minutes  
+**Priority:** CRITICAL
+**Estimated Time:** 5 minutes
 **Objective:** Verify `/review` blocks :latest image tags in production deployments
 
 **Steps:**
@@ -271,8 +271,8 @@ jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.
 ### Test Category 2: Phase 7 Integration (High Priority) 🟡
 
 #### TEST-004: Successful Pre-Commit Review and Commit
-**Priority:** HIGH  
-**Estimated Time:** 5 minutes  
+**Priority:** HIGH
+**Estimated Time:** 5 minutes
 **Objective:** Verify clean changes pass review and get committed
 
 **Steps:**
@@ -341,8 +341,8 @@ git show --stat HEAD
 ---
 
 #### TEST-005: Deployment Verification After k8s/ Changes
-**Priority:** HIGH  
-**Estimated Time:** 5 minutes (+ 15s ArgoCD sync wait)  
+**Priority:** HIGH
+**Estimated Time:** 5 minutes (+ 15s ArgoCD sync wait)
 **Objective:** Verify `/deploy-verify` runs after k8s/ changes
 
 **Prerequisites:** TEST-004 must complete successfully (creates k8s/ commit)
@@ -400,8 +400,8 @@ cat .opencode/last-deploy-verify.md
 ---
 
 #### TEST-006: Deployment Failure Detection and Rollback Suggestion
-**Priority:** HIGH  
-**Estimated Time:** 5 minutes  
+**Priority:** HIGH
+**Estimated Time:** 5 minutes
 **Objective:** Verify Ralph suggests rollback on deployment failures
 
 **Steps:**
@@ -473,8 +473,8 @@ jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.
 ### Test Category 3: Failure Handling (High Priority) 🟠
 
 #### TEST-007: 3-Strike Abort Logic
-**Priority:** HIGH  
-**Estimated Time:** 10 minutes  
+**Priority:** HIGH
+**Estimated Time:** 10 minutes
 **Objective:** Verify Ralph aborts after 3 consecutive failures
 
 **Steps:**
@@ -537,8 +537,8 @@ jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.
 ---
 
 #### TEST-008: Failure Counter Reset on Success
-**Priority:** MEDIUM  
-**Estimated Time:** 5 minutes  
+**Priority:** MEDIUM
+**Estimated Time:** 5 minutes
 **Objective:** Verify failure counter resets after successful iteration
 
 **Steps:**
@@ -578,8 +578,8 @@ git commit -S -m "test(ralph): cleanup TEST-008"
 ### Test Category 4: State Persistence (Medium Priority) 🔵
 
 #### TEST-009: State Survives Restart
-**Priority:** MEDIUM  
-**Estimated Time:** 5 minutes  
+**Priority:** MEDIUM
+**Estimated Time:** 5 minutes
 **Objective:** Verify state.json persists across Ralph loop restarts
 
 **Steps:**
@@ -628,8 +628,8 @@ cat .ralph/state.json
 ---
 
 #### TEST-010: State Reset Command
-**Priority:** LOW  
-**Estimated Time:** 2 minutes  
+**Priority:** LOW
+**Estimated Time:** 2 minutes
 **Objective:** Verify manual state reset works correctly
 
 **Steps:**
@@ -662,8 +662,8 @@ cat .ralph/state.json
 ### Test Category 5: Logging & Monitoring (Medium Priority) 🔵
 
 #### TEST-011: Log Rotation (Keep Last 10)
-**Priority:** MEDIUM  
-**Estimated Time:** 3 minutes  
+**Priority:** MEDIUM
+**Estimated Time:** 3 minutes
 **Objective:** Verify log rotation deletes old logs
 
 **Steps:**
@@ -701,8 +701,8 @@ rm .ralph/logs/iteration-202601*.log
 ---
 
 #### TEST-012: Timestamped Log Creation
-**Priority:** LOW  
-**Estimated Time:** 2 minutes  
+**Priority:** LOW
+**Estimated Time:** 2 minutes
 **Objective:** Verify each Ralph run creates timestamped log
 
 **Steps:**
@@ -736,8 +736,8 @@ echo "$NEW_LOG" | grep -E "iteration-[0-9]{8}-[0-9]{6}\.log$"
 ### Test Category 6: Stop Criteria (High Priority) 🟡
 
 #### TEST-013: BLOCKED Marker Detection
-**Priority:** HIGH  
-**Estimated Time:** 3 minutes  
+**Priority:** HIGH
+**Estimated Time:** 3 minutes
 **Objective:** Verify Ralph stops immediately when BLOCKED marker detected
 
 **Steps:**
@@ -771,8 +771,8 @@ tail -20 .ralph/logs/iteration-*.log | grep -A 5 "BLOCKED"
 ---
 
 #### TEST-014: No Pending Changes Stop
-**Priority:** MEDIUM  
-**Estimated Time:** 3 minutes  
+**Priority:** MEDIUM
+**Estimated Time:** 3 minutes
 **Objective:** Verify Ralph stops when no changes remain
 
 **Steps:**
@@ -803,8 +803,8 @@ tail -20 .ralph/logs/iteration-*.log | grep -A 2 "Task completed"
 ### Test Category 7: CI Integration (Low Priority) ⚪
 
 #### TEST-015: CI Status Check (Requires gh CLI)
-**Priority:** LOW  
-**Estimated Time:** 3 minutes  
+**Priority:** LOW
+**Estimated Time:** 3 minutes
 **Objective:** Verify Ralph checks CI status via `gh run view`
 
 **Prerequisites:** `gh` CLI installed and authenticated
@@ -873,8 +873,8 @@ git commit -S -m "test(ralph): cleanup TEST-015"
 ## 🚀 Execution Plans
 
 ### Plan A: Quick Validation (Critical Tests Only)
-**Time:** ~20 minutes  
-**Tests:** TEST-001, TEST-002, TEST-003, TEST-007, TEST-013  
+**Time:** ~20 minutes
+**Tests:** TEST-001, TEST-002, TEST-003, TEST-007, TEST-013
 **Purpose:** Verify core safety guardrails before production use
 
 ```bash
@@ -883,8 +883,8 @@ bash .ralph/test-artifacts/run-critical-tests.sh
 ```
 
 ### Plan B: Standard Validation (All High Priority)
-**Time:** ~45 minutes  
-**Tests:** All CRITICAL + All HIGH priority tests  
+**Time:** ~45 minutes
+**Tests:** All CRITICAL + All HIGH priority tests
 **Purpose:** Comprehensive validation of primary features
 
 ```bash
@@ -893,8 +893,8 @@ bash .ralph/test-artifacts/run-standard-tests.sh
 ```
 
 ### Plan C: Full Validation (All Tests)
-**Time:** ~66 minutes  
-**Tests:** All 15 tests  
+**Time:** ~66 minutes
+**Tests:** All 15 tests
 **Purpose:** Complete validation before major release
 
 ```bash
@@ -936,9 +936,9 @@ bash .ralph/test-artifacts/run-all-tests.sh
 
 ## 📝 Test Report Template
 
-**Date:** ___________  
-**Tester:** ___________  
-**Branch:** test/ralph-v2-validation  
+**Date:** ___________
+**Tester:** ___________
+**Branch:** test/ralph-v2-validation
 **Commit:** ___________
 
 ### Test Results Summary
@@ -976,8 +976,8 @@ bash .ralph/test-artifacts/run-all-tests.sh
 2. ___________
 
 ### Sign-Off
-**Approved for Production:** ⬜ YES / ❌ NO  
-**Signature:** ___________  
+**Approved for Production:** ⬜ YES / ❌ NO
+**Signature:** ___________
 **Date:** ___________
 
 ---
@@ -986,11 +986,11 @@ bash .ralph/test-artifacts/run-all-tests.sh
 
 ### CRITICAL WARNINGS
 
-⚠️ **DO NOT run tests on `main` branch**  
-⚠️ **DO NOT run tests with production secrets in working directory**  
-⚠️ **DO NOT run TEST-006 (deployment failure) against production ArgoCD**  
-⚠️ **DO test on isolated test branch first**  
-⚠️ **DO backup plan.md before testing (will be modified)**  
+⚠️ **DO NOT run tests on `main` branch**
+⚠️ **DO NOT run tests with production secrets in working directory**
+⚠️ **DO NOT run TEST-006 (deployment failure) against production ArgoCD**
+⚠️ **DO test on isolated test branch first**
+⚠️ **DO backup plan.md before testing (will be modified)**
 
 ### Recovery Procedures
 
@@ -1063,6 +1063,6 @@ cp .ralph/PROMPT.md.backup .ralph/PROMPT.md
 
 ---
 
-**Test Plan Version:** 1.0  
-**Last Updated:** 2026-01-25  
+**Test Plan Version:** 1.0
+**Last Updated:** 2026-01-25
 **Next Review:** After first production deployment

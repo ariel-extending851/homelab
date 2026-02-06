@@ -1,9 +1,9 @@
 # 🔧 VPN Fix Implementation Plan
 
-**Date:** 2026-01-30  
-**Issue:** *** VPN routing broken - torrents cannot download  
-**Solution:** Fix IPv6 routing + Regenerate *** WireGuard key  
-**Estimated Time:** 20 minutes  
+**Date:** 2026-01-30
+**Issue:** *** VPN routing broken - torrents cannot download
+**Solution:** Fix IPv6 routing + Regenerate *** WireGuard key
+**Estimated Time:** 20 minutes
 **Risk Level:** LOW (easily reversible)
 
 ---
@@ -303,7 +303,7 @@ kubectl exec -n media $QB_POD -c *** -- \
   curl -s -m 10 -o /dev/null -w "%{http_code}" https://google.com
 ```
 
-**✅ SUCCESS - Should return:** `200`  
+**✅ SUCCESS - Should return:** `200`
 **❌ FAILURE - If returns:** `000` or timeout
 
 ---

@@ -29,3 +29,6 @@ creation_rules:
   # Encrypt environment files with sensitive data
   - path_regex: .*\.enc\.yaml$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+  - path_regex: .*\.sops\.yaml$
+    age: "age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja"

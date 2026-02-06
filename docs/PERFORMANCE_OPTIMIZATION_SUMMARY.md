@@ -1,7 +1,7 @@
 # Performance Optimization Summary: Grafana & Loki
 
-**Date**: 2026-01-23  
-**Objective**: Reduce dashboard load time from **11.7 seconds → < 3 seconds** (74% improvement)  
+**Date**: 2026-01-23
+**Objective**: Reduce dashboard load time from **11.7 seconds → < 3 seconds** (74% improvement)
 **Status**: ✅ **IMPLEMENTATION COMPLETE**
 
 ---
@@ -30,7 +30,7 @@ Following a comprehensive end-to-end latency investigation, we identified that *
 limits_config:
   max_query_parallelism: 16           # Increased from default 14
   max_concurrent_tail_requests: 20    # More concurrent streams
-  
+
 # Added query_range for result caching
 query_range:
   parallelise_shardable_queries: true
@@ -104,7 +104,7 @@ throttled_usec: < 50,000  (minimal throttling)
 
 **Change**: Moved `attributes_k8s_namespace_name` filter from **post-filter** (after `| json`) to **label selector** (inside `{}`)
 
-**Impact**: 
+**Impact**:
 - Loki now filters **BEFORE** fetching chunks from storage
 - **Reduces data scanned by ~90%** (only fetches matching namespaces)
 - **Expected Improvement**: **2.5s → < 500ms** (80% reduction)
@@ -403,6 +403,6 @@ This performance optimization addresses **all 4 identified bottlenecks**:
 
 ---
 
-**Author**: Tech Lead / Principal SRE  
-**Date**: 2026-01-23  
+**Author**: Tech Lead / Principal SRE
+**Date**: 2026-01-23
 **Review Status**: ✅ Ready for Deployment

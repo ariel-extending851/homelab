@@ -20,21 +20,21 @@
 
 **Investigation Results:**
 - **Tailscale Secret Issue:** The `tailscale-auth` secret in adguard namespace contains placeholder value `REPLACE-WITH-TAILSCALE-AUTH-KEY-BEFORE-DEPLOYMENT` instead of real auth key
-- **Architecture Difference:** 
+- **Architecture Difference:**
   - d860e2b (Jan 22): Uses Tailscale **sidecar container** in AdGuard pod - requires valid TS_AUTHKEY
   - Current (Jan 25): Uses Tailscale **Ingress Controller** (separate pod managed by operator) - no secret needed
 - **Current Status:** AdGuard working correctly on rasp-pi-03 with 0.5s page loads via Tailscale ingress after PR #71 rollback
 
 **Root Cause Analysis:**
 - Jan 22: AdGuard created on rasp-pi-03 with sidecar (d860e2b) - Working ✅
-- Jan 24: Migrated to rasp-pi-04 (b14b31b) - Broke ❌ 
+- Jan 24: Migrated to rasp-pi-04 (b14b31b) - Broke ❌
   - Likely broke because rasp-pi-04 has Tailscale routing/networking issues (not related to sidecar vs ingress)
 - Jan 25: Between Jan 24-25, architecture changed from sidecar → ingress controller
 - Jan 25: Rolled back node to rasp-pi-03 (PR #71) - Fixed ✅
 
 **Key Finding:** The issue was **node-specific (rasp-pi-04 networking)**, not architecture-specific (sidecar vs ingress). Current ingress pattern is correct and doesn't require managing auth keys.
 
-**Recommendation:** 
+**Recommendation:**
 - Keep current Tailscale Ingress Controller pattern (cleaner, no secret management)
 - Avoid deploying AdGuard to rasp-pi-04 until networking issues investigated
 - Current rasp-pi-03 deployment is stable and performant (0.5s loads)

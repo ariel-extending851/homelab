@@ -114,10 +114,10 @@ fi
 if kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json &>/dev/null; then
     DASHBOARD_SIZE=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- stat -c%s /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null || echo "0")
     echo -e "${GREEN}✅ PASS${NC}: Dashboard JSON mounted ($DASHBOARD_SIZE bytes, expected ~50KB)"
-    
+
     # Validate panel count
     PANEL_COUNT=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null | grep -o '"type":"[^"]*"' | wc -l)
-    
+
     if [ "$PANEL_COUNT" -ge "$EXPECTED_PANELS" ]; then
         echo -e "${GREEN}✅ PASS${NC}: Dashboard contains $PANEL_COUNT panels (expected >= $EXPECTED_PANELS)"
     else
@@ -139,16 +139,16 @@ LOKI_CM="loki"
 
 if kubectl get configmap -n $LOKI_NAMESPACE $LOKI_CM &>/dev/null; then
     echo -e "${GREEN}✅ PASS${NC}: Loki ConfigMap '$LOKI_CM' exists"
-    
+
     # Check query parallelism
     MAX_PARALLELISM=$(kubectl get configmap -n $LOKI_NAMESPACE $LOKI_CM -o jsonpath='{.data.config\.yaml}' 2>/dev/null | grep 'max_query_parallelism' | grep -o '[0-9]*' || echo "0")
-    
+
     if [ "$MAX_PARALLELISM" -ge 16 ]; then
         echo -e "${GREEN}✅ PASS${NC}: max_query_parallelism set to $MAX_PARALLELISM (expected >= 16)"
     else
         echo -e "${YELLOW}⚠️  WARN${NC}: max_query_parallelism is $MAX_PARALLELISM (expected >= 16)"
     fi
-    
+
     # Check result caching
     if kubectl get configmap -n $LOKI_NAMESPACE $LOKI_CM -o jsonpath='{.data.config\.yaml}' 2>/dev/null | grep -q 'cache_results: true'; then
         echo -e "${GREEN}✅ PASS${NC}: Loki result caching enabled"
@@ -176,7 +176,7 @@ if [ "$TOTAL_PERIODS" -gt 0 ]; then
     echo "   Throttled Periods: $THROTTLED_PERIODS"
     echo "   Total Periods: $TOTAL_PERIODS"
     echo "   Throttle Percentage: ${THROTTLE_PERCENT}%"
-    
+
     if (( $(echo "$THROTTLE_PERCENT < 0.1" | bc -l) )); then
         echo -e "${GREEN}✅ PASS${NC}: CPU throttling < 0.1% (target achieved)"
     else
@@ -229,17 +229,17 @@ if kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP &>/dev/null; then
     SYNC_STATUS=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.status.sync.status}')
     TARGET_REVISION=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.spec.source.targetRevision}')
     CURRENT_REVISION=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.status.sync.revision}' | cut -c1-7)
-    
+
     echo "   Sync Status: $SYNC_STATUS"
     echo "   Target Revision: $TARGET_REVISION"
     echo "   Current Revision: $CURRENT_REVISION"
-    
+
     if [ "$SYNC_STATUS" == "Synced" ]; then
         echo -e "${GREEN}✅ PASS${NC}: ArgoCD application is synced"
     else
         echo -e "${YELLOW}⚠️  WARN${NC}: ArgoCD sync status is '$SYNC_STATUS' (expected 'Synced')"
     fi
-    
+
     # Check if syncing from feature branch (should be reverted after PR merge)
     if [ "$TARGET_REVISION" == "fix/grafana-dashboard-provisioning" ]; then
         echo -e "${YELLOW}⚠️  ACTION REQUIRED${NC}: ArgoCD is syncing from feature branch!"

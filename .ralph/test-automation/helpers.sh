@@ -62,7 +62,7 @@ print_test_status() {
     local test_id=$1
     local status=$2
     local message=$3
-    
+
     case $status in
         PASS)
             print_color "$COLOR_GREEN" "✅ $test_id: PASS - $message"
@@ -96,9 +96,9 @@ check_repo_root() {
 # Check required commands
 check_prerequisites() {
     local missing=0
-    
+
     echo "🔍 Checking prerequisites..."
-    
+
     # Required
     if ! command -v jq &> /dev/null; then
         print_color "$COLOR_RED" "   ❌ jq not found (required)"
@@ -106,26 +106,26 @@ check_prerequisites() {
     else
         print_color "$COLOR_GREEN" "   ✅ jq found"
     fi
-    
+
     if ! command -v git &> /dev/null; then
         print_color "$COLOR_RED" "   ❌ git not found (required)"
         missing=1
     else
         print_color "$COLOR_GREEN" "   ✅ git found"
     fi
-    
+
     # Optional
     if ! command -v gh &> /dev/null; then
         print_color "$COLOR_YELLOW" "   ⚠️  gh CLI not found (optional - CI tests will be skipped)"
     else
         print_color "$COLOR_GREEN" "   ✅ gh CLI found"
     fi
-    
+
     if [ $missing -eq 1 ]; then
         print_color "$COLOR_RED" "❌ Missing required prerequisites"
         exit 1
     fi
-    
+
     echo ""
 }
 
@@ -133,13 +133,13 @@ check_prerequisites() {
 check_safe_branch() {
     local current_branch
     current_branch=$(git rev-parse --abbrev-ref HEAD)
-    
+
     if [ "$current_branch" = "main" ]; then
         print_color "$COLOR_RED" "❌ ERROR: Cannot run tests on 'main' branch"
         print_color "$COLOR_YELLOW" "   Switch to test branch: git checkout -b test/ralph-v2-validation"
         exit 1
     fi
-    
+
     print_color "$COLOR_GREEN" "✅ Current branch: $current_branch (safe)"
 }
 
@@ -150,14 +150,14 @@ check_safe_branch() {
 # Initialize test environment
 init_test_environment() {
     print_header "🚀 Initializing Test Environment"
-    
+
     check_repo_root
     check_prerequisites
     check_safe_branch
-    
+
     # Create test artifacts directory
     mkdir -p "$TEST_ARTIFACTS_DIR"
-    
+
     # Backup plan.md
     if [ ! -f "$OPENCODE_DIR/plan.md.test-backup" ]; then
         cp "$OPENCODE_DIR/plan.md" "$OPENCODE_DIR/plan.md.test-backup"
@@ -165,44 +165,44 @@ init_test_environment() {
     else
         print_color "$COLOR_YELLOW" "⚠️  plan.md.test-backup already exists (using existing backup)"
     fi
-    
+
     # Reset state.json
     echo '{"iteration": 0, "last_task": "", "failures": 0, "last_run": "", "total_runs": 0}' > "$RALPH_DIR/state.json"
     print_color "$COLOR_GREEN" "✅ Reset state.json"
-    
+
     # Initialize test results
     echo '{"tests": [], "summary": {}}' > "$TEST_RESULTS_FILE"
     print_color "$COLOR_GREEN" "✅ Initialized test results file"
-    
+
     # Record start time
     TEST_START_TIME=$(date +%s)
-    
+
     echo ""
 }
 
 # Clean up test environment
 cleanup_test_environment() {
     print_header "🧹 Cleaning Up Test Environment"
-    
+
     # Restore plan.md
     if [ -f "$OPENCODE_DIR/plan.md.test-backup" ]; then
         mv "$OPENCODE_DIR/plan.md.test-backup" "$OPENCODE_DIR/plan.md"
         print_color "$COLOR_GREEN" "✅ Restored plan.md"
     fi
-    
+
     # Reset state.json
     echo '{"iteration": 0, "last_task": "", "failures": 0, "last_run": "", "total_runs": 0}' > "$RALPH_DIR/state.json"
     print_color "$COLOR_GREEN" "✅ Reset state.json"
-    
+
     # Remove test files (but keep results)
     rm -f test-secret.yaml always-fail-secret.txt docs/test-*.md
     rm -rf k8s/apps/test-app
     print_color "$COLOR_GREEN" "✅ Removed test artifacts"
-    
+
     # Unstage any test files
     git restore --staged . 2>/dev/null || true
     print_color "$COLOR_GREEN" "✅ Unstaged test files"
-    
+
     echo ""
 }
 
@@ -214,11 +214,11 @@ cleanup_test_environment() {
 start_test() {
     local test_id=$1
     local test_name=$2
-    
+
     print_header "📋 $test_id: $test_name"
     echo "⏱️  Start time: $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
-    
+
     TESTS_TOTAL=$((TESTS_TOTAL + 1))
     TEST_START_TIME_SINGLE=$(date +%s)
 }
@@ -228,16 +228,16 @@ end_test() {
     local test_id=$1
     local status=$2  # PASS, FAIL, SKIP
     local message=$3
-    
+
     local test_end_time
     test_end_time=$(date +%s)
     local test_duration=$((test_end_time - TEST_START_TIME_SINGLE))
-    
+
     # shellcheck disable=SC2034  # Used by generate_test_report()
     TEST_RESULTS[$test_id]=$status
     # shellcheck disable=SC2034  # Used by generate_test_report()
     TEST_TIMES[$test_id]=$test_duration
-    
+
     case $status in
         PASS)
             TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -249,12 +249,12 @@ end_test() {
             TESTS_SKIPPED=$((TESTS_SKIPPED + 1))
             ;;
     esac
-    
+
     echo ""
     print_test_status "$test_id" "$status" "$message"
     echo "⏱️  Duration: ${test_duration}s"
     echo ""
-    
+
     # Record to JSON
     local result_json
     result_json=$(jq --arg id "$test_id" \
@@ -279,7 +279,7 @@ check_review_blocked() {
     if [ ! -f "$OPENCODE_DIR/last-review.md" ]; then
         return 1
     fi
-    
+
     grep -q "RECOMMENDATION: BLOCK" "$OPENCODE_DIR/last-review.md"
 }
 
@@ -288,7 +288,7 @@ check_commit_created() {
     local before_commit=$1
     local after_commit
     after_commit=$(git rev-parse HEAD)
-    
+
     [ "$before_commit" != "$after_commit" ]
 }
 
@@ -296,10 +296,10 @@ check_commit_created() {
 check_state_field() {
     local field=$1
     local expected=$2
-    
+
     local actual
     actual=$(jq -r ".$field" "$RALPH_DIR/state.json")
-    
+
     [ "$actual" = "$expected" ]
 }
 
@@ -308,11 +308,11 @@ check_log_contains() {
     local search_string=$1
     local latest_log
     latest_log=$(ls -1t "$RALPH_DIR/logs"/*.log 2>/dev/null | head -1)
-    
+
     if [ -z "$latest_log" ]; then
         return 1
     fi
-    
+
     grep -q "$search_string" "$latest_log"
 }
 
@@ -323,9 +323,9 @@ check_log_contains() {
 # Generate final test report
 generate_test_report() {
     print_header "📊 Generating Test Report"
-    
+
     local total_duration=$(($(date +%s) - TEST_START_TIME))
-    
+
     # Update summary in JSON
     local summary_json
     summary_json=$(jq --argjson passed "$TESTS_PASSED" \
@@ -342,14 +342,14 @@ generate_test_report() {
                            "timestamp": now | strftime("%Y-%m-%d %H:%M:%S")
                        }' "$TEST_RESULTS_FILE")
     echo "$summary_json" > "$TEST_RESULTS_FILE"
-    
+
     # Generate markdown report
     cat > "$TEST_REPORT_FILE" <<EOF
 # Ralph v2.0 Test Execution Report
 
-**Date:** $(date '+%Y-%m-%d %H:%M:%S')  
-**Duration:** ${total_duration}s ($(printf '%02d:%02d' $((total_duration/60)) $((total_duration%60))))  
-**Branch:** $(git rev-parse --abbrev-ref HEAD)  
+**Date:** $(date '+%Y-%m-%d %H:%M:%S')
+**Duration:** ${total_duration}s ($(printf '%02d:%02d' $((total_duration/60)) $((total_duration%60))))
+**Branch:** $(git rev-parse --abbrev-ref HEAD)
 **Commit:** $(git rev-parse --short HEAD)
 
 ---
@@ -371,10 +371,10 @@ generate_test_report() {
 | Test ID | Status | Duration | Message |
 |---------|--------|----------|---------|
 EOF
-    
+
     # Add test results from JSON
     jq -r '.tests[] | "| \(.test_id) | \(.status) | \(.duration)s | \(.message) |"' "$TEST_RESULTS_FILE" >> "$TEST_REPORT_FILE"
-    
+
     cat >> "$TEST_REPORT_FILE" <<EOF
 
 ---
@@ -396,11 +396,11 @@ $(jq -r '.tests[] | "### \(.test_id): \(.status)\n**Duration:** \(.duration)s  \
 
 **Overall Result:** $(if [ $TESTS_FAILED -eq 0 ]; then echo "✅ PASS"; else echo "❌ FAIL ($TESTS_FAILED failures)"; fi)
 EOF
-    
+
     print_color "$COLOR_GREEN" "✅ Test report generated: $TEST_REPORT_FILE"
     print_color "$COLOR_GREEN" "✅ Test results JSON: $TEST_RESULTS_FILE"
     echo ""
-    
+
     # Display summary
     print_header "📊 Test Execution Summary"
     echo "Total Tests:   $TESTS_TOTAL"
@@ -410,7 +410,7 @@ EOF
     echo "Success Rate:  $(if [ $TESTS_TOTAL -gt 0 ]; then awk "BEGIN {printf \"%.1f%%\", ($TESTS_PASSED/$TESTS_TOTAL)*100}"; else echo "N/A"; fi)"
     echo "Total Duration: ${total_duration}s ($(printf '%02d:%02d' $((total_duration/60)) $((total_duration%60))))"
     echo ""
-    
+
     if [ $TESTS_FAILED -eq 0 ]; then
         print_color "$COLOR_GREEN" "🎉 ALL TESTS PASSED"
         return 0
@@ -428,14 +428,14 @@ EOF
 run_ralph_with_timeout() {
     local timeout_seconds=$1
     local description=$2
-    
+
     echo "🚀 Running Ralph Loop (timeout: ${timeout_seconds}s)"
     echo "   Description: $description"
     echo ""
-    
+
     timeout "${timeout_seconds}s" "$RALPH_DIR/ralph.sh" 2>&1 | tee "$TEST_ARTIFACTS_DIR/ralph-output.log" || true
     local exit_code=${PIPESTATUS[0]}
-    
+
     echo ""
     echo "Ralph exit code: $exit_code"
     return $exit_code
@@ -444,7 +444,7 @@ run_ralph_with_timeout() {
 # Add task to plan.md
 add_test_task() {
     local task_description=$1
-    
+
     cat >> "$OPENCODE_DIR/plan.md" <<EOF
 
 ## Test Execution: Ralph v2.0 Validation

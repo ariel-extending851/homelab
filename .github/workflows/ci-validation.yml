@@ -81,7 +81,24 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           severity: warning
-          scandir: '.'
+          scandir: "."
+
+  security:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # ⚠️ CRÍTICO: Necessário para o TruffleHog olhar o histórico
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
 
   # ============================================================================
   # PIPELINE GATE (Aggregate Status Check)
@@ -91,7 +108,7 @@ jobs:
   pipeline-gate:
     name: Pipeline Gate
     runs-on: ubuntu-latest
-    needs: [terraform, yaml-lint, shellcheck]
+    needs: [terraform, yaml-lint, shellcheck, security]
     steps:
       - name: All Checks Passed
         run: echo "✅ All CI validation checks passed successfully"

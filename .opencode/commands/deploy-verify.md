@@ -60,13 +60,13 @@ if [ "$APP_NAME" == "homelab-apps-root" ]; then
 else
     # For specific app, check pod status
     NAMESPACE=$(kubectl get application $APP_NAME -n argocd -o jsonpath='{.spec.destination.namespace}')
-    
+
     echo "📦 Checking pods in namespace: $NAMESPACE"
     kubectl get pods -n $NAMESPACE -o wide
-    
+
     # Check for crashlooping or pending pods
     UNHEALTHY_PODS=$(kubectl get pods -n $NAMESPACE -o json | jq -r '.items[] | select(.status.phase != "Running" and .status.phase != "Succeeded") | .metadata.name')
-    
+
     if [ -n "$UNHEALTHY_PODS" ]; then
         echo ""
         echo "⚠️  Unhealthy pods detected:"

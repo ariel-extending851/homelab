@@ -1,0 +1,48 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+!testing/terraform.tfvars.localstack
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform test artifacts
+terraform.tfplan
+testing/terraform-graph.dot
+testing/*_override.tf
+
+# LocalStack configuration
+testing/provider.localstack.tf
+
+# Kubeconfig
+*.kubeconfig
+kubeconfig
+k3s.yaml
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Secrets
+secrets.yaml
+secrets.yml
+*.secret
+
+# SOPS - IMPORTANT: Track encrypted SOPS files!
+# The terraform.tfvars.sops.yaml SHOULD be committed (it's encrypted)
+# But DO NOT commit any .decrypted or .unencrypted versions
+*.decrypted
+*.unencrypted
+terraform.tfvars.sops.yaml.bak
+*.tfplan

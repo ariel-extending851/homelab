@@ -1,0 +1,105 @@
+#!/bin/bash
+set -euo pipefail
+
+# Logging setup
+exec > >(tee /var/log/user-data.log)
+exec 2>&1
+
+echo "=== k3s Node Setup Started at $(date) ==="
+echo "Node Index: ${node_index}"
+echo "Node Type: ${node_type}"
+echo "k3s Version: ${k3s_version}"
+
+# System updates
+echo "[1/5] Updating system packages..."
+dnf update -y
+
+# Install required packages
+echo "[2/5] Installing required packages..."
+dnf install -y \
+    curl \
+    wget \
+    git \
+    jq \
+    htop \
+    iptables \
+    container-selinux
+
+# Disable swap (required for k3s)
+echo "[3/5] Disabling swap..."
+swapoff -a
+sed -i '/ swap / s/^/#/' /etc/fstab || true
+
+# Configure kernel modules for k3s
+echo "[4/5] Configuring kernel modules..."
+cat <<EOF | tee /etc/modules-load.d/k3s.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
+# Configure sysctl for k3s
+cat <<EOF | tee /etc/sysctl.d/k3s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sysctl --system
+
+# Install k3s
+echo "[5/5] Installing k3s ${k3s_version}..."
+
+%{ if node_type == "server" ~}
+# Install k3s server (control plane)
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" \
+  K3S_TOKEN="${k3s_token}" \
+  INSTALL_K3S_EXEC="server" \
+  sh -s - \
+    --disable traefik \
+    --disable servicelb \
+    --write-kubeconfig-mode 644 \
+    --node-name "k3s-server-${node_index}" \
+    --node-label "node.kubernetes.io/instance-type=t3.small" \
+    --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)"
+
+# Wait for k3s to be ready
+echo "Waiting for k3s server to be ready..."
+until kubectl get nodes 2>/dev/null; do
+  sleep 5
+done
+
+# Install CloudNativePG operator
+echo "Installing CloudNativePG operator..."
+kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.22/releases/cnpg-1.22.0.yaml
+
+echo "k3s server installation complete!"
+echo "Retrieve kubeconfig with: scp ec2-user@$(ec2-metadata --public-ipv4 | cut -d' ' -f2):/etc/rancher/k3s/k3s.yaml ~/.kube/config"
+
+%{ else ~}
+# Install k3s agent (worker node)
+# Wait for server to be available
+echo "Waiting for k3s server at ${server_ip}:6443..."
+until curl -sk https://${server_ip}:6443/ping 2>/dev/null; do
+  echo "Server not ready yet, retrying in 10s..."
+  sleep 10
+done
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" \
+  K3S_TOKEN="${k3s_token}" \
+  K3S_URL="https://${server_ip}:6443" \
+  INSTALL_K3S_EXEC="agent" \
+  sh -s - \
+    --node-name "k3s-agent-${node_index}" \
+    --node-label "node.kubernetes.io/instance-type=t3.small" \
+    --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)"
+
+echo "k3s agent installation complete!"
+%{ endif ~}
+
+# Enable k3s service
+systemctl enable k3s || systemctl enable k3s-agent
+
+echo "=== k3s Node Setup Completed at $(date) ==="

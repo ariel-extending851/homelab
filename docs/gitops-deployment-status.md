@@ -1,6 +1,6 @@
 # GitOps Deployment Status
 
-**Date:** 2026-01-23  
+**Date:** 2026-01-23
 **Status:** ⚠️ Partial - Network Limitation Identified
 
 ---
@@ -30,7 +30,7 @@
 - ✅ Auto-sync, prune, and self-heal policies configured
 - ✅ Manifest applied to cluster successfully
 
-###4. Monitoring Stack Operational
+### 4. Monitoring Stack Operational
 - ✅ Prometheus: Running (1/1)
 - ✅ Grafana: Running (1/1) - Datasources connected
 - ✅ Loki: Running (1/1)
@@ -48,9 +48,9 @@ ArgoCD cannot clone the Git repository from GitHub due to network restrictions:
 
 **Error:**
 ```
-Failed to load target state: failed to generate manifest for source 1 of 1: 
-rpc error: code = Unknown desc = failed to list refs: 
-Get "https://github.com/ariel99gf/homelab.git/info/refs?service=git-upload-pack": 
+Failed to load target state: failed to generate manifest for source 1 of 1:
+rpc error: code = Unknown desc = failed to list refs:
+Get "https://github.com/ariel99gf/homelab.git/info/refs?service=git-upload-pack":
 context deadline exceeded (Client.Timeout exceeded while awaiting headers)
 ```
 

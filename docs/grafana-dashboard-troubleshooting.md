@@ -7,9 +7,9 @@ This guide documents the resolution of HTTP 400 errors and performance issues in
 
 ### Symptoms
 ```
-logger=context userId=1 orgId=1 uname=admin t=2026-01-23T22:35:34.040473059Z 
-level=info msg="Request Completed" method=POST path=/api/ds/query status=400 
-remote_addr=100.69.24.73 time_ms=13 duration=13.71538ms size=170 
+logger=context userId=1 orgId=1 uname=admin t=2026-01-23T22:35:34.040473059Z
+level=info msg="Request Completed" method=POST path=/api/ds/query status=400
+remote_addr=100.69.24.73 time_ms=13 duration=13.71538ms size=170
 referer="https://grafana.tail57bf10.ts.net/d/homelab-k3s-overview/..."
 ```
 
@@ -44,7 +44,7 @@ The new provisioned dashboard (`dashboard-homelab-k3s-overview.yaml`) addresses 
    ```logql
    # OLD (slow, 2.5s query time):
    {exporter="OTLP"} | json | attributes_k8s_namespace_name=~"node-exporter|..." | line_format "{{.body}}"
-   
+
    # NEW (fast, <500ms query time):
    {exporter="OTLP", attributes_k8s_namespace_name=~"node-exporter|..."} | json | line_format "{{.body}}"
    ```
@@ -60,7 +60,7 @@ The new provisioned dashboard (`dashboard-homelab-k3s-overview.yaml`) addresses 
      }
    }
    ```
-   **Impact**: 
+   **Impact**:
    - Before: 6 hours × 180 intervals = 1,080 data points = 2.5s query time
    - After: 1 hour × 180 intervals = 180 data points = ~400ms query time
 

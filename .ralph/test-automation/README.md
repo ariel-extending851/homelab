@@ -1,7 +1,7 @@
 # Ralph v2.0 Test Automation
 
-**Purpose:** Automated test execution for Ralph Loop v2.0 validation  
-**Location:** `.ralph/test-automation/`  
+**Purpose:** Automated test execution for Ralph Loop v2.0 validation
+**Location:** `.ralph/test-automation/`
 **Documentation:** `.ralph/TEST-PLAN.md` (manual test procedures)
 
 ---
@@ -51,8 +51,8 @@ git branch -D test/ralph-v2-validation
 
 ### Script 1: run-critical-tests.sh (Plan A)
 
-**Purpose:** Execute 5 critical safety tests to verify core guardrails  
-**Duration:** ~20 minutes  
+**Purpose:** Execute 5 critical safety tests to verify core guardrails
+**Duration:** ~20 minutes
 **Tests Included:**
 - TEST-001: Secrets detection (blocks API keys, tokens)
 - TEST-002: Memory limits enforcement (blocks missing limits on Pi nodes)
@@ -93,7 +93,7 @@ git branch -D test/ralph-v2-validation
 
 ### Script 2: helpers.sh (Library)
 
-**Purpose:** Common functions for test execution, validation, and reporting  
+**Purpose:** Common functions for test execution, validation, and reporting
 **Usage:** Sourced by other scripts (not executed directly)
 
 **Key Functions:**
@@ -129,7 +129,7 @@ print_test_status(id, status, msg) # Print colored test result
 
 ### Script 3: cleanup.sh (Cleanup)
 
-**Purpose:** Clean up test artifacts and restore environment  
+**Purpose:** Clean up test artifacts and restore environment
 **Duration:** <1 minute
 
 **What It Does:**
@@ -179,9 +179,9 @@ After running tests, results are available in:
 ```markdown
 # Ralph v2.0 Test Execution Report
 
-**Date:** 2026-01-25 12:45:00  
-**Duration:** 1245s (20:45)  
-**Branch:** test/ralph-v2-validation  
+**Date:** 2026-01-25 12:45:00
+**Duration:** 1245s (20:45)
+**Branch:** test/ralph-v2-validation
 **Commit:** abc1234
 
 ## Summary
@@ -288,36 +288,36 @@ nvim .ralph/test-automation/run-critical-tests.sh
 ```bash
 test_XXX_test_name() {
     start_test "TEST-XXX" "Human Readable Test Name"
-    
+
     # 1. Setup test artifacts
     cat > test-file.yaml <<EOF
     # test content
 EOF
-    
+
     git add test-file.yaml
     add_test_task "TEST-XXX: Description of task"
-    
+
     # 2. Record initial state
     local before_commit
     before_commit=$(git rev-parse HEAD)
-    
+
     # 3. Execute Ralph
     run_ralph_with_timeout 120 "TEST-XXX: What should happen"
-    
+
     # 4. Validate results
     local test_passed=true
     local failure_reasons=()
-    
+
     if ! some_check; then
         test_passed=false
         failure_reasons+=("Check failed")
     fi
-    
+
     # 5. Cleanup
     git restore --staged test-file.yaml 2>/dev/null || true
     rm -f test-file.yaml
     jq '.failures = 0' .ralph/state.json > .ralph/state.json.tmp && mv .ralph/state.json.tmp .ralph/state.json
-    
+
     # 6. Report result
     if $test_passed; then
         end_test "TEST-XXX" "PASS" "Success message"
@@ -365,7 +365,7 @@ git checkout -b test/ralph-v2-validation
 
 ### Issue: "Test hangs or times out"
 
-**Cause:** Ralph Loop stuck in infinite loop or waiting for input  
+**Cause:** Ralph Loop stuck in infinite loop or waiting for input
 **Solution:**
 1. Press Ctrl+C to interrupt
 2. Check latest log: `tail -50 .ralph/logs/iteration-*.log | tail -1`
@@ -374,7 +374,7 @@ git checkout -b test/ralph-v2-validation
 
 ### Issue: "plan.md.test-backup already exists"
 
-**Cause:** Previous test run did not clean up  
+**Cause:** Previous test run did not clean up
 **Solution:**
 ```bash
 # Manual cleanup
@@ -489,6 +489,6 @@ All 5 critical tests must pass for production deployment:
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** 2026-01-25  
+**Version:** 1.0
+**Last Updated:** 2026-01-25
 **Maintainer:** Tech Lead (AWS DevOps Engineer - Professional)

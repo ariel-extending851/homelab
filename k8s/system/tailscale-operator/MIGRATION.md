@@ -4,8 +4,8 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 ## Migration Overview
 
-**Date:** January 22, 2026  
-**Strategy:** Replace manual sidecars with native Kubernetes Ingress  
+**Date:** January 22, 2026
+**Strategy:** Replace manual sidecars with native Kubernetes Ingress
 **Tailnet:** `tail57bf10.ts.net`
 
 ## What Changed
@@ -139,10 +139,10 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
      --from-literal=client_id=<CLIENT_ID> \
      --from-literal=client_secret=<CLIENT_SECRET> \
      -n tailscale
-   
+
    # Deploy operator
    kubectl apply -k k8s/system/tailscale-operator/
-   
+
    # Verify
    kubectl get pods -n tailscale
    kubectl get ingressclass tailscale
@@ -157,14 +157,14 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
    kubectl delete deployment adguardhome -n adguard
    kubectl delete deployment searxng -n searxng
    kubectl delete deployment golink -n golink
-   
+
    # Delete old Tailscale-related PVCs
    kubectl delete pvc grafana-tailscale-state -n grafana
    kubectl delete pvc prometheus-tailscale-state -n prometheus
    kubectl delete pvc loki-tailscale-state -n loki
    kubectl delete pvc adguard-tailscale-state -n adguard
    kubectl delete pvc hl-searxng-tailscale-state -n searxng
-   
+
    # Delete old Tailscale auth secrets
    kubectl delete secret tailscale-auth -n grafana
    kubectl delete secret tailscale-auth -n prometheus
@@ -172,7 +172,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
    kubectl delete secret tailscale-auth -n adguard
    kubectl delete secret searxng-tailscale-auth -n searxng
    kubectl delete secret tailscale-auth-key -n golink
-   
+
    # Apply updated manifests
    kubectl apply -k k8s/apps/grafana/
    kubectl apply -k k8s/apps/prometheus/
@@ -186,10 +186,10 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
    ```bash
    # Check all ingresses
    kubectl get ingress -A
-   
+
    # Check Tailscale devices
    # Visit: https://login.tailscale.com/admin/machines
-   
+
    # Test access (from a device on the Tailnet)
    curl https://grafana.tail57bf10.ts.net
    curl https://prometheus.tail57bf10.ts.net
@@ -207,7 +207,7 @@ If migration fails:
    ```bash
    # Checkout previous Git commit
    git checkout <previous-commit>
-   
+
    # Delete operator ingresses
    kubectl delete ingress -n grafana grafana-ingress
    kubectl delete ingress -n prometheus prometheus-ingress
@@ -215,7 +215,7 @@ If migration fails:
    kubectl delete ingress -n adguard adguard-ingress
    kubectl delete ingress -n searxng searxng-ingress
    kubectl delete ingress -n golink golink-ingress
-   
+
    # Reapply old manifests
    kubectl apply -k k8s/apps/grafana/
    kubectl apply -k k8s/apps/prometheus/
@@ -242,7 +242,7 @@ After successful migration:
    ```bash
    # Check for unused PVCs
    kubectl get pvc -A | grep tailscale
-   
+
    # Check for unused secrets
    kubectl get secrets -A | grep tailscale
    ```

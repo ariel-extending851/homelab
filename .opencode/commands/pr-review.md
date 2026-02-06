@@ -55,8 +55,8 @@ gh api graphql -f query='
 ```markdown
 # Pull Request #{number}: {title}
 
-**Status:** {🟢 OPEN | 🔴 CLOSED | 🟣 MERGED}  
-**Author:** @{author} | **Base:** `{base}` ← **Head:** `{head}`  
+**Status:** {🟢 OPEN | 🔴 CLOSED | 🟣 MERGED}
+**Author:** @{author} | **Base:** `{base}` ← **Head:** `{head}`
 **Changes:** {commits} commits • {files} files • +{add} -{del}
 
 ## CI Status: {✅ All Passing | ❌ Failing | ⏳ Pending} ({passing}/{total})

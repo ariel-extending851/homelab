@@ -1,0 +1,82 @@
+# ==============================================================================
+# LocalStack Provider Configuration
+# ==============================================================================
+# This file configures Terraform to use LocalStack instead of real AWS.
+#
+# USAGE:
+# 1. Ensure LocalStack is running:
+#    docker run -d -p 4566:4566 localstack/localstack:latest
+#
+# 2. Copy this file to enable LocalStack:
+#    cp provider.localstack.tf.example provider.localstack.tf
+#
+# 3. Run Terraform as normal:
+#    terraform init
+#    terraform plan -var-file="terraform.tfvars.localstack"
+#
+# 4. To switch back to real AWS:
+#    rm provider.localstack.tf
+#    terraform init -reconfigure
+#
+# NOTE: This file is .gitignore'd to prevent accidental commits
+# ==============================================================================
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    sops = {
+      source  = "carlpett/sops"
+      version = "~> 0.7.0"
+    }
+  }
+}
+
+# SOPS Provider (works with LocalStack)
+provider "sops" {}
+
+# LocalStack Provider Configuration
+provider "aws" {
+  region = var.aws_region
+
+  # LocalStack endpoints
+  access_key                  = "test"
+  secret_key                  = "test"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+
+  endpoints {
+    ec2 = "http://localhost:4566"
+    iam = "http://localhost:4566"
+    ssm = "http://localhost:4566"
+    sts = "http://localhost:4566"
+  }
+
+  default_tags {
+    tags = {
+      Project     = "Lab-DevOps-Pro"
+      ManagedBy   = "Terraform"
+      Environment = "localstack-test"
+    }
+  }
+}
+
+# Override SOPS to use mock data for LocalStack testing
+# Comment this out if you want to test real SOPS integration
+# data "sops_file" "secrets" {
+#   source_file = "${path.module}/terraform.tfvars.sops.yaml"
+# }
+
+# Mock secrets for LocalStack testing (when SOPS is disabled)
+# Uncomment if you don't want to test SOPS integration
+# locals {
+#   secrets = {
+#     ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockKeyForLocalStackTesting localstack-test"
+#     k3s_token      = "mock-k3s-token-for-localstack-testing-only"
+#   }
+# }

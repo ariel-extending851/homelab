@@ -15,7 +15,7 @@ resource "oci_identity_group" "homelab_admins" {
 #}
 
 resource "oci_identity_policy" "homelab_policy" {
-  compartment_id = var.tenancy_ocid
+  compartment_id = local.secrets["tenancy_ocid"]
   description    = "Policy for Homelab automation"
   name           = "homelab-policy"
   statements = [

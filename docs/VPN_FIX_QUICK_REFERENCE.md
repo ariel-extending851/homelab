@@ -1,7 +1,7 @@
 # 🚀 VPN Fix - Quick Reference Card
 
-**Time Required:** 20 minutes  
-**Difficulty:** Medium  
+**Time Required:** 20 minutes
+**Difficulty:** Medium
 **Full Guide:** See `VPN_FIX_IMPLEMENTATION_PLAN.md`
 
 ---

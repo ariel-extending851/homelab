@@ -1,7 +1,7 @@
 # 🔍 Torrent P2P Connectivity Debugging Plan
 
-**Status:** VPN connected ✅ | P2P stalled ❌ | Torrents added by *** ✅  
-**Indexers:** 1337x, EZTV, EZTVL, Nyaa, TPB (all healthy, have active seeders)  
+**Status:** VPN connected ✅ | P2P stalled ❌ | Torrents added by *** ✅
+**Indexers:** 1337x, EZTV, EZTVL, Nyaa, TPB (all healthy, have active seeders)
 **Hypothesis Chain:** NetworkPolicy → Tracker connectivity → Port binding → Permissions
 
 ---
@@ -292,20 +292,20 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  
+
   ingress:
     # Allow traffic from within the same namespace
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: media
-    
+
     # Allow from kube-system (health checks)
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-    
+
     # Allow Tailscale ingress
     - from:
         - namespaceSelector:
@@ -320,7 +320,7 @@ spec:
           port: 8989   # ***
         - protocol: TCP
           port: 9696   # ***
-  
+
   egress:
     # Allow DNS (UDP 53)
     - to:
@@ -332,20 +332,20 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    
+
     # Allow internal pod communication
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: media
-    
+
     # Allow VPN connection (WireGuard)
     - to:
         - podSelector: {}
       ports:
         - protocol: UDP
           port: 51820
-    
+
     # ✅ ADD THIS: Allow BitTorrent P2P traffic (ALL)
     # This allows *** to connect to peers on any port
     - to:
@@ -357,7 +357,7 @@ spec:
         - protocol: UDP
           port: 0
           endPort: 65535
-    
+
     # Allow HTTP/HTTPS (trackers, metadata)
     - to:
         - podSelector: {}
@@ -366,7 +366,7 @@ spec:
           port: 80
         - protocol: TCP
           port: 443
-    
+
     # Allow *** control API
     - to:
         - podSelector: {}
@@ -446,16 +446,16 @@ Phase 5: *** Configuration
 
 1. **NetworkPolicy too restrictive** (70% - Most likely)
    - Fix: Update egress rules to allow all ports
-   
+
 2. **Tracker connectivity issues** (15% - Medium)
    - Fix: Check DNS/firewall to tracker servers
-   
+
 3. **Port not listening** (10% - Less likely)
    - Fix: Verify *** config and restart
-   
+
 4. **Volume permissions** (4% - Unlikely)
    - Fix: Adjust permissions on /data/torrents
-   
+
 5. **Config issue** (1% - Very unlikely)
    - Fix: Reset *** config to defaults
 

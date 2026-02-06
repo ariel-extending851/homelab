@@ -1,0 +1,43 @@
+# ==============================================================================
+# LocalStack Test Configuration
+# ==============================================================================
+# This file is for LOCAL STRUCTURE TESTING ONLY with LocalStack
+#
+# IMPORTANT NOTES:
+# - LocalStack does NOT support EC2 Spot Instances
+# - No actual EC2 instances will boot
+# - User data (k3s installation) won't execute
+# - Security groups created but not enforced
+# - This is for STRUCTURE VALIDATION only
+#
+# Use this to test:
+#   ✅ Terraform module structure
+#   ✅ Variable validation
+#   ✅ Resource dependencies
+#   ✅ Output formatting
+#   ✅ SOPS integration (if configured)
+# ==============================================================================
+
+# AWS Configuration (LocalStack emulation)
+aws_region = "us-east-1"
+
+# LocalStack Testing Mode
+# When "yes": Uses mock secrets instead of SOPS (no decryption needed)
+localstack_test = "yes"
+
+# Instance Configuration
+# NOTE: Spot instances not supported in LocalStack - will use on-demand metadata
+instance_type = "t3.micro"     # Smaller for faster testing
+spot_max_price = ""            # Empty = on-demand price (LocalStack limitation)
+ebs_volume_size = 30           # Minimum allowed by validation (must be >= 30GB)
+
+# SSH Configuration
+ssh_key_name = "localstack-test-key"
+
+# Security Configuration
+# More permissive for local testing
+ssh_allowed_cidr = ["0.0.0.0/0"]
+k3s_api_allowed_cidr = ["0.0.0.0/0"]
+
+# k3s Configuration
+k3s_version = "v1.28.5+k3s1"

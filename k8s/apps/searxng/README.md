@@ -223,7 +223,7 @@ kubectl logs -n searxng -l app=searxng -c searxng
 1. **Invalid Tailscale auth key**:
    - Error: `authentication failed` or `invalid auth key`
    - Solution: Verify the secret was created correctly with a valid auth key
-   
+
 2. **Auth key expired**:
    - Solution: Generate a new auth key and update the secret:
    ```bash

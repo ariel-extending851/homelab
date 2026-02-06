@@ -1,65 +1,36 @@
-variable "tenancy_ocid" {
-  type        = string
-  description = "The OCID of your OCI tenancy."
-  sensitive   = true
-}
-variable "user_ocid" {
-  type        = string
-  description = "The OCID of the user calling the provider."
-  sensitive   = true
-}
-variable "fingerprint" {
-  type        = string
-  description = "The fingerprint of the API key used for authentication."
-  sensitive   = true
-}
-variable "private_key_path" {
-  type        = string
-  description = "The absolute path to the private key file for OCI API authentication."
-  sensitive   = true
-}
+# ==============================================================================
+# OCI Infrastructure Variables (Non-Sensitive)
+# ==============================================================================
+# NOTE: All sensitive variables (OCIDs, API keys, tokens) are now loaded
+# from SOPS-encrypted file (terraform.tfvars.sops.yaml) via data.sops_file.secrets
+# ==============================================================================
+
 variable "region" {
   type        = string
+  default     = "sa-saopaulo-1"
   description = "The OCI region where resources will be provisioned."
 }
-variable "compartment_id" {
-  type        = string
-  description = "The OCID of the compartment where resources will be created."
 
-}
-variable "tailscale_auth_key" {
-  type        = string
-  description = "auth key for tailscale"
-  sensitive   = true
-}
 variable "instance_image_id" {
-  description = "OCID da imagem (Ubuntu) para as maquinas"
+  description = "OCID da imagem ARM64 Ubuntu 24.04 para VM.Standard.A1.Flex (Always Free)"
+  default     = "ocid1.image.oc1.sa-saopaulo-1.aaaaaaaaaidkaxag5ju3kvdosvmi4dqxux6yhee7pjxkm4oqbbhmbb55an7a"
   type        = string
 }
+
 variable "instance_shape" {
-  description = "Shape da instancia (ex: VM.Standard3.Flex)"
+  description = "Shape da instancia (VM.Standard.A1.Flex for ARM Always Free tier)"
   type        = string
-  default     = "VM.Standard.E4.Flex"
+  default     = "VM.Standard.A1.Flex"
 }
 
 # ==============================================================================
-# GitHub Provider Variables
+# GitHub Provider Variables (Non-Sensitive)
 # ==============================================================================
-
-variable "github_token" {
-  type        = string
-  description = "GitHub Personal Access Token with 'repo' and 'admin:repo_hook' scopes"
-  sensitive   = true
-}
+# NOTE: github_token is loaded from SOPS-encrypted file
+# ==============================================================================
 
 variable "github_owner" {
   type        = string
   description = "GitHub repository owner (username or organization)"
   default     = "ariel99gf"
-}
-
-variable "ssh_public_key" {
-  type        = string
-  description = "SSH public key for OCI instance access"
-  default     = ""
 }

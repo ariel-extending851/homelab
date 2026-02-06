@@ -1,0 +1,30 @@
+# LocalStack Provider Override
+# This file overrides the AWS provider to point to LocalStack
+# To use: Include this file when testing with LocalStack
+# To disable: Rename to provider_override.tf.disabled
+
+provider "aws" {
+  region = var.aws_region
+
+  # LocalStack endpoints
+  access_key                  = "test"
+  secret_key                  = "test"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+
+  endpoints {
+    ec2 = "http://localhost:4566"
+    iam = "http://localhost:4566"
+    ssm = "http://localhost:4566"
+    sts = "http://localhost:4566"
+  }
+
+  default_tags {
+    tags = {
+      Project     = "Lab-DevOps-Pro"
+      ManagedBy   = "Terraform"
+      Environment = "localstack-test"
+    }
+  }
+}

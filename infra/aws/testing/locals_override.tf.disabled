@@ -1,0 +1,9 @@
+# Mock SOPS secrets for LocalStack testing
+# This overrides the SOPS data source with mock values
+
+locals {
+  secrets = {
+    ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockKeyForLocalStackTestingOnly localstack-test"
+    k3s_token      = "mock-k3s-token-for-localstack-testing-only-do-not-use-in-production"
+  }
+}

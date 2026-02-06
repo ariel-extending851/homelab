@@ -1,0 +1,23 @@
+# Mise Local Configuration
+# Copy this file to .mise.local.toml and customize for your local environment
+# This file is gitignored and should NOT be committed
+
+[env]
+# AWS Configuration - Uncomment and modify if you want local overrides
+# AWS_PROFILE = "homelab"
+# AWS_DEFAULT_REGION = "us-east-1"
+
+# Alternative: Use specific credentials (not recommended for security)
+# AWS_ACCESS_KEY_ID = "your-access-key-id"
+# AWS_SECRET_ACCESS_KEY = "your-secret-access-key"
+
+# Optional: Use project-specific AWS config files
+# AWS_CONFIG_FILE = "{{config_root}}/.aws/config"
+# AWS_SHARED_CREDENTIALS_FILE = "{{config_root}}/.aws/credentials"
+
+# SOPS Configuration
+# SOPS_AGE_KEY_FILE = "$HOME/.config/sops/age/keys.txt"
+
+# Terraform Configuration
+# TF_VAR_ssh_allowed_cidr = '["your-ip/32"]'
+# TF_VAR_k3s_api_allowed_cidr = '["your-ip/32"]'

@@ -1,8 +1,8 @@
 # Session Handoff: Grafana/Loki Performance Optimization
 
-**Session Date**: Jan 23, 2026  
-**Branch**: `fix/grafana-dashboard-provisioning`  
-**Pull Request**: #27 (https://github.com/ariel99gf/homelab/pull/27)  
+**Session Date**: Jan 23, 2026
+**Branch**: `fix/grafana-dashboard-provisioning`
+**Pull Request**: #27 (https://github.com/ariel99gf/homelab/pull/27)
 **Status**: ✅ READY FOR MERGE & VALIDATION
 
 ---
@@ -127,7 +127,7 @@ cd /var/mnt/nvme/repos/repos/homelab
 ---
 
 ### Priority 3: Manual Dashboard Validation
-**URL**: https://grafana.tail57bf10.ts.net  
+**URL**: https://grafana.tail57bf10.ts.net
 **Dashboard**: "K3s Homelab and Hybrid Cloud Overview - Comprehensive"
 
 **Key Metrics to Verify**:
@@ -429,8 +429,8 @@ I'm working on PR #27 for Grafana/Loki performance optimization in my k3s homela
 
 ---
 
-**Session End**: All optimization work complete, ready for merge & validation  
-**Next Action**: Merge PR #27 and execute post-merge validation  
+**Session End**: All optimization work complete, ready for merge & validation
+**Next Action**: Merge PR #27 and execute post-merge validation
 **Estimated Time**: 30-60 minutes for full validation
 
 **Questions?** See documentation files or re-read this handoff document.

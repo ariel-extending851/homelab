@@ -1,16 +1,26 @@
 [tools]
-oci                         =   "latest"
-neovim                      =   "latest"
-"kubectl"                   =   "latest"
-"helm"                      =   "latest"
-"minikube"                  =   "latest"
-"terraform"                 =   "latest"
-"node"                      =   "lts"
-"npm"                       =   "11.7.0"
-"pipx"                      =   "1.8.0"
-"npm:@google/gemini-cli"    =   "latest"
-"pipx:terraform-local"      =   "latest"
-"pipx:awscli-local"         =   "latest"
+oci = "latest"
+awscli = "latest"
+neovim = "latest"
+"kubectl" = "latest"
+"helm" = "latest"
+"minikube" = "latest"
+"terraform" = "latest"
+trufflehog = "latest"
+"node" = "lts"
+"npm" = "11.7.0"
+"pipx" = "1.8.0"
+"npm:@google/gemini-cli" = "latest"
+"pipx:terraform-local" = "latest"
+"pipx:awscli-local" = "latest"
+"pipx:pre-commit" = "latest"
+localstack = "4.13.1"
 
 [settings]
-experimental                =   true
+experimental = true
+
+# AWS Configuration for Homelab Project
+# These environment variables are automatically set when you enter this directory
+[env]
+AWS_PROFILE = "homelab"
+AWS_DEFAULT_REGION = "us-east-1"

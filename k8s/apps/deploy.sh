@@ -35,7 +35,7 @@ wait_for_deployment() {
   local namespace=$1
   local deployment=$2
   local timeout=${3:-300}
-  
+
   echo -e "${YELLOW}Waiting for $deployment in $namespace to be ready...${NC}"
   kubectl wait --for=condition=available deployment/$deployment -n $namespace --timeout=${timeout}s
   echo -e "${GREEN}✓ $deployment is ready${NC}"
@@ -45,7 +45,7 @@ wait_for_deployment() {
 wait_for_daemonset() {
   local namespace=$1
   local daemonset=$2
-  
+
   echo -e "${YELLOW}Waiting for $daemonset in $namespace to be ready...${NC}"
   kubectl rollout status daemonset/$daemonset -n $namespace --timeout=300s
   echo -e "${GREEN}✓ $daemonset is ready${NC}"
@@ -54,15 +54,15 @@ wait_for_daemonset() {
 # Check for Tailscale auth keys if not skipping
 if [ "$SKIP_SECRETS" = false ]; then
   echo -e "${YELLOW}Checking Tailscale auth secrets...${NC}"
-  
+
   MISSING_SECRETS=()
-  
+
   for ns in grafana prometheus loki adguard; do
     if ! kubectl get secret tailscale-auth -n $ns &>/dev/null; then
       MISSING_SECRETS+=("$ns")
     fi
   done
-  
+
   if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
     echo -e "${RED}ERROR: Missing Tailscale auth secrets in namespaces: ${MISSING_SECRETS[*]}${NC}"
     echo ""
@@ -74,7 +74,7 @@ if [ "$SKIP_SECRETS" = false ]; then
     echo "Or run with --skip-secrets to deploy without checking (secrets must exist in YAML files)"
     exit 1
   fi
-  
+
   echo -e "${GREEN}✓ All Tailscale secrets found${NC}"
   echo ""
 fi

@@ -70,6 +70,8 @@ spec:
               mountPath: /host
               readOnly: true
 
+      # SECURITY NOTE: hostPath required for node-level metrics collection
+      # Mounted as readOnly with non-root user (65534). Risk accepted for monitoring.
       volumes:
         - name: host-root
           hostPath:

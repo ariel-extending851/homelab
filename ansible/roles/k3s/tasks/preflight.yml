@@ -2,11 +2,20 @@
 # ansible/roles/k3s/tasks/preflight.yml
 # Pre-flight checks before k3s installation
 
-- name: Check if running on ARM64 architecture
+- name: Install Python for Ansible (Amazon Linux 2023)
+  ansible.builtin.raw: |
+    dnf install -y python3 python3-pip
+  args:
+    executable: /bin/bash
+  when: ansible_os_family == "RedHat"
+  changed_when: false
+  become: true
+
+- name: Check if running on supported architecture
   ansible.builtin.assert:
     that:
-      - ansible_architecture == "aarch64"
-    fail_msg: "This role is designed for ARM64 (aarch64) architecture only"
+      - ansible_architecture in ["aarch64", "x86_64"]
+    fail_msg: "This role supports ARM64 (aarch64) and x86_64 (AMD64) architectures only. Found: {{ ansible_architecture }}"
     success_msg: "Architecture check passed: {{ ansible_architecture }}"
 
 - name: Verify minimum system requirements

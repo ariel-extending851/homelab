@@ -7,7 +7,7 @@ This directory contains custom commands for OpenCode to streamline development w
 ### `/review` - Pre-Commit Code Review
 Automatically reviews staged changes before committing using the Tech Lead agent.
 
-**What it checks:** Security issues, Pi memory limits, naming conventions, ARM64 compatibility  
+**What it checks:** Security issues, Pi memory limits, naming conventions, ARM64 compatibility
 **Blocks on:** Secrets, missing resource limits, :latest tags in production
 
 ```bash
@@ -64,7 +64,7 @@ Investigate bugs using strict TDD (Reproduction First).
 ### `/rollback` - ArgoCD Application Rollback
 Rollback an ArgoCD application to a previous healthy revision.
 
-**Features:** Manual rollback with confirmation, revision history, incident documentation  
+**Features:** Manual rollback with confirmation, revision history, incident documentation
 **Requirements:** ArgoCD CLI, kubectl access to argocd namespace
 
 ```bash
@@ -77,7 +77,7 @@ Rollback an ArgoCD application to a previous healthy revision.
 ### `/deploy-verify` - Deployment Verification
 Verify deployment health after ArgoCD sync completes.
 
-**Features:** ArgoCD sync/health status, pod status checks, formatted reports  
+**Features:** ArgoCD sync/health status, pod status checks, formatted reports
 **Requirements:** kubectl, jq for JSON parsing
 
 ```bash
@@ -90,7 +90,7 @@ Verify deployment health after ArgoCD sync completes.
 ### `/pr-resolve` - PR Conversation Resolution
 Automatically resolve all review threads on a PR with replies.
 
-**Features:** Auto-detects PR, replies to threads, resolves via GraphQL  
+**Features:** Auto-detects PR, replies to threads, resolves via GraphQL
 **Requirements:** GitHub CLI with write access
 
 ```bash
@@ -103,7 +103,7 @@ Automatically resolve all review threads on a PR with replies.
 ### `/pr-review` - PR Status Viewer
 View comprehensive PR status with CI checks and review conversations.
 
-**Features:** Shows CI status, highlights Gemini comments, parses priority badges  
+**Features:** Shows CI status, highlights Gemini comments, parses priority badges
 **Verbose mode:** Add `-v` or `--verbose` for full details
 
 ```bash
@@ -155,5 +155,5 @@ When creating new commands:
 
 ---
 
-**Total Commands:** 10  
+**Total Commands:** 10
 **Last Updated:** 2026-01-25

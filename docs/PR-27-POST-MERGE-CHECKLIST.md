@@ -1,7 +1,7 @@
 # PR #27 Post-Merge Checklist
 
-**PR Title**: perf(monitoring): Optimize Grafana/Loki performance and restore comprehensive dashboard  
-**PR URL**: https://github.com/ariel99gf/homelab/pull/27  
+**PR Title**: perf(monitoring): Optimize Grafana/Loki performance and restore comprehensive dashboard
+**PR URL**: https://github.com/ariel99gf/homelab/pull/27
 **Merge Date**: _[To be filled after merge]_
 
 ---
@@ -383,13 +383,13 @@ kubectl rollout status deployment loki -n loki
 
 ## 📝 Post-Validation Report Template
 
-**Date**: _______  
-**Validated By**: _______  
-**Dashboard Load Time**: _____s (Target: <3s)  
-**Loki Query Time (avg)**: _____ms (Target: <500ms)  
-**CPU Throttling**: _____% (Target: <0.1%)  
-**HTTP 400 Errors**: _____ (Target: 0)  
-**Panels with Data**: _____/20 (Target: 20/20)  
+**Date**: _______
+**Validated By**: _______
+**Dashboard Load Time**: _____s (Target: <3s)
+**Loki Query Time (avg)**: _____ms (Target: <500ms)
+**CPU Throttling**: _____% (Target: <0.1%)
+**HTTP 400 Errors**: _____ (Target: 0)
+**Panels with Data**: _____/20 (Target: 20/20)
 
 **Issues Found**:
 - [ ] None - All tests passed ✅
@@ -429,6 +429,6 @@ kubectl rollout status deployment loki -n loki
 - [ ] Browser console errors checked (zero errors)
 - [ ] 24-hour monitoring completed (optional)
 
-**Signed Off By**: _______  
-**Date**: _______  
+**Signed Off By**: _______
+**Date**: _______
 **Notes**: _______

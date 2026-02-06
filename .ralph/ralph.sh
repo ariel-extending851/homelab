@@ -99,11 +99,11 @@ echo "" | tee -a "$LOG_FILE"
 while [ $COUNTER -lt $MAX_LOOPS ]; do
     let COUNTER=COUNTER+1
     let TOTAL_RUNS=TOTAL_RUNS+1
-    
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$LOG_FILE"
     echo "🔄 Iteration $COUNTER of $MAX_LOOPS (Failures: $FAILURES)" | tee -a "$LOG_FILE"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" | tee -a "$LOG_FILE"
-    
+
     # ========================================================================
     # STEP 1: Check for BLOCKED marker in plan.md
     # ========================================================================
@@ -117,7 +117,7 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
     fi
     echo "   ✅ No blocked tasks found." | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     # ========================================================================
     # STEP 2: Assemble context from .opencode/ directory
     # ========================================================================
@@ -129,25 +129,25 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
     done
     echo "   ✅ Context assembled successfully." | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     # ========================================================================
     # STEP 3: Execute OpenCode (NO --dangerously-skip-permissions)
     # ========================================================================
     echo "🚀 Step 3: Executing OpenCode..." | tee -a "$LOG_FILE"
     echo "   ⚠️  Note: Environment guardrails are ACTIVE (Section 6 of instructions.md)" | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     # Write context to temporary file for opencode run
     CONTEXT_FILE="$(mktemp)"
     echo "$FULL_CONTEXT" > "$CONTEXT_FILE"
-    
+
     # Use 'opencode run' for non-interactive execution (suppresses TUI)
     opencode run "$(cat "$CONTEXT_FILE")" 2>&1 | tee -a "$LOG_FILE"
     EXIT_CODE=$?
-    
+
     # Cleanup temporary context file
     rm -f "$CONTEXT_FILE"
-    
+
     if [ $EXIT_CODE -ne 0 ]; then
         echo "⚠️  OpenCode exited with code $EXIT_CODE" | tee -a "$LOG_FILE"
         FAILURES=$((FAILURES + 1))
@@ -157,47 +157,47 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
         continue
     fi
     echo "" | tee -a "$LOG_FILE"
-    
+
     # ========================================================================
     # STEP 4: Pre-Commit Review (if changes detected)
     # ========================================================================
     if [ -n "$(git status --porcelain)" ]; then
         echo "📋 Step 4: Pre-Commit Review..." | tee -a "$LOG_FILE"
         echo "   Changes detected. Running /review command..." | tee -a "$LOG_FILE"
-        
+
         # Execute /review command
         echo "/review" | opencode 2>&1 | tee -a "$LOG_FILE"
-        
+
         # Check for HIGH severity blocking issues
         if [ -f "$OPENCODE_DIR/last-review.md" ]; then
             if grep -q "RECOMMENDATION: BLOCK" "$OPENCODE_DIR/last-review.md"; then
                 echo "❌ Pre-commit review BLOCKED changes." | tee -a "$LOG_FILE"
                 echo "   Review $OPENCODE_DIR/last-review.md for details." | tee -a "$LOG_FILE"
                 echo "" | tee -a "$LOG_FILE"
-                
+
                 # Show blocking issues summary
                 echo "🚨 Blocking Issues Found:" | tee -a "$LOG_FILE"
                 grep -A 5 "SEVERITY: HIGH" "$OPENCODE_DIR/last-review.md" | head -20 | tee -a "$LOG_FILE"
                 echo "" | tee -a "$LOG_FILE"
-                
+
                 FAILURES=$((FAILURES + 1))
                 jq ".iteration = $COUNTER | .failures = $FAILURES | .total_runs = $TOTAL_RUNS | .last_run = \"$(date -Iseconds)\"" "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-                
+
                 echo "⏳ Cooling down (10s) before retry..." | tee -a "$LOG_FILE"
                 sleep 10
                 continue
             fi
         fi
-        
+
         echo "   ✅ Pre-commit review passed." | tee -a "$LOG_FILE"
         echo "" | tee -a "$LOG_FILE"
-        
+
         # ====================================================================
         # STEP 5: Commit changes using /commit command
         # ====================================================================
         echo "💾 Step 5: Committing changes..." | tee -a "$LOG_FILE"
         echo "/commit" | opencode 2>&1 | tee -a "$LOG_FILE"
-        
+
         if [ $? -ne 0 ]; then
             echo "⚠️  Commit failed." | tee -a "$LOG_FILE"
             FAILURES=$((FAILURES + 1))
@@ -212,7 +212,7 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
         echo "📋 Step 4: No changes detected (skipping review/commit)." | tee -a "$LOG_FILE"
         echo "" | tee -a "$LOG_FILE"
     fi
-    
+
     # ========================================================================
     # STEP 6: Deployment Verification (if k8s/ changes detected)
     # ========================================================================
@@ -221,10 +221,10 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
         echo "   Kubernetes changes detected in last commit." | tee -a "$LOG_FILE"
         echo "   Waiting 15s for ArgoCD sync..." | tee -a "$LOG_FILE"
         sleep 15
-        
+
         echo "   Running /deploy-verify command..." | tee -a "$LOG_FILE"
         echo "/deploy-verify" | opencode 2>&1 | tee -a "$LOG_FILE"
-        
+
         # Check deploy-verify results
         if [ -f "$OPENCODE_DIR/last-deploy-verify.md" ]; then
             if grep -q "Status: ❌\|Health: Degraded\|Sync: OutOfSync" "$OPENCODE_DIR/last-deploy-verify.md"; then
@@ -234,23 +234,23 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
                 echo "🔄 Suggested Action: Consider rollback via:" | tee -a "$LOG_FILE"
                 echo "   opencode '/rollback'" | tee -a "$LOG_FILE"
                 echo "" | tee -a "$LOG_FILE"
-                
+
                 FAILURES=$((FAILURES + 1))
                 jq ".iteration = $COUNTER | .failures = $FAILURES | .total_runs = $TOTAL_RUNS | .last_run = \"$(date -Iseconds)\"" "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-                
+
                 echo "⏳ Cooling down (15s) before retry..." | tee -a "$LOG_FILE"
                 sleep 15
                 continue
             fi
         fi
-        
+
         echo "   ✅ Deployment verification passed." | tee -a "$LOG_FILE"
         echo "" | tee -a "$LOG_FILE"
     else
         echo "📦 Step 6: No k8s changes detected (skipping deploy-verify)." | tee -a "$LOG_FILE"
         echo "" | tee -a "$LOG_FILE"
     fi
-    
+
     # ========================================================================
     # STEP 7: CI Status Check
     # ========================================================================
@@ -263,7 +263,7 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
             CI_STATUS=$(gh run view --json status,conclusion 2>/dev/null | jq -r '.status // "unknown"')
             CI_CONCLUSION=$(gh run view --json status,conclusion 2>/dev/null | jq -r '.conclusion // "unknown"')
             echo "   ⚠️  CI status: $CI_STATUS (conclusion: $CI_CONCLUSION)" | tee -a "$LOG_FILE"
-            
+
             # Only increment failures if CI actually failed (not pending)
             if [ "$CI_CONCLUSION" = "failure" ]; then
                 FAILURES=$((FAILURES + 1))
@@ -273,17 +273,17 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
         echo "   ⚠️  gh CLI not found. Skipping CI check." | tee -a "$LOG_FILE"
     fi
     echo "" | tee -a "$LOG_FILE"
-    
+
     # ========================================================================
     # STEP 8: Update State
     # ========================================================================
     jq ".iteration = $COUNTER | .failures = $FAILURES | .total_runs = $TOTAL_RUNS | .last_run = \"$(date -Iseconds)\"" "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-    
+
     # ========================================================================
     # STEP 9: Check if task completed (stop criteria)
     # ========================================================================
     echo "🎯 Step 9: Checking stop criteria..." | tee -a "$LOG_FILE"
-    
+
     # Check if no pending changes AND last operation succeeded
     if [ $EXIT_CODE -eq 0 ] && [ -z "$(git status --porcelain)" ]; then
         echo "   ✅ Task completed. No pending changes." | tee -a "$LOG_FILE"
@@ -291,10 +291,10 @@ while [ $COUNTER -lt $MAX_LOOPS ]; do
         echo "🏁 Ralph Loop completed successfully." | tee -a "$LOG_FILE"
         break
     fi
-    
+
     echo "   ⏭️  Continuing to next iteration..." | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     echo "⏳ Cooling down (5s)..." | tee -a "$LOG_FILE"
     sleep 5
 done
