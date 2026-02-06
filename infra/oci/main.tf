@@ -36,11 +36,11 @@ locals {
 
 provider "oci" {
   # Configuration using secrets from SOPS
-  tenancy_ocid     = local.secrets["tenancy_ocid"]
-  user_ocid        = local.secrets["user_ocid"]
-  fingerprint      = local.secrets["fingerprint"]
-  private_key_path = local.secrets["private_key_path"]
-  region           = var.region
+  tenancy_ocid = local.secrets["tenancy_ocid"]
+  user_ocid    = local.secrets["user_ocid"]
+  fingerprint  = local.secrets["fingerprint"]
+  private_key  = local.secrets["private_key"]
+  region       = var.region
 }
 
 #data "oci_core_images" "ubuntu_24_04" {
