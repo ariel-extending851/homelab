@@ -213,9 +213,9 @@ kubectl logs -n loki deployment/loki -c loki | grep "POST /loki/api/v1/push"
 ### Current Node Assignments
 | Service | Node | Reason |
 |---------|------|--------|
-| Grafana | k3s-node-0 (Oracle) | Memory-intensive |
-| Prometheus | k3s-node-0 (Oracle) | Memory-intensive + TSDB storage |
-| Loki | k3s-node-1 (Oracle) | I/O intensive (log storage) |
+| Grafana | k3s-server-1 (AWS) | Memory-intensive |
+| Prometheus | k3s-server-1 (AWS) | Memory-intensive + TSDB storage |
+| Loki | k3s-agent-2 (AWS) | I/O intensive (log storage) |
 | AdGuard | rasp-pi-03 | Needs hostNetwork + local PV |
 | Blackbox | Control Plane | Lightweight, saves Pi resources |
 | OTEL Collector | All nodes | DaemonSet (host metrics) |

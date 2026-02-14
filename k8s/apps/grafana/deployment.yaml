@@ -17,9 +17,9 @@ spec:
       labels:
         app: grafana
     spec:
-      # Schedule on Oracle Cloud node (more memory available)
+      # Schedule on AWS control-plane node (x86_64, 2GB RAM)
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-0
+        kubernetes.io/hostname: k3s-server-1
 
       containers:
         # Grafana Application

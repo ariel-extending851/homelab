@@ -18,9 +18,9 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
-      # Schedule on Oracle Cloud node (more resources)
+      # Schedule on AWS control-plane node (x86_64, 2GB RAM)
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-0
+        kubernetes.io/hostname: k3s-server-1
 
       containers:
         # Prometheus Application

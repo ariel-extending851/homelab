@@ -1,9 +1,9 @@
 apiVersion: tailscale.com/v1alpha1
 kind: ProxyClass
 metadata:
-  name: oracle-cloud
+  name: default
 spec:
   statefulSet:
     pod:
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-0
+        kubernetes.io/hostname: k3s-server-1

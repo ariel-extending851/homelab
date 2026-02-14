@@ -3,27 +3,6 @@ kind: Namespace
 metadata:
   name: searxng
 ---
-# SearXNG Secret Key
-# Generate before deployment:
-# kubectl create secret generic searxng-secret \
-#   --from-literal=secret-key=$(openssl rand -hex 32) \
-#   -n searxng
-apiVersion: v1
-kind: Secret
-metadata:
-  name: searxng-secret
-  namespace: searxng
-type: Opaque
-stringData:
-  secret-key: "REPLACE-WITH-SECURE-RANDOM-KEY"
----
-# Tailscale Auth Key
-# Create manually to avoid overwrites:
-# kubectl create secret generic tailscale-auth-key \
-#   --from-literal=authkey=tskey-auth-XXXXXXXXXXXX \
-#   -n searxng
----
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -33,10 +12,10 @@ data:
   settings.yml: |
     use_default_settings: true
 
-    # Performance tuning for k3s-node-1 (Oracle Cloud VM)
+    # Performance tuning for k3s-agent-2 (AWS t3.small, 2 vCPU)
     uwsgi:
-      threads: 4
-      workers: 4
+      threads: 2
+      workers: 2
 
     server:
       # OPTIMIZATION: Disable image proxy to offload bandwidth to client
@@ -82,15 +61,15 @@ spec:
       labels:
         app: searxng
     spec:
-      # Migrated from rasp-pi-03 (1 GiB RAM) to k3s-node-1 (12 GiB RAM)
-      # RPi3 was hitting 90% memory usage and causing node instability
+      # Schedule on AWS worker node (x86_64, 2GB RAM)
+      # Migrated from rasp-pi-03 → OCI k3s-node-1 → AWS k3s-agent-2
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-1
+        kubernetes.io/hostname: k3s-agent-2
 
       containers:
         # SearXNG Application
         - name: searxng
-          image: searxng/searxng:latest
+          image: searxng/searxng:2026.2.14-39ac4d438
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -112,8 +91,8 @@ spec:
               cpu: "500m" # Reserve 0.5 core
               memory: "512Mi" # Reserve 512Mi RAM
             limits:
-              cpu: "4000m" # Allow full burst to all 4 cores
-              memory: "4Gi" # Allow up to 4Gi RAM (we have 12Gi)
+              cpu: "1000m" # Constrained: k3s-agent-2 has 2 vCPUs (shared with other apps)
+              memory: "512Mi" # Constrained: k3s-agent-2 has only 2GB total
 
           livenessProbe:
             httpGet:

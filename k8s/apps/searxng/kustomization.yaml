@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: searxng
 
 resources:
+  - secret.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml

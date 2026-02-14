@@ -18,9 +18,9 @@ spec:
         app: loki
     spec:
       serviceAccountName: loki
-      # Schedule on Oracle Cloud node (more resources)
+      # Schedule on AWS worker node (x86_64, 2GB RAM)
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-1
+        kubernetes.io/hostname: k3s-agent-2
 
       containers:
         # Loki Application

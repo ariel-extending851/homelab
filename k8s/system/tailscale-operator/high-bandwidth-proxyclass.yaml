@@ -20,7 +20,7 @@ spec:
     pod:
       # Pin to same node as default ProxyClass for consistency
       nodeSelector:
-        kubernetes.io/hostname: k3s-node-0
+        kubernetes.io/hostname: k3s-server-1
 
       # Tailscale container configuration
       tailscaleContainer:

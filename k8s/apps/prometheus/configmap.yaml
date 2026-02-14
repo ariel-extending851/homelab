@@ -65,7 +65,8 @@ data:
           - targets:
             - rasp-pi-03
             - rasp-pi-04
-            - k3s-node-1
+            - k3s-agent-2
+            - k3s-server-1
         relabel_configs:
           - source_labels: [__address__]
             target_label: __param_target
