@@ -17,8 +17,8 @@ variable "ebs_volume_size" {
   type        = number
 
   validation {
-    condition     = var.ebs_volume_size >= 20 && var.ebs_volume_size <= 100
-    error_message = "EBS volume size must be between 20GB and 100GB."
+    condition     = var.ebs_volume_size >= 30 && var.ebs_volume_size <= 100
+    error_message = "EBS volume size must be between 30GB (AL2023 minimum) and 100GB."
   }
 }
 
@@ -57,6 +57,12 @@ variable "k3s_version" {
     condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+\\+k3s[0-9]+$", var.k3s_version))
     error_message = "k3s version must be in format: vX.Y.Z+k3sN (e.g., v1.28.5+k3s1)."
   }
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for joining nodes to the tailnet (Zero Trust mesh)"
+  type        = string
+  sensitive   = true
 }
 
 variable "localstack_test" {

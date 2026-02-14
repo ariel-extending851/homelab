@@ -4,6 +4,11 @@
 # This module manages networking resources for the k3s cluster:
 # - Default VPC data source (cost optimization - no new VPC)
 # - Security groups for k3s cluster communication
+#
+# ZERO TRUST ARCHITECTURE:
+# No public ports are exposed (no SSH, no k3s API ingress).
+# All access is through Tailscale mesh (WireGuard encrypted).
+# Emergency access via AWS SSM Session Manager (IAM-authenticated).
 # ==============================================================================
 
 # Data source: Default VPC
@@ -19,69 +24,31 @@ data "aws_subnets" "default" {
   }
 }
 
-# Security Group: k3s Cluster
+# Security Group: k3s Cluster (Zero Trust - no public ingress)
 resource "aws_security_group" "k3s_cluster" {
   name_prefix = "hl-k3s-cluster-"
-  description = "Security group for k3s cluster nodes"
+  description = "Zero Trust SG for k3s cluster - no public ingress, all access via Tailscale"
   vpc_id      = data.aws_vpc.default.id
 
-  # SSH access
-  ingress {
-    description = "SSH from allowed CIDRs"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.ssh_allowed_cidr
-  }
+  # ============================================================================
+  # INGRESS: Only inter-node traffic (self-referencing)
+  # All external access (SSH, kubectl, etc.) goes through Tailscale mesh
+  # ============================================================================
 
-  # k3s API server
+  # Allow all traffic between cluster nodes (same SG)
   ingress {
-    description = "k3s API Server"
-    from_port   = 6443
-    to_port     = 6443
-    protocol    = "tcp"
-    cidr_blocks = var.k3s_api_allowed_cidr
-  }
-
-  # Kubelet metrics
-  ingress {
-    description = "Kubelet metrics"
-    from_port   = 10250
-    to_port     = 10250
-    protocol    = "tcp"
-    self        = true
-  }
-
-  # k3s flannel VXLAN
-  ingress {
-    description = "Flannel VXLAN"
-    from_port   = 8472
-    to_port     = 8472
-    protocol    = "udp"
-    self        = true
-  }
-
-  # CloudNativePG PostgreSQL (internal only)
-  ingress {
-    description = "PostgreSQL"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    self        = true
-  }
-
-  # Allow all traffic between cluster nodes
-  ingress {
-    description = "All traffic from cluster nodes"
+    description = "All traffic between cluster nodes (same SG)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     self        = true
   }
 
-  # Outbound internet access
+  # ============================================================================
+  # EGRESS: Allow outbound (required for Tailscale, ECR, package repos)
+  # ============================================================================
   egress {
-    description = "Allow all outbound"
+    description = "Allow all outbound (Tailscale, container pulls, updates)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

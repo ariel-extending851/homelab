@@ -22,5 +22,5 @@ experimental = true
 # AWS Configuration for Homelab Project
 # These environment variables are automatically set when you enter this directory
 [env]
-AWS_PROFILE = "homelab"
+AWS_PROFILE = "Homelab"
 AWS_DEFAULT_REGION = "us-east-1"

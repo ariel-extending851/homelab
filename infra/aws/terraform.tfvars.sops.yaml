@@ -2,21 +2,23 @@
 # SOPS-Encrypted Terraform Variables for AWS Homelab
 # ==============================================================================
 # SSH Public Key (will be encrypted by SOPS)
-ssh_public_key: ENC[AES256_GCM,data:dAKzVivhfbhjSiUnw2zru/754RZ+bSGGzQfq+H1x+G+fWIcTVaN8UEgRK4V7hxQKXjKPlBM+XmwmF8sHOMNnOKRh6j8mmmP95yiViBQlIko=,iv:so72PdTtLfkBmpX2E8xvydku4pTUCmlqO7uZ5qQkObM=,tag:aJTe46S29QEVZt4GFfqnqw==,type:str]
+ssh_public_key: ENC[AES256_GCM,data:5ZcWJRkAddZ6zpOvy/z45CY7qbEh39pen3G9+0g1VESaWIZ/NyViQhR7qQTTPzMhIZoUZ2IuemJhU63Dpctbp7QAO1wjDZs0dOvVUWplfxI=,iv:xRs/M7HWA6I+Z5N2szL/7cjEoyJMCIo3klu/UseVZNY=,tag:A4YYqWvxgpFTpPo/TKrbqA==,type:str]
 # k3s Cluster Token (will be encrypted by SOPS)
-k3s_token: ENC[AES256_GCM,data:4XuDbvz9Ang7oemn7u/JnrSnLvjHV7sxyUY6i+HBFL3vxYtWvxSLAR357BE=,iv:pbKcY5a97wRI5cQk0m6mfXeegtU2ccq4+fpwVn7godc=,tag:JzNVPnPYPbhQ8zUoUD0lhg==,type:str]
+k3s_token: ENC[AES256_GCM,data:aCcBoPb1QD9eQgcphjCMZOz2EBIdf68Kx7bb2TIm5eAcGb8yimNN+7hfky4=,iv:oI1cEaQLSV3AF5oLaj0LHuhrVig63oFyi0zaYC5/Rl0=,tag:QKfsn6ZyE4+naTZ3pbZenA==,type:str]
+# Tailscale Auth Key (Zero Trust mesh network)
+tailscale_auth_key: ENC[AES256_GCM,data:mfcOK5FY2TNuIGU9yb49ij9x6hkWeRqHeZ0itFvgYhx9RluKHBwXUW+W6hAxW66rJMOcXLGZK/dLr+/8W3Y=,iv:552+X3CV3y+3NQpM+FQ/DUDsdJtAj3XXlABsE2PkT3k=,tag:qQn9dsTU08zh9w3azNdtZA==,type:str]
 sops:
     age:
         - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA2N0Zna0hHUm4wUXhZM05a
-            LzZaS1FMM0NsQUtCZDhPYzVSd3ZKaUViWUIwClIvaGt3c1k3djhNcnEraWU1OHBi
-            dmtlc0xPeDRsM3cyOWtDeXZ5QktvNWcKLS0tIHY2bHRvdUZMVWhlb1ZsVzVPSCtp
-            K213WnlzdVp2c3BWV3JBd0NNUitTVTAK5o22+eHY4Afdm87+wyhrx5JA7fy95dya
-            HbIH0Mby8QBlSg7UpxrhmHDkCc6sneVkUVjZ3gvwM5SVw0cMLpBd1w==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB3QXgrNi9sZUtieU9JNFRB
+            WHRQZGcxakJMS0dyMzd5WUJRZnV3S2hOd1M4CnZGcmdVUDg4cy9KUFdqZE1ydXlI
+            L2ZEWDIxaTgrTHlJUytoUTJsSktJNEEKLS0tIElGbWlWUExUajVNajlmNHpZWUdv
+            d09OSWFwQS9ENVEweEJLeGkrYnNUUVEKEQU+Fr7rIkapPd8vrWWZ9GFo4adTbxij
+            q1fSdQdxxc9ogqzko9hZt/N4VLS90vgXxWAqzzjpTiF5bOd8np9s+g==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-02-04T19:58:56Z"
-    mac: ENC[AES256_GCM,data:E25+bmWbxQ2D8urfxEuz5vNiPkLcwvZGBHdDw1746yYRA8GC/JnyOVB8/42L6pGMLZo4meYA/09Zj6/lJPKA9w3vnSwmctWGwhCKZPaPHAE3mGyAV7/uNBovGwRaa3A63ApLvZ6HaoAT+w7WLTOZ5gfrz8sAPWAOlPaNld7wkhU=,iv:9oXyY+bb+57PRcejbV1BC0haiNOjtthJMEQL9bWOnwc=,tag:i+PTffrUH/mwwu5LQQKwYQ==,type:str]
-    encrypted_regex: ^(ssh_public_key|k3s_token)$
+    lastmodified: "2026-02-14T16:07:02Z"
+    mac: ENC[AES256_GCM,data:Pvn78kVuWTNb4XGkSYAOtFeGgE5L8gMRI7eHjKaEmzMljB7mUL4qhgsg0VMEHJQcyBc/xoca42s+yrQA3gHJa7JtQT/pZAhr4/qwcvEL4yZ27qSajaIt+eFIMrTKXMIHF8NY/vzJU13yDaHMEHZgHTrHiDOfh1yL/2u2yzMeT7I=,iv:BLccFgM5ANta82N6pIkNfwijeh9YuTX06MUFIxSgibU=,tag:9YDi5g1VTxHPOutd5QqtMg==,type:str]
+    encrypted_regex: ^(ssh_public_key|k3s_token|tailscale_auth_key)$
     version: 3.11.0

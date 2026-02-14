@@ -343,3 +343,85 @@ This plan outlines the phases and tasks required to provision the cloud infrastr
     3. Test an indexer known to be behind Cloudflare.
   - **Action:** Create `k8s/apps/***/README.md` to document the service and its purpose.
   - **Action:** Update the *** documentation to explain the *** integration and the API key secret setup.
+
+## Phase 11: AWS Zero Trust Infrastructure & Hybrid Cluster Migration
+
+**Objective:** Replace OCI Free Tier with AWS EC2 Spot instances, implement Zero Trust networking, and form a 4-node hybrid k3s cluster.
+
+**Status:** ✅ INFRASTRUCTURE LIVE | ⬜ APP DEPLOYMENT PENDING
+
+### 11.1: AWS Terraform Infrastructure
+- [x] Task: Create AWS Terraform modules (VPC, SG, EC2 Spot, IAM for SSM)
+  - **Status:** ✅ COMPLETED (2026-02-14)
+  - **Resources:** 10 managed (2x t3.small Spot, VPC, SG, IAM role+profile+policy, key pair)
+  - **Cost:** ~$17.65/month (Spot instances in us-east-1)
+  - **Instance IDs:** Server `i-07f1cf6f322c8aa3c`, Agent `i-09fc03e3c605075ac`
+- [x] Task: Implement Zero Trust Security Group (no public ingress)
+  - **Status:** ✅ COMPLETED
+  - **Architecture:** Removed ALL public ingress (no SSH port 22, no k3s API port 6443)
+  - **Access:** Tailscale WireGuard mesh + AWS SSM Session Manager (IAM-authenticated)
+- [x] Task: Integrate Tailscale in cloud-init (`user_data.tftpl`)
+  - **Status:** ✅ COMPLETED
+  - **Features:** Auto-join tailnet, flannel over tailscale0, Tailscale IP as advertise-address
+  - **Auth Key:** SOPS-encrypted in `terraform.tfvars.sops.yaml`, tag `Terraform-CloudVMs`, expires 2026-05-02
+- [x] Task: Form 4-node hybrid k3s cluster
+  - **Status:** ✅ OPERATIONAL (all nodes Ready, k3s v1.34.3+k3s1)
+  - **Nodes:**
+    | Node | Role | Tailscale IP | Arch | RAM |
+    |------|------|-------------|------|-----|
+    | k3s-server-1 | control-plane | 100.109.54.24 | x86_64 | 2 GB |
+    | k3s-agent-2 | worker | 100.105.239.84 | x86_64 | 2 GB |
+    | rasp-pi-03 | worker | 100.81.122.3 | arm64 | 899 MiB |
+    | rasp-pi-04 | worker | 100.82.53.81 | arm64 | 7.6 GiB |
+- [x] Task: Security hardening review
+  - **Status:** ✅ APPROVED WITH CHANGES (both applied)
+  - **M1 Fixed:** `--write-kubeconfig-mode` 644 → 0600 (restrict kubeconfig to root only)
+  - **M2 Fixed:** EBS validation minimum 20GB → 30GB (AL2023 requirement)
+  - **Bonus Fix:** `--node-external-ip` → `--advertise-address` with Tailscale IP (matches live fix)
+- [x] Task: Git commit on feature branch
+  - **Status:** ✅ COMMITTED
+  - **Branch:** `feat/aws-zero-trust-k3s`
+  - **Commit:** `3aaace1` — all pre-commit hooks passed (TruffleHog, YAML lint, etc.)
+
+### 11.2: Application Migration to New Cluster (PENDING)
+
+**Context:** All 18 apps in `k8s/apps/` were designed for the old OCI cluster (k3s-node-0, k3s-node-1). They need updating for the new AWS + RPi hybrid nodes.
+
+**Critical Blockers:**
+
+- [ ] Task: Install Tailscale Operator via Helm
+  - Fix `k8s/system/tailscale-operator/values.yaml` (replace REQUIRED placeholders with real OAuth creds)
+  - Fix ProxyClass manifests: update `kubernetes.io/hostname` from dead `k3s-node-0` to real node names
+- [ ] Task: Fix nodeSelectors across all apps
+  - `k3s-node-0` → `k3s-server-1` (Grafana, Prometheus, Blackbox, kube-state-metrics)
+  - `k3s-node-1` → `k3s-agent-2` (Loki, SearXNG)
+  - `rasp-pi-03` → OK (AdGuard)
+  - `rasp-pi-04` → OK (***, ***, ***, ***, ***)
+- [ ] Task: Fix *** arch mismatch
+  - `ghcr.io/***/***:v3.4.2` is amd64-only
+  - Currently pinned to rasp-pi-04 (arm64) — will crash
+  - Move nodeSelector to `k3s-server-1` or `k3s-agent-2`
+- [ ] Task: Create/update secrets
+  - `tailscale-auth` in namespaces: adguard, grafana, prometheus, loki (replace REPLACE-WITH-* placeholders)
+  - `***-secret` for *** VPN (WireGuard creds, not in git)
+  - `***-secret`, `searxng-secret`
+- [ ] Task: Verify storage paths exist on Pis
+  - rasp-pi-03: `/mnt/ssd/k3s-storage/adguard`
+  - rasp-pi-04: `/mnt/storage/data`, `/mnt/storage/***/media`
+- [ ] Task: Reduce SearXNG memory limit from 4Gi to ~512Mi
+- [ ] Task: Deploy apps in phases (per `k8s/apps/DEPLOYMENT.md`)
+  - Phase 0: Tailscale Operator + ProxyClasses + secrets
+  - Phase 1: kube-state-metrics, node-exporter, blackbox
+  - Phase 2: Loki
+  - Phase 3: otel-collector
+  - Phase 4: Prometheus, Grafana
+  - Phase 5: AdGuard, GoLink, SearXNG
+  - Phase 6: ***, ***, ***, ***, ***, ***, ***
+
+**Node Resource Budget:**
+| Node | Total RAM | Apps Budget | Headroom |
+|------|-----------|-------------|----------|
+| k3s-server-1 | 2 GB | ~588 MiB | ~1.4 GB (includes k3s overhead) |
+| k3s-agent-2 | 2 GB | ~1,474 MiB | ~526 MiB (tight!) |
+| rasp-pi-03 | 899 MiB | ~230 MiB | ~669 MiB |
+| rasp-pi-04 | 7.6 GiB | ~1,988 MiB | ~5.6 GiB |

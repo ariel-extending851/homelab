@@ -45,37 +45,17 @@ variable "ssh_key_name" {
   default     = "hl-homelab-key"
 }
 
-variable "ssh_allowed_cidr" {
-  description = "CIDR blocks allowed to SSH into instances (REQUIRED - do not use 0.0.0.0/0 in production)"
-  type        = list(string)
-  # No default - must be explicitly set
-
-  validation {
-    condition     = length(var.ssh_allowed_cidr) > 0
-    error_message = "At least one CIDR block must be specified for ssh_allowed_cidr."
-  }
-}
-
-variable "k3s_api_allowed_cidr" {
-  description = "CIDR blocks allowed to access k3s API server (REQUIRED - do not use 0.0.0.0/0 in production)"
-  type        = list(string)
-  # No default - must be explicitly set
-
-  validation {
-    condition     = length(var.k3s_api_allowed_cidr) > 0
-    error_message = "At least one CIDR block must be specified for k3s_api_allowed_cidr."
-  }
-
-  validation {
-    condition     = !contains(var.k3s_api_allowed_cidr, "0.0.0.0/0")
-    error_message = "k3s_api_allowed_cidr must not contain 0.0.0.0/0 - use specific CIDR blocks for security."
-  }
-}
+# ==============================================================================
+# NOTE: SSH and k3s API CIDR variables removed - Zero Trust architecture
+# All access is through Tailscale mesh (WireGuard encrypted).
+# Emergency access via AWS SSM Session Manager (IAM-authenticated).
+# No public ports are exposed in the security group.
+# ==============================================================================
 
 variable "k3s_version" {
   description = "k3s version to install (e.g., v1.28.5+k3s1)"
   type        = string
-  default     = "v1.28.5+k3s1"
+  default     = "v1.34.3+k3s1"
 
   validation {
     condition     = can(regex("^v[0-9]+\\.[0-9]+\\.[0-9]+\\+k3s[0-9]+$", var.k3s_version))

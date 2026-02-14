@@ -90,11 +90,12 @@ resource "aws_launch_template" "k3s_server" {
   vpc_security_group_ids = [var.security_group_id]
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {
-    k3s_token   = var.k3s_token
-    k3s_version = var.k3s_version
-    node_index  = 1
-    node_type   = "server"
-    server_ip   = "" # Not used for server node
+    k3s_token          = var.k3s_token
+    k3s_version        = var.k3s_version
+    node_index         = 1
+    node_type          = "server"
+    server_ip          = "" # Not used for server node
+    tailscale_auth_key = var.tailscale_auth_key
   }))
 
   block_device_mappings {
@@ -150,11 +151,12 @@ resource "aws_launch_template" "k3s_agent" {
 
   # Placeholder user_data - will be updated after server IP is known
   user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {
-    k3s_token   = var.k3s_token
-    k3s_version = var.k3s_version
-    node_index  = 2
-    node_type   = "agent"
-    server_ip   = "SERVER_IP_PLACEHOLDER" # Will be updated via launch template version
+    k3s_token          = var.k3s_token
+    k3s_version        = var.k3s_version
+    node_index         = 2
+    node_type          = "agent"
+    server_ip          = "SERVER_IP_PLACEHOLDER" # Will be updated via launch template version
+    tailscale_auth_key = var.tailscale_auth_key
   }))
 
   block_device_mappings {
@@ -253,11 +255,12 @@ resource "aws_launch_template" "k3s_agent_final" {
   vpc_security_group_ids = [var.security_group_id]
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {
-    k3s_token   = var.k3s_token
-    k3s_version = var.k3s_version
-    node_index  = 2
-    node_type   = "agent"
-    server_ip   = length(data.aws_instances.k3s_server.private_ips) > 0 ? data.aws_instances.k3s_server.private_ips[0] : ""
+    k3s_token          = var.k3s_token
+    k3s_version        = var.k3s_version
+    node_index         = 2
+    node_type          = "agent"
+    server_ip          = length(data.aws_instances.k3s_server.private_ips) > 0 ? data.aws_instances.k3s_server.private_ips[0] : ""
+    tailscale_auth_key = var.tailscale_auth_key
   }))
 
   block_device_mappings {

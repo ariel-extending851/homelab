@@ -39,8 +39,9 @@ locals {
   secrets = var.localstack_test == "yes" ? {
     # Use a properly formatted SSH key for LocalStack testing
     # This is a mock key - DO NOT USE IN PRODUCTION
-    ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0Z8p0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0 localstack-test"
-    k3s_token      = "mock-k3s-token-for-localstack-testing-only-do-not-use-in-production"
+    ssh_public_key     = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC0Z8p0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0Z0 localstack-test"
+    k3s_token          = "mock-k3s-token-for-localstack-testing-only-do-not-use-in-production"
+    tailscale_auth_key = "tskey-auth-mock-localstack-testing-only"
   } : data.sops_file.secrets.data
 }
 
@@ -66,9 +67,7 @@ provider "aws" {
 # ==============================================================================
 module "network" {
   source = "./modules/network"
-
-  ssh_allowed_cidr     = var.ssh_allowed_cidr
-  k3s_api_allowed_cidr = var.k3s_api_allowed_cidr
+  # Zero Trust: No CIDR variables needed - all access via Tailscale mesh
 }
 
 # ==============================================================================
@@ -85,6 +84,7 @@ module "k3s_cluster" {
   security_group_id = module.network.security_group_id
   localstack_test   = var.localstack_test
 
-  k3s_token   = local.secrets["k3s_token"]
-  k3s_version = var.k3s_version
+  k3s_token          = local.secrets["k3s_token"]
+  k3s_version        = var.k3s_version
+  tailscale_auth_key = local.secrets["tailscale_auth_key"]
 }
