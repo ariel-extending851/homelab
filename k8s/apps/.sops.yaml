@@ -1,0 +1,13 @@
+# SOPS Configuration for ArgoCD CMP Plugin Discovery
+# This file triggers the CMP sidecar plugin in argocd-repo-server.
+# Without it, ArgoCD falls back to standard Kustomize (no SOPS decryption).
+#
+# The rules here MUST match the root .sops.yaml to ensure consistency.
+# See: https://github.com/getsops/sops#using-sopsyaml-conf-to-select-kms-pgp-for-new-files
+creation_rules:
+  - path_regex: .*secret.*\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+  - path_regex: .*\.sops\.yaml$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja

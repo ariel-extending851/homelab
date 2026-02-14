@@ -18,9 +18,10 @@ metadata:
 spec:
   statefulSet:
     pod:
-      # Pin to same node as default ProxyClass for consistency
+      # No hostname pin — let K8s scheduler distribute across all nodes
+      # This prevents memory pressure on k3s-server-1 (2GB node)
       nodeSelector:
-        kubernetes.io/hostname: k3s-server-1
+        kubernetes.io/os: linux
 
       # Tailscale container configuration
       tailscaleContainer:

@@ -1,3 +1,14 @@
+# Strategic merge patch for argocd-repo-server
+# Adds SOPS+Age decryption support via CMP sidecar (ArgoCD v2.6+/v3.x)
+#
+# Architecture:
+#   init-container (install-sops) → downloads SOPS binary (arch-aware)
+#   sidecar (cmp-sops) → runs argocd-cmp-server with SOPS plugin
+#   repo-server → mounts Age key + SOPS binary for inline decryption
+#
+# Prerequisites:
+#   - Secret 'sops-age-key' with Age private key in namespace 'argocd'
+#   - ConfigMap 'cmp-plugin' with plugin.yaml in namespace 'argocd'
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,17 +17,30 @@ metadata:
 spec:
   template:
     spec:
-      # Add init container to install SOPS and Age
+      # Pin to x86_64 nodes — SOPS binary and ArgoCD images are multi-arch
+      # but keeping on AWS nodes avoids slow ARM image pulls on Pis
+      nodeSelector:
+        kubernetes.io/arch: amd64
+
+      # Init container: install SOPS binary (architecture-aware)
       initContainers:
         - name: install-sops
-          image: alpine:3.18
+          image: alpine:3.21
           command:
             - sh
             - -c
             - |
-              apk add --no-cache curl age
-              curl -Lo /custom-tools/sops https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+              apk add --no-cache curl
+              ARCH=$(uname -m)
+              case $ARCH in
+                x86_64)  SOPS_ARCH="linux.amd64" ;;
+                aarch64) SOPS_ARCH="linux.arm64" ;;
+                *)       echo "ERROR: Unsupported arch $ARCH"; exit 1 ;;
+              esac
+              echo "Downloading SOPS for $SOPS_ARCH..."
+              curl -Lo /custom-tools/sops "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.$SOPS_ARCH"
               chmod +x /custom-tools/sops
+              /custom-tools/sops --version
           volumeMounts:
             - name: custom-tools
               mountPath: /custom-tools
@@ -25,38 +49,72 @@ spec:
               cpu: 10m
               memory: 20Mi
             limits:
-              cpu: 50m
-              memory: 50Mi
+              cpu: 100m
+              memory: 64Mi
 
-      # Main repo-server container
       containers:
+        # Main repo-server container — mount Age key + SOPS for inline use
         - name: argocd-repo-server
           env:
-            # Set SOPS_AGE_KEY_FILE to point to the Age key
             - name: SOPS_AGE_KEY_FILE
               value: /helm-sops-tools/age-key/keys.txt
-            # Enable SOPS decryption via environment variable
-            - name: HELM_PLUGINS
-              value: /helm-sops-tools/helm-plugins/
-            - name: KUSTOMIZE_PLUGIN_HOME
-              value: /helm-sops-tools/kustomize-plugins/
-
           volumeMounts:
-            # Mount the Age private key
             - name: sops-age-key
               mountPath: /helm-sops-tools/age-key
               readOnly: true
-            # Mount custom tools (SOPS binary)
             - name: custom-tools
               mountPath: /usr/local/bin/sops
               subPath: sops
 
+        # CMP sidecar: runs argocd-cmp-server with SOPS plugin
+        # Discovers SOPS-encrypted files and decrypts before kustomize build
+        - name: cmp-sops
+          image: quay.io/argoproj/argocd:v3.3.0
+          command:
+            - /var/run/argocd/argocd-cmp-server
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+          env:
+            - name: SOPS_AGE_KEY_FILE
+              value: /helm-sops-tools/age-key/keys.txt
+          volumeMounts:
+            - name: var-files
+              mountPath: /var/run/argocd
+            - name: plugins
+              mountPath: /home/argocd/cmp-server/plugins
+            - name: cmp-plugin
+              mountPath: /home/argocd/cmp-server/config/plugin.yaml
+              subPath: plugin.yaml
+            - name: cmp-tmp
+              mountPath: /tmp
+            - name: sops-age-key
+              mountPath: /helm-sops-tools/age-key
+              readOnly: true
+            - name: custom-tools
+              mountPath: /usr/local/bin/sops
+              subPath: sops
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
       volumes:
-        # Volume for Age private key
         - name: sops-age-key
           secret:
             secretName: sops-age-key
-            defaultMode: 0400
-        # Volume for custom tools
+            # 0444: world-readable within the pod — safe because:
+            #   1. Secret is RBAC-protected (only argocd-repo-server SA can mount)
+            #   2. Pod runs runAsNonRoot (no privilege escalation)
+            #   3. K8s mounted secrets are root-owned; uid 999 (argocd) needs read access
+            defaultMode: 0444
         - name: custom-tools
+          emptyDir: {}
+        - name: cmp-plugin
+          configMap:
+            name: cmp-plugin
+        - name: cmp-tmp
           emptyDir: {}

@@ -8,7 +8,7 @@ data:
     apiVersion: argoproj.io/v1alpha1
     kind: ConfigManagementPlugin
     metadata:
-      name: argocd-vault-plugin-helm-with-args
+      name: sops-kustomize
     spec:
       allowConcurrency: true
       discover:
@@ -22,19 +22,21 @@ data:
           - bash
           - "-c"
           - |
-            # Set SOPS_AGE_KEY_FILE environment variable
+            set -euo pipefail
+
             export SOPS_AGE_KEY_FILE=/helm-sops-tools/age-key/keys.txt
 
-            # Process all YAML files in the directory
-            for file in $(find . -name '*.yaml' -o -name '*.yml'); do
-              if grep -q "sops:" "$file"; then
-                echo "Decrypting $file with SOPS..."
-                sops -d "$file" > "${file}.dec"
+            # Decrypt all SOPS-encrypted YAML files in-place before kustomize build
+            # Detection: presence of top-level 'sops:' key (SOPS envelope marker)
+            while IFS= read -r -d '' file; do
+              if grep -q '^sops:' "$file" 2>/dev/null; then
+                echo "Decrypting $file..." >&2
+                sops -d --input-type yaml --output-type yaml "$file" > "${file}.dec"
                 mv "${file}.dec" "$file"
               fi
-            done
+            done < <(find . \( -name '*.yaml' -o -name '*.yml' \) -not -name '.sops.yaml' -print0)
 
-            # Run helm template or kustomize build
+            # Render manifests via Kustomize or Helm
             if [ -f "Chart.yaml" ]; then
               helm template .
             elif [ -f "kustomization.yaml" ]; then

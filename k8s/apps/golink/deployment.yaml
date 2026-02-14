@@ -20,22 +20,15 @@ spec:
       serviceAccountName: golink
       containers:
         - name: golink
-          image: ghcr.io/tailscale/golink:main
+          # Pin to digest — GoLink has no SemVer releases, :main is rolling
+          # Last pulled: 2026-02-14
+          image: ghcr.io/tailscale/golink:main@sha256:ba5303fefc041cf9f11f960a90c3e16ca922dad8140ef43f704670f5c55f581b
           imagePullPolicy: IfNotPresent
 
-          env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: tailscale-auth-key
-                  key: authkey
-            - name: TS_HOSTNAME
-              value: "golink-backend"
-
           args:
-            - "-addr"
+            - "-dev-listen"
             - "0.0.0.0:8080"
-            - "-sqlite-path"
+            - "-sqlitedb"
             - "/data/golink.db"
 
           securityContext:

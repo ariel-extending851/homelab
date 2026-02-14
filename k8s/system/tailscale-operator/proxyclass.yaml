@@ -5,5 +5,8 @@ metadata:
 spec:
   statefulSet:
     pod:
+      # No nodeSelector — let K8s scheduler distribute proxies across all nodes
+      # Tailscale mesh works over WireGuard regardless of node placement
+      # This prevents memory pressure on k3s-server-1 (2GB node)
       nodeSelector:
-        kubernetes.io/hostname: k3s-server-1
+        kubernetes.io/os: linux
