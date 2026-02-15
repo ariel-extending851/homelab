@@ -1,0 +1,15 @@
+---
+# Longhorn System Namespace
+# Naming convention: hl- prefix for homelab resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hl-longhorn
+  labels:
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/part-of: hl-homelab
+    # Prevent accidental deletion
+    argocd.argoproj.io/instance: longhorn
+  annotations:
+    description: "Longhorn distributed block storage system"

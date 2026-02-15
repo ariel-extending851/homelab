@@ -1,0 +1,34 @@
+---
+# Custom StorageClass for Longhorn
+# This will be the primary storage class for stateful workloads
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hl-longhorn
+  annotations:
+    # Mark as default after verification (change to 'true' later)
+    storageclass.kubernetes.io/is-default-class: "false"
+    description: "Longhorn distributed block storage for homelab"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+parameters:
+  # Number of replicas - set to 2 for balance between reliability and resources
+  numberOfReplicas: "2"
+  # Stale replica timeout
+  staleReplicaTimeout: "2880"
+  # Volume backup policy
+  fromBackup: ""
+  # Filesystem type
+  fsType: ext4
+  # Data locality - best-effort keeps data close to workload
+  dataLocality: best-effort
+  # Unmap mark snap chain removed (for SSD trim)
+  unmapMarkSnapChainRemoved: ignored
+  # Disable disk selector (use all available disks)
+  diskSelector: ""
+  # Disable node selector initially
+  nodeSelector: ""
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+mountOptions:
+  - noatime

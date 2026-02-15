@@ -1,0 +1,49 @@
+---
+# ArgoCD Application for Longhorn Storage
+# This deploys Longhorn distributed block storage to the cluster
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hl-longhorn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: longhorn
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/part-of: hl-homelab
+    # Auto-sync disabled initially for safety - enable after verification
+    argocd.argoproj.io/auto-sync: "false"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ariel99gf/homelab.git
+    targetRevision: develop
+    path: k8s/system/longhorn
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hl-longhorn
+  syncPolicy:
+    automated:
+      prune: false  # Don't auto-delete resources
+      selfHeal: false  # Don't auto-heal during initial deployment
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    # Ignore replica differences for deployments
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

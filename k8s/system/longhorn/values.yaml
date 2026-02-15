@@ -1,0 +1,144 @@
+# Longhorn Distributed Storage Configuration
+# https://longhorn.io/docs/1.6.0/deploy/install/install-with-helm/
+
+# Namespace configuration
+namespaceOverride: hl-longhorn
+
+# Enable Longhorn UI
+enableLonghornUI: true
+
+# Default settings for volumes
+defaultSettings:
+  # Number of replicas (set to 2 due to memory constraints on AWS nodes)
+  # We have 3 eligible nodes: k3s-server-1, k3s-agent-2, rasp-pi-04
+  # Using 2 replicas to balance reliability vs resource usage
+  defaultReplicaCount: 2
+
+  # Storage over-provisioning percentage
+  storageOverProvisioningPercentage: 200
+
+  # Minimal available storage percentage
+  minimalAvailablePercentage: 25
+
+  # Disable auto-salvage for better control
+  autoSalvage: false
+
+  # Concurrent replica rebuilding limit (reduce for low-resource nodes)
+  concurrentReplicaRebuildPerNodeLimit: 1
+
+  # Disable upgrade checker for air-gapped/security
+  upgradeChecker: false
+
+  # Priority class for critical pods
+  priorityClass: system-cluster-critical
+
+  # Only create default disks on nodes with specific labels
+  # This excludes RPi 3 (rasp-pi-03) which has insufficient RAM (899MB)
+  # Nodes must be labeled with: hl-storage-capable=true
+  createDefaultDiskLabeledNodes: true
+
+# Longhorn Manager component
+longhornManager:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+  # Note: We will use node labels to control where Longhorn runs
+  # Nodes must be labeled with: hl-storage-capable=true
+
+# Longhorn Driver component
+longhornDriver:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Longhorn UI
+longhornUI:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Instance Manager - Critical for volume operations
+# Run only on capable nodes (AWS + RPi 4)
+instanceManager:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+
+# CSI Driver components (low resources)
+csi:
+  attacher:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  provisioner:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  resizer:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  snapshotter:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# Persistence for Longhorn itself
+persistence:
+  defaultClass: false  # Don't make default yet, we'll do it manually after testing
+  defaultClassReplicaCount: 2
+
+# Backup target (disabled for now, can enable later)
+backupTarget: ""
+backupTargetCredentialSecret: ""
+
+# Recurring job for automated backups (disabled initially)
+defaultRecurringJob:
+  enable: false
+
+# Network policies
+networkPolicies:
+  enabled: false  # Enable if needed for security
+
+# Observability
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: 60s
+
+# OpenTelemetry (disabled)
+opentelemetry:
+  enabled: false
