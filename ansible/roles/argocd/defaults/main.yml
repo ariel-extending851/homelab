@@ -1,0 +1,61 @@
+---
+# ArgoCD Installation Role - Default Variables
+
+# ArgoCD version
+argocd_version: v2.13.2  # Latest stable as of Feb 2024
+
+# Installation method: manifest or helm
+argocd_install_method: manifest
+
+# Namespace
+argocd_namespace: argocd
+
+# ArgoCD manifest URL
+argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+
+# SOPS integration
+sops_enabled: true
+sops_age_public_key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+# Age private key location (on laptop/control machine)
+sops_age_private_key_path: "{{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt"
+
+# Git repository configuration
+git_repo_url: "git@github.com:ariel99gf/homelab.git"
+git_repo_branch: develop
+git_repo_path: k8s/apps
+
+# SSH key for Git repository (deploy key)
+git_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/homelab-deploy-key"
+
+# ArgoCD admin password (will be auto-generated if not provided)
+argocd_admin_password: ""  # Leave empty to auto-generate
+
+# Server configuration
+argocd_server_replicas: 1
+argocd_repo_server_replicas: 1
+argocd_application_controller_replicas: 1
+
+# Resource limits (for RPi-friendly deployment)
+argocd_resource_limits:
+  server:
+    memory: 512Mi
+    cpu: 500m
+  repo_server:
+    memory: 512Mi
+    cpu: 500m
+  application_controller:
+    memory: 1Gi
+    cpu: 1000m
+
+# Wait timeouts
+argocd_install_wait_timeout: 600  # 10 minutes
+argocd_ready_wait_timeout: 300    # 5 minutes
+
+# Apps-root configuration
+apps_root_enabled: true
+apps_root_name: homelab-apps-root
+apps_root_manifest_path: k8s/gitops/apps-root.yaml
+
+# Prune on deletion
+argocd_prune_on_deletion: true

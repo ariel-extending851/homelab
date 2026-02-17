@@ -1,6 +1,5 @@
 # AWS Homelab - Quick Start (5 Minutes)
 
-**Cost:** ~$17.65 USD/month | **Infrastructure:** 2× t3.small spot + k3s + CloudNativePG
 **Architecture:** Modular Terraform (network + compute modules)
 
 ---
@@ -177,7 +176,6 @@ export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 ```
 
-### ✅ Verify CloudNativePG Operator
 
 ```bash
 kubectl get pods -n cnpg-system

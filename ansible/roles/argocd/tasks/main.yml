@@ -1,0 +1,59 @@
+---
+# ArgoCD Installation and Configuration
+# Purpose: Install ArgoCD, configure SOPS, and bootstrap GitOps
+
+- name: Display ArgoCD installation banner
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      ArgoCD Installation
+      =========================================
+      Version: {{ argocd_version }}
+      Namespace: {{ argocd_namespace }}
+      SOPS: {{ 'Enabled' if sops_enabled else 'Disabled' }}
+      Git Repo: {{ git_repo_url }}
+      =========================================
+
+- name: Include pre-flight checks
+  ansible.builtin.include_tasks: preflight.yml
+  tags: ['preflight']
+
+- name: Include installation tasks
+  ansible.builtin.include_tasks: install.yml
+  tags: ['install']
+
+- name: Include SOPS configuration
+  ansible.builtin.include_tasks: configure_sops.yml
+  when: sops_enabled | bool
+  tags: ['sops']
+
+- name: Include repository configuration
+  ansible.builtin.include_tasks: configure_repo.yml
+  tags: ['repo']
+
+- name: Include verification tasks
+  ansible.builtin.include_tasks: verify.yml
+  tags: ['verify']
+
+- name: Display ArgoCD installation summary
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      ArgoCD Installation Complete!
+      =========================================
+
+      Access ArgoCD:
+        kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
+
+      Get admin password:
+        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+      ArgoCD CLI login:
+        argocd login localhost:8080 --username admin --password <password>
+
+      Next steps:
+        1. Bootstrap apps: Apply apps-root.yaml
+        2. Monitor sync: kubectl get applications -n argocd
+        3. Access UI: https://localhost:8080
+
+      =========================================

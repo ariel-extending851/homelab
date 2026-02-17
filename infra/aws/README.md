@@ -1,6 +1,6 @@
 # AWS Infrastructure
 
-Production-ready Terraform configuration for k3s cluster on AWS EC2 Spot Instances with CloudNativePG.
+Production-ready Terraform configuration for k3s cluster on AWS EC2 Spot Instances.
 
 **Cost:** ~$17.65 USD/month | **Structure:** Modular (compute + network)
 
@@ -104,7 +104,6 @@ terraform apply
 
 - **2× EC2 Spot Instances** (t3.small) - Cost optimized
 - **k3s** - Lightweight Kubernetes
-- **CloudNativePG** - PostgreSQL operator
 - **Default VPC** - No NAT Gateway costs
 - **SOPS** - Encrypted secrets management
 

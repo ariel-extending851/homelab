@@ -23,7 +23,6 @@ This guide explains how to test your AWS infrastructure using LocalStack for str
 |-----------|--------|-------------|
 | **EC2 Spot Instances** | Not supported in LocalStack | Use AWS Free Tier |
 | **k3s Installation** | No user data execution | Use AWS Free Tier |
-| **CloudNativePG Deployment** | No real EC2 instances | Use AWS Free Tier |
 | **Network Functionality** | Security groups not enforced | Use AWS Free Tier |
 | **IAM Role Assumption** | Limited IAM support | Use AWS Free Tier |
 
@@ -422,7 +421,6 @@ LocalStack does NOT execute user data scripts:
 
 ❌ **Will NOT happen:**
 - k3s installation
-- CloudNativePG operator deployment
 - System updates
 - Kernel module configuration
 

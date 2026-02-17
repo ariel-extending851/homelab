@@ -15,10 +15,8 @@ spec:
       labels:
         app: blackbox-exporter
     spec:
-      # Schedule on Oracle Cloud control plane (save Raspberry Pi resources)
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-
+      # No nodeAffinity — let the scheduler place this on any available node.
+      # Blackbox exporter is stateless and has no hardware dependencies.
       containers:
         - name: blackbox-exporter
           image: quay.io/prometheus/blackbox-exporter:v0.24.0

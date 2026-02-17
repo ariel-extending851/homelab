@@ -7,7 +7,10 @@
     dnf install -y python3 python3-pip
   args:
     executable: /bin/bash
-  when: ansible_os_family == "RedHat"
+  # default('') produces a silent skip on systems where ansible_os_family is undefined.
+  # This is intentional: the raw module runs before facts are gathered, so ansible_os_family
+  # may not be set on the first connection. On non-RedHat systems the skip is correct behaviour.
+  when: ansible_os_family | default('') == "RedHat"
   changed_when: false
   become: true
 

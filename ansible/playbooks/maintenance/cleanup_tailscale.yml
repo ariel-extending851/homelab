@@ -1,0 +1,63 @@
+---
+# Playbook to remove offline Tailscale devices for AWS k3s nodes
+- name: Clean up stale Tailscale devices
+  hosts: localhost
+  gather_facts: no
+  connection: local
+
+  vars:
+    offline_threshold_minutes: 10
+
+  tasks:
+    - name: "Display playbook information"
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Tailscale AWS k3s Cleanup
+          =========================================
+          This playbook will:
+            1. Fetch all Tailscale devices via API.
+            2. Identify devices with 'k3s-server' or 'k3s-agent' in their hostname.
+            3. Check if they have been offline for more than {{ offline_threshold_minutes }} minutes.
+            4. Remove any devices that are offline.
+
+    - name: "Get Tailscale devices via API"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/tailnet/{{ lookup('env', 'TAILSCALE_TAILNET') }}/devices"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ lookup('env', 'TAILSCALE_API_KEY') }}"
+      register: tailscale_devices_response
+      failed_when: tailscale_devices_response.status != 200
+
+    - name: "Filter for offline k3s devices"
+      ansible.builtin.set_fact:
+        devices_to_delete: "{{ tailscale_devices_response.json.devices | selectattr('hostname', 'match', '.*k3s-(server|agent).*') | selectattr('lastSeen', 'defined') | selectattr('lastSeen', '<', (ansible_date_time.iso8601 | to_datetime) - (offline_threshold_minutes * 60)) | list }}"
+
+    - name: "Display devices to be deleted"
+      ansible.builtin.debug:
+        msg: "Found {{ devices_to_delete | length }} offline device(s) to delete: {{ devices_to_delete | map(attribute='hostname') | list }}"
+      when: (devices_to_delete | length) > 0
+
+    - name: "Remove offline devices"
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ lookup('env', 'TAILSCALE_API_KEY') }}"
+        status_code: [200, 204]
+      loop: "{{ devices_to_delete }}"
+      register: delete_results
+      when: (devices_to_delete | length) > 0
+      loop_control:
+        label: "{{ item.hostname }}"
+
+    - name: "Final Summary"
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Cleanup Complete
+          =========================================
+          - Found {{ tailscale_devices_response.json.devices | length }} total devices.
+          - Deleted {{ delete_results.results | length }} offline k3s device(s).
+          - Kept {{ (tailscale_devices_response.json.devices | length) - (delete_results.results | length) }} device(s).

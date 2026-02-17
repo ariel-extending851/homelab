@@ -1,0 +1,105 @@
+---
+# Configure Git repository credentials for ArgoCD
+
+- name: Display repository configuration banner
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      Configuring Git Repository
+      =========================================
+      Repository: {{ git_repo_url }}
+      Branch: {{ git_repo_branch }}
+      Path: {{ git_repo_path }}
+      =========================================
+
+- name: Check if SSH deploy key exists
+  ansible.builtin.stat:
+    path: "{{ git_ssh_private_key_path }}"
+  register: ssh_key_file
+  delegate_to: localhost
+  become: false
+  when: git_repo_url is match('git@.*')
+
+- name: Read SSH private key
+  ansible.builtin.slurp:
+    src: "{{ git_ssh_private_key_path }}"
+  register: ssh_private_key_content
+  delegate_to: localhost
+  become: false
+  when:
+    - git_repo_url is match('git@.*')
+    - ssh_key_file.stat.exists
+  no_log: true
+
+- name: Write ArgoCD repository secret to temp file
+  ansible.builtin.copy:
+    dest: /tmp/argocd-repo-secret.yaml
+    mode: '0600'
+    content: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: homelab-repo-secret
+        namespace: {{ argocd_namespace }}
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ git_repo_url }}"
+        sshPrivateKey: |
+      {{ ssh_private_key_content.content | b64decode | indent(4, True) }}
+        insecure: "false"
+        enableLfs: "false"
+  when:
+    - git_repo_url is match('git@.*')
+    - ssh_key_file.stat.exists
+  no_log: true
+
+- name: Apply ArgoCD repository secret for SSH
+  ansible.builtin.command: kubectl apply -f /tmp/argocd-repo-secret.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: repo_secret_apply
+  changed_when: "'created' in repo_secret_apply.stdout or 'configured' in repo_secret_apply.stdout"
+  when:
+    - git_repo_url is match('git@.*')
+    - ssh_key_file.stat.exists
+  no_log: true
+
+- name: Remove temp repo secret file
+  ansible.builtin.file:
+    path: /tmp/argocd-repo-secret.yaml
+    state: absent
+  when:
+    - git_repo_url is match('git@.*')
+    - ssh_key_file.stat.exists
+
+- name: Display repository configuration (SSH)
+  ansible.builtin.debug:
+    msg: |
+      ✓ SSH deploy key configured
+      ✓ Repository: {{ git_repo_url }}
+      ArgoCD can now clone private repositories
+  when: git_repo_url is match('git@.*')
+
+- name: Display repository configuration (HTTPS - no auth needed)
+  ansible.builtin.debug:
+    msg: |
+      ⚠ Public repository detected (HTTPS)
+      No authentication configured
+      Repository: {{ git_repo_url }}
+  when: not (git_repo_url is match('git@.*'))
+
+- name: Verify ArgoCD can access repository
+  ansible.builtin.command: |
+    kubectl exec -n {{ argocd_namespace }} deployment/argocd-server -- \
+      argocd repo list --output json
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_repos
+  changed_when: false
+  failed_when: false
+
+- name: Display configured repositories
+  ansible.builtin.debug:
+    msg: "{{ argocd_repos.stdout | from_json if argocd_repos.rc == 0 else 'Unable to list repositories (ArgoCD CLI may not be ready)' }}"
+  when: argocd_repos.stdout | length > 0

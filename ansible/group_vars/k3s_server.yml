@@ -1,0 +1,40 @@
+---
+# k3s Server (Control Plane) Configuration
+
+# k3s server role
+k3s_control_node: true
+
+# ArgoCD configuration
+argocd_enabled: true
+argocd_version: v2.13.2
+argocd_namespace: argocd
+
+# SOPS configuration
+sops_enabled: true
+sops_age_public_key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+# Git repository for ArgoCD
+git_repo_url: "git@github.com:ariel99gf/homelab.git"
+git_repo_branch: develop
+git_repo_path: k8s/apps
+
+# SSH deploy key (create this in your GitHub repo settings)
+# Generate with: ssh-keygen -t ed25519 -f ~/.ssh/homelab-deploy-key -C "argocd@homelab"
+git_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/homelab-deploy-key"
+
+# ArgoCD apps-root configuration
+apps_root_enabled: true
+apps_root_name: homelab-apps-root
+apps_root_manifest_path: k8s/gitops/apps-root.yaml
+
+# Resource limits for ArgoCD (control plane specific)
+argocd_resource_limits:
+  server:
+    memory: 512Mi
+    cpu: 500m
+  repo_server:
+    memory: 512Mi
+    cpu: 500m
+  application_controller:
+    memory: 1Gi
+    cpu: 1000m

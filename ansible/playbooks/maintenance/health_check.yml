@@ -1,0 +1,108 @@
+---
+# Health Check Playbook
+# Purpose: Verify cluster health and resource status
+#
+# Usage:
+#   ansible-playbook -i inventory/production.yml playbooks/maintenance/health_check.yml
+
+- name: Cluster Health Check
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Check system uptime
+      ansible.builtin.command: uptime
+      register: uptime_result
+      changed_when: false
+
+    - name: Check memory usage
+      ansible.builtin.command: free -h
+      register: memory_result
+      changed_when: false
+
+    - name: Check disk usage
+      ansible.builtin.command: df -h /
+      register: disk_result
+      changed_when: false
+
+    - name: Check swap status
+      ansible.builtin.command: swapon -s
+      register: swap_result
+      failed_when: false
+      changed_when: false
+
+    - name: Display node health
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Health Check: {{ inventory_hostname }}
+          =========================================
+
+          Uptime:
+          {{ uptime_result.stdout }}
+
+          Memory:
+          {{ memory_result.stdout }}
+
+          Disk:
+          {{ disk_result.stdout }}
+
+          Swap:
+          {{ swap_result.stdout if swap_result.rc == 0 else 'No swap configured' }}
+          =========================================
+
+- name: Kubernetes Health Check
+  hosts: k3s_server
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Check k3s service status
+      ansible.builtin.systemd:
+        name: k3s
+        state: started
+      register: k3s_service
+      check_mode: yes
+
+    - name: Get node status
+      ansible.builtin.command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: nodes_result
+      changed_when: false
+
+    - name: Get pod status
+      ansible.builtin.command: kubectl get pods -A -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: pods_result
+      changed_when: false
+
+    - name: Check for unhealthy pods
+      ansible.builtin.shell: |
+        kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: unhealthy_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Display Kubernetes health
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Kubernetes Cluster Health
+          =========================================
+
+          Nodes:
+          {{ nodes_result.stdout }}
+
+          {% if unhealthy_pods.stdout %}
+          ⚠️  Unhealthy Pods Detected:
+          {{ unhealthy_pods.stdout }}
+          {% else %}
+          ✓ All pods are healthy
+          {% endif %}
+          =========================================
+      run_once: true

@@ -1,0 +1,182 @@
+---
+# Bootstrap ArgoCD Applications
+# Purpose: Deploy apps-root Application (App-of-Apps pattern)
+#
+# Usage:
+#   ansible-playbook -i inventory/production.yml playbooks/gitops/bootstrap_apps.yml
+#
+# What it does:
+#   1. Verify ArgoCD is installed and ready
+#   2. Apply apps-root.yaml Application
+#   3. Wait for initial sync to complete
+#   4. Verify all applications are healthy
+#   5. Display deployed applications
+#
+# Prerequisites:
+#   - ArgoCD installed (run deploy_argocd.yml first)
+#   - k3s cluster running
+#   - Git repository accessible
+# Uses kubectl directly — no Python kubernetes library required on the remote host.
+
+- name: Bootstrap ArgoCD Applications
+  hosts: k3s_server
+  become: yes
+  gather_facts: yes
+
+  vars:
+    argocd_namespace: argocd
+    apps_root_manifest: k8s/gitops/apps-root.yaml
+    apps_root_name: homelab-apps-root
+    sync_timeout: 600  # 10 minutes
+
+  pre_tasks:
+    - name: Set kubeconfig environment
+      ansible.builtin.set_fact:
+        kubeconfig_env:
+          KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display bootstrap information
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          ArgoCD Applications Bootstrap
+          =========================================
+          Apps-root: {{ apps_root_name }}
+          Manifest: {{ apps_root_manifest }}
+          Namespace: {{ argocd_namespace }}
+
+          This will deploy all applications in k8s/apps/
+          via the App-of-Apps pattern.
+
+          Estimated time: 5-15 minutes
+          =========================================
+      run_once: true
+
+  tasks:
+    - name: Verify ArgoCD is installed
+      ansible.builtin.command: kubectl get deployment argocd-server -n {{ argocd_namespace }}
+      environment: "{{ kubeconfig_env }}"
+      register: argocd_check
+      changed_when: false
+      failed_when: argocd_check.rc != 0
+
+    - name: Display ArgoCD status
+      ansible.builtin.debug:
+        msg: "✓ ArgoCD is installed and running"
+
+    - name: Check if apps-root already exists
+      ansible.builtin.command: >
+        kubectl get application {{ apps_root_name }}
+        -n {{ argocd_namespace }}
+      environment: "{{ kubeconfig_env }}"
+      register: apps_root_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display apps-root status
+      ansible.builtin.debug:
+        msg: "{{ 'apps-root already exists' if apps_root_check.rc == 0 else 'Creating apps-root...' }}"
+
+    - name: Copy apps-root manifest to server
+      ansible.builtin.copy:
+        src: "{{ playbook_dir | dirname | dirname | dirname }}/{{ apps_root_manifest }}"
+        dest: /tmp/apps-root.yaml
+        mode: '0644'
+
+    - name: Apply apps-root Application
+      ansible.builtin.command: kubectl apply -f /tmp/apps-root.yaml
+      environment: "{{ kubeconfig_env }}"
+      register: apps_root_apply
+      changed_when: "'created' in apps_root_apply.stdout or 'configured' in apps_root_apply.stdout"
+
+    - name: Wait for apps-root to be created (initial deployment)
+      ansible.builtin.command: >
+        kubectl wait application/{{ apps_root_name }}
+        -n {{ argocd_namespace }}
+        --for=jsonpath='{.status.sync.status}'=Synced
+        --timeout=300s
+      environment: "{{ kubeconfig_env }}"
+      register: apps_root_wait
+      changed_when: false
+      failed_when: false
+      when: apps_root_apply is changed
+
+    - name: Get apps-root sync status
+      ansible.builtin.command: >
+        kubectl get application {{ apps_root_name }}
+        -n {{ argocd_namespace }}
+        -o jsonpath='{.status.sync.status}/{.status.health.status}'
+      environment: "{{ kubeconfig_env }}"
+      register: apps_root_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display apps-root sync status
+      ansible.builtin.debug:
+        msg: "apps-root status: {{ apps_root_status.stdout | default('unknown') }}"
+
+    - name: Get all ArgoCD Applications
+      ansible.builtin.command: kubectl get applications -n {{ argocd_namespace }} -o wide
+      environment: "{{ kubeconfig_env }}"
+      register: all_applications
+      changed_when: false
+
+    - name: Display all applications
+      ansible.builtin.debug:
+        msg: "{{ all_applications.stdout_lines }}"
+
+    - name: Get pods in media namespace
+      ansible.builtin.command: kubectl get pods -n media -o wide
+      environment: "{{ kubeconfig_env }}"
+      register: media_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Display media pods
+      ansible.builtin.debug:
+        msg: "{{ media_pods.stdout_lines if media_pods.rc == 0 else 'Media namespace not yet created' }}"
+
+  post_tasks:
+    - name: Get unhealthy applications
+      ansible.builtin.shell: |
+        kubectl get applications -n {{ argocd_namespace }} -o json | \
+        jq -r '.items[] | select(.status.health.status != "Healthy") | .metadata.name'
+      environment: "{{ kubeconfig_env }}"
+      register: unhealthy_apps
+      changed_when: false
+      failed_when: false
+
+    - name: Display bootstrap summary
+      ansible.builtin.debug:
+        msg: |
+
+          =========================================
+          Applications Bootstrap Complete!
+          =========================================
+
+          Total applications: {{ all_applications.stdout_lines | length - 1 }}
+
+          {% if unhealthy_apps.stdout %}
+          ⚠️ Unhealthy applications:
+          {{ unhealthy_apps.stdout }}
+
+          Check status:
+            kubectl get applications -n {{ argocd_namespace }}
+            kubectl describe application <app-name> -n {{ argocd_namespace }}
+          {% else %}
+          ✓ All applications are healthy
+          {% endif %}
+
+          Monitor sync progress:
+            kubectl get applications -n {{ argocd_namespace }} -w
+
+          Access applications:
+            kubectl get ingress -A
+            # Or via Tailscale URLs (if configured)
+
+          Troubleshoot:
+            kubectl logs -n {{ argocd_namespace }} deployment/argocd-application-controller
+            kubectl logs -n {{ argocd_namespace }} deployment/argocd-repo-server
+
+          =========================================
+      run_once: true

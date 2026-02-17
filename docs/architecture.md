@@ -1,3 +1,7 @@
+---
+DEPRECATED: This document refers to an old architecture based on Oracle Cloud Infrastructure (OCI) and is kept for historical purposes only. The current architecture runs on AWS.
+---
+
 # Technology Stack
 
 This document outlines the core technologies and tools utilized in the homelab project. This stack has been selected to support a robust, automated, and portable hybrid Kubernetes environment, while providing comprehensive hands-on experience in modern DevOps practices.

@@ -1,5 +1,9 @@
 extends: default
 
+# Ignore Helm templates (Go template syntax is not valid YAML)
+ignore: |
+  k8s/charts/*/templates/
+
 rules:
   # Disable line length check (conflicts with long K8s resource names/URLs)
   line-length: disable
@@ -13,3 +17,10 @@ rules:
   # Allow comments to not strictly require a space after #
   comments:
     min-spaces-from-content: 1
+
+  # Allow spaces inside braces — required for Ansible inline-dict loop syntax:
+  #   loop:
+  #     - { key: 'vm.swappiness', value: '{{ swap.swappiness }}' }
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1

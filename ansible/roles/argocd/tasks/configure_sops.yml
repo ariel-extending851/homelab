@@ -1,0 +1,170 @@
+---
+# Configure SOPS (Secrets OPerationS) for ArgoCD
+# Uses kubectl directly — no Python kubernetes library required on the remote host.
+
+- name: Display SOPS configuration banner
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      Configuring SOPS for ArgoCD
+      =========================================
+      Age public key: {{ sops_age_public_key }}
+      =========================================
+
+- name: Create SOPS age secret (kubectl apply from stdin)
+  ansible.builtin.shell: |
+    kubectl apply -f - <<'EOF'
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: sops-age
+      namespace: {{ argocd_namespace }}
+    type: Opaque
+    stringData:
+      keys.txt: |
+    {{ sops_age_private_key | indent(4, True) }}
+    EOF
+  environment: "{{ kubeconfig_env }}"
+  register: sops_secret_apply
+  changed_when: "'created' in sops_secret_apply.stdout or 'configured' in sops_secret_apply.stdout"
+  no_log: true
+
+- name: Write ArgoCD SOPS ConfigManagementPlugin to temp file
+  ansible.builtin.copy:
+    dest: /tmp/argocd-cmp-plugin.yaml
+    mode: '0644'
+    content: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmp-plugin
+        namespace: {{ argocd_namespace }}
+      data:
+        plugin.yaml: |
+          apiVersion: argoproj.io/v1alpha1
+          kind: ConfigManagementPlugin
+          metadata:
+            name: sops-kustomize
+          spec:
+            version: v1.0
+            init:
+              command: [sh, -c]
+              args:
+                - echo "Initializing SOPS Kustomize plugin..."
+            generate:
+              command: [sh, -c]
+              args:
+                - |
+                  if [ -f kustomization.yaml ] || [ -f kustomization.yml ]; then
+                    kustomize build . | sops --decrypt /dev/stdin 2>/dev/null || kustomize build .
+                  else
+                    sops --decrypt /dev/stdin 2>/dev/null || cat
+                  fi
+            discover:
+              find:
+                command: [sh, -c]
+                args:
+                  - find . -name '*.sops.yaml' -o -name 'kustomization.yaml' -o -name '.sops.yaml'
+
+- name: Apply ArgoCD SOPS ConfigManagementPlugin
+  ansible.builtin.command: kubectl apply -f /tmp/argocd-cmp-plugin.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: cmp_apply
+  changed_when: "'created' in cmp_apply.stdout or 'configured' in cmp_apply.stdout"
+
+- name: Write argocd-repo-server SOPS patch (strategic merge patch)
+  ansible.builtin.copy:
+    dest: /tmp/argocd-repo-server-sops-patch.json
+    mode: '0644'
+    content: |
+      {
+        "spec": {
+          "template": {
+            "spec": {
+              "volumes": [
+                {"name": "sops-age", "secret": {"secretName": "sops-age"}},
+                {"name": "cmp-plugin", "configMap": {"name": "argocd-cmp-plugin"}},
+                {"name": "cmp-tmp", "emptyDir": {}}
+              ],
+              "initContainers": [
+                {
+                  "name": "download-tools",
+                  "image": "alpine:3.19",
+                  "command": ["sh", "-c"],
+                  "args": ["cp /usr/local/bin/argocd /var/run/argocd/argocd-cmp-server 2>/dev/null || true"],
+                  "volumeMounts": [{"name": "var-files", "mountPath": "/var/run/argocd"}]
+                }
+              ],
+              "containers": [
+                {
+                  "name": "sops-plugin",
+                  "image": "ghcr.io/getsops/sops:v3.9.1",
+                  "command": ["/var/run/argocd/argocd-cmp-server"],
+                  "env": [{"name": "SOPS_AGE_KEY_FILE", "value": "/app/config/sops/age/keys.txt"}],
+                  "volumeMounts": [
+                    {"name": "var-files", "mountPath": "/var/run/argocd"},
+                    {"name": "plugins", "mountPath": "/home/argocd/cmp-server/plugins"},
+                    {"name": "cmp-tmp", "mountPath": "/tmp"},
+                    {"name": "sops-age", "mountPath": "/app/config/sops/age/"},
+                    {"name": "cmp-plugin", "mountPath": "/home/argocd/cmp-server/config/plugin.yaml", "subPath": "plugin.yaml"}
+                  ],
+                  "securityContext": {"runAsNonRoot": true, "runAsUser": 999}
+                }
+              ]
+            }
+          }
+        }
+      }
+
+- name: Check if SOPS sidecar is already patched
+  ansible.builtin.command: >
+    kubectl get deployment argocd-repo-server -n {{ argocd_namespace }}
+    -o jsonpath='{.spec.template.spec.containers[*].name}'
+  environment: "{{ kubeconfig_env }}"
+  register: repo_server_containers
+  changed_when: false
+
+- name: Patch argocd-repo-server with SOPS sidecar
+  ansible.builtin.command: >
+    kubectl patch deployment argocd-repo-server
+    -n {{ argocd_namespace }}
+    --type=strategic
+    --patch-file /tmp/argocd-repo-server-sops-patch.json
+  environment: "{{ kubeconfig_env }}"
+  register: repo_server_patch
+  changed_when: "'patched' in repo_server_patch.stdout"
+  when: "'sops-plugin' not in repo_server_containers.stdout"
+
+- name: Wait for argocd-repo-server to restart
+  ansible.builtin.pause:
+    seconds: 15
+  when: repo_server_patch is changed
+
+- name: Wait for argocd-repo-server to be ready (after SOPS patch)
+  ansible.builtin.command: >
+    kubectl rollout status deployment/argocd-repo-server
+    -n {{ argocd_namespace }}
+    --timeout=120s
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_repo_rollout
+  changed_when: false
+
+- name: Verify SOPS plugin container is present
+  ansible.builtin.command: |
+    kubectl logs -n {{ argocd_namespace }} deployment/argocd-repo-server -c sops-plugin --tail=20
+  environment: "{{ kubeconfig_env }}"
+  register: sops_plugin_logs
+  changed_when: false
+  failed_when: false
+
+- name: Display SOPS configuration summary
+  ansible.builtin.debug:
+    msg: |
+      ✓ SOPS age secret created
+      ✓ ConfigManagementPlugin configured
+      ✓ argocd-repo-server patched with SOPS sidecar
+      ✓ Plugin ready to decrypt secrets
+
+      SOPS will automatically decrypt files matching:
+        - *.sops.yaml
+        - Files in directories with .sops.yaml

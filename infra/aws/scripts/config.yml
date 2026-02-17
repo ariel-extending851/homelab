@@ -7,7 +7,7 @@ regions:
 
 # Contas que NÃO devem ser apagadas (Segurança)
 blocklist:
-  - "123456789012" # Exemplo de conta prod
+  - "999999999999" # Exemplo de conta prod
 
 # Configurações globais
 settings:
@@ -16,10 +16,10 @@ settings:
 
 # A conta que você VAI limpar deve estar listada aqui
 accounts:
-  "123456789012": # Seu ID de conta
+  "585008067269": # Seu ID de conta
     presets: []
     filters:
       CloudWatchAlarm:
         - "Billing_Alarm"
       SNSTopic:
-        - "arn:aws:sns:us-east-1:123456789012:Billing_Alarms_Topic"
+        - "arn:aws:sns:us-east-1:585008067269:Billing_Alarms_Topic"

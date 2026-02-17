@@ -86,7 +86,6 @@
 
 ### k3s Installation ✗
 **Reason:** User data doesn't execute in LocalStack
-**Impact:** Cannot test k3s setup, CloudNativePG operator, or cluster behavior
 **Alternative:** Test in AWS
 
 ### Network Functionality ✗

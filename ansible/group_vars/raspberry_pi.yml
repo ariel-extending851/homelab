@@ -1,0 +1,114 @@
+---
+# Raspberry Pi specific configuration
+# Applied to: rasp-pi-03 (RPi 3) and rasp-pi-04 (RPi 4)
+
+# OS Configuration
+ansible_user: agfonseca
+ansible_become: true
+ansible_python_interpreter: /usr/bin/python3
+
+# Architecture
+architecture: arm64
+platform: raspberry-pi
+
+# Memory optimization settings
+memory_optimization:
+  enabled: true
+  swap_size_mb: 2048  # 2GB swap
+  swappiness: 10  # Less aggressive swapping (default: 60)
+  vfs_cache_pressure: 50  # Keep directory/inode cache longer (default: 100)
+  transparent_hugepage: madvise
+  overcommit_memory: 1  # Allow memory overcommit for containers
+
+# CPU optimization
+cpu_optimization:
+  governor: ondemand  # Balance between performance and power
+  scaling_min_freq: 600000  # 600 MHz
+  scaling_max_freq: 1500000  # 1.5 GHz (RPi 3/4 turbo)
+
+# Storage optimization
+storage_optimization:
+  enabled: true
+  filesystem: ext4
+  mount_options: noatime,nodiratime
+  io_scheduler: deadline  # Better for SD cards/flash storage
+
+# Container runtime limits (ARM-specific)
+containerd_config:
+  max_container_log_line_size: 8192  # Smaller than default to save memory
+  max_concurrent_downloads: 2  # Limit network pressure
+  stream_idle_timeout: 4h
+
+# k3s ARM-specific settings
+k3s_arm_config:
+  disable_cloud_controller: true
+  kubelet_arg:
+    - "max-pods=50"  # Lower than default 110 due to RAM constraints
+    - "eviction-hard=memory.available<256Mi"
+    - "eviction-soft=memory.available<512Mi"
+    - "eviction-soft-grace-period=memory.available=2m"
+    - "system-reserved=memory=256Mi"
+    - "kube-reserved=memory=256Mi"
+
+# Resource limits for system services
+system_limits:
+  containerd:
+    memory: 512M
+    cpu: 1.0
+  k3s:
+    memory: 512M
+    cpu: 1.5
+
+# Log rotation (aggressive for SD card wear)
+log_rotation:
+  max_size: 50M  # Smaller than default
+  max_files: 3
+  compress: true
+  rotate_daily: true
+
+# Monitoring (lightweight)
+monitoring:
+  node_exporter_enabled: true
+  cadvisor_enabled: false  # Too resource-intensive for RPi 3
+  metrics_scrape_interval: 30s
+
+# Network configuration
+network:
+  ipv6_enabled: false  # Disable to save memory
+  dns_cache_enabled: true
+  connection_tracking_max: 32768  # Lower than default for RAM
+
+# Thermal management
+thermal:
+  enabled: true
+  warning_temp: 70  # Celsius
+  critical_temp: 80
+  throttle_temp: 85
+
+# Power management
+power:
+  hdmi_blanking: true  # Blank HDMI to save power
+  wifi_power_save: false  # Disable for stability
+  usb_power_management: false
+
+# Packages specific to Raspberry Pi
+raspberry_pi_packages:
+  - libraspberrypi-bin  # vcgencmd and other tools
+  - raspi-config
+  - wireless-tools
+  - firmware-brcm80211  # WiFi firmware
+
+# SD card health monitoring
+sd_card_monitoring:
+  enabled: true
+  check_interval: 3600  # 1 hour
+  alert_threshold_writes: 90  # Alert at 90% of estimated lifespan
+
+# Backup configuration (RPi-specific)
+backup:
+  config_only: true  # Don't backup media files
+  exclude_paths:
+    - /mnt/storage/data
+    - /mnt/storage/***
+    - /var/log
+    - /tmp

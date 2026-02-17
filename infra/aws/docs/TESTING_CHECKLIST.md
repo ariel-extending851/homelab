@@ -167,7 +167,6 @@ These warnings are **normal** for LocalStack:
 - [ ] Understood: Security groups created but not enforced
 - [ ] Understood: IAM roles created but not functional
 - [ ] Understood: No actual EC2 instances boot
-- [ ] Understood: CloudNativePG operator won't deploy
 
 ### These Are NOT Structure Issues
 If you see these, it's **expected** - LocalStack cannot test:
@@ -296,7 +295,6 @@ You validated that your Terraform code:
 ### What Was NOT Tested
 - EC2 instances won't boot in LocalStack
 - k3s installation won't happen
-- CloudNativePG won't deploy
 - Spot instances won't provision
 - Security groups won't enforce rules
 

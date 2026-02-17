@@ -65,6 +65,36 @@ resource "aws_iam_role_policy_attachment" "k3s_node_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Inline S3 policy — allows SSM Session Manager to use S3 for file transfer
+# (Ansible SSM connection plugin requires S3 for stdin/stdout relay)
+# ⚠️ SECURITY WARNING: Use a SEPARATE S3 bucket for SSM transfers, NOT the
+# Terraform state bucket. The state bucket contains decrypted secrets (k3s_token,
+# tailscale_auth_key, etc.). Nodes with this role can read/write to the SSM bucket.
+#
+# Least-privilege: Only GetObject and PutObject are required for SSM file transfer.
+# ListBucket is NOT needed and has been removed to reduce attack surface.
+resource "aws_iam_role_policy" "k3s_node_ssm_s3" {
+  name = "ssm-s3-transfer"
+  role = aws_iam_role.k3s_node.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "SSMFileTransfer"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.ssm_s3_bucket}/*",
+        ]
+      }
+    ]
+  })
+}
+
 # Instance profile
 resource "aws_iam_instance_profile" "k3s_node" {
   name_prefix = "hl-k3s-node-"
@@ -79,7 +109,7 @@ resource "aws_iam_instance_profile" "k3s_node" {
 resource "aws_launch_template" "k3s_server" {
   name_prefix   = "hl-k3s-server-"
   image_id      = data.aws_ami.amazon_linux_2023.id
-  instance_type = var.instance_type
+  instance_type = var.server_instance_type
 
   iam_instance_profile {
     name = aws_iam_instance_profile.k3s_node.name
@@ -94,7 +124,7 @@ resource "aws_launch_template" "k3s_server" {
     k3s_version        = var.k3s_version
     node_index         = 1
     node_type          = "server"
-    server_ip          = "" # Not used for server node
+    server_hostname    = "" # Not used for server node
     tailscale_auth_key = var.tailscale_auth_key
   }))
 
@@ -135,11 +165,12 @@ resource "aws_launch_template" "k3s_server" {
 }
 
 # Launch template for k3s agent node
-# Note: Cannot reference server private IP here, must use data source after server is created
+# The agent resolves the server IP at boot via Tailscale hostname (k3s-server-1),
+# eliminating the Terraform timing dependency on the server's dynamic IP.
 resource "aws_launch_template" "k3s_agent" {
   name_prefix   = "hl-k3s-agent-"
   image_id      = data.aws_ami.amazon_linux_2023.id
-  instance_type = var.instance_type
+  instance_type = var.agent_instance_type
 
   iam_instance_profile {
     name = aws_iam_instance_profile.k3s_node.name
@@ -149,13 +180,12 @@ resource "aws_launch_template" "k3s_agent" {
 
   vpc_security_group_ids = [var.security_group_id]
 
-  # Placeholder user_data - will be updated after server IP is known
   user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {
     k3s_token          = var.k3s_token
     k3s_version        = var.k3s_version
     node_index         = 2
     node_type          = "agent"
-    server_ip          = "SERVER_IP_PLACEHOLDER" # Will be updated via launch template version
+    server_hostname    = "k3s-server-1" # Stable Tailscale hostname — no timing dependency
     tailscale_auth_key = var.tailscale_auth_key
   }))
 
@@ -212,7 +242,7 @@ resource "aws_ec2_fleet" "k3s_server" {
 
   spot_options {
     allocation_strategy            = "price-capacity-optimized"
-    instance_interruption_behavior = "terminate"
+    instance_interruption_behavior = "stop"
   }
 
   terminate_instances                 = true
@@ -240,72 +270,11 @@ data "aws_instances" "k3s_server" {
   depends_on = [aws_ec2_fleet.k3s_server]
 }
 
-# Update agent launch template with server IP
-resource "aws_launch_template" "k3s_agent_final" {
-  name_prefix   = "hl-k3s-agent-final-"
-  image_id      = data.aws_ami.amazon_linux_2023.id
-  instance_type = var.instance_type
-
-  iam_instance_profile {
-    name = aws_iam_instance_profile.k3s_node.name
-  }
-
-  key_name = var.localstack_test == "yes" ? null : aws_key_pair.homelab[0].key_name
-
-  vpc_security_group_ids = [var.security_group_id]
-
-  user_data = base64encode(templatefile("${path.module}/templates/user_data.tftpl", {
-    k3s_token          = var.k3s_token
-    k3s_version        = var.k3s_version
-    node_index         = 2
-    node_type          = "agent"
-    server_ip          = length(data.aws_instances.k3s_server.private_ips) > 0 ? data.aws_instances.k3s_server.private_ips[0] : ""
-    tailscale_auth_key = var.tailscale_auth_key
-  }))
-
-  block_device_mappings {
-    device_name = "/dev/xvda"
-
-    ebs {
-      volume_size           = var.ebs_volume_size
-      volume_type           = "gp3"
-      delete_on_termination = true
-      encrypted             = true
-    }
-  }
-
-  metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 1
-  }
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name = "hl-k3s-agent"
-    }
-  }
-
-  tag_specifications {
-    resource_type = "volume"
-    tags = {
-      Name = "hl-k3s-agent-ebs"
-    }
-  }
-
-  tags = {
-    Name = "hl-k3s-agent-launch-template-final"
-  }
-
-  depends_on = [data.aws_instances.k3s_server]
-}
-
 # EC2 Fleet for k3s agent (single spot instance)
 resource "aws_ec2_fleet" "k3s_agent" {
   launch_template_config {
     launch_template_specification {
-      launch_template_id = aws_launch_template.k3s_agent_final.id
+      launch_template_id = aws_launch_template.k3s_agent.id
       version            = "$Latest"
     }
   }
@@ -318,7 +287,7 @@ resource "aws_ec2_fleet" "k3s_agent" {
 
   spot_options {
     allocation_strategy            = "price-capacity-optimized"
-    instance_interruption_behavior = "terminate"
+    instance_interruption_behavior = "stop"
   }
 
   terminate_instances                 = true
@@ -329,7 +298,7 @@ resource "aws_ec2_fleet" "k3s_agent" {
     Name = "hl-k3s-agent-fleet"
   }
 
-  depends_on = [aws_ec2_fleet.k3s_server, data.aws_instances.k3s_server]
+  depends_on = [aws_ec2_fleet.k3s_server]
 }
 
 # Data source to get agent instance details

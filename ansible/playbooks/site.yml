@@ -1,0 +1,216 @@
+---
+# Master Site Playbook - Complete Homelab Deployment
+# Purpose: Complete homelab infrastructure deployment from scratch to fully operational
+#
+# Usage:
+#   # Deploy everything (k3s + ArgoCD + apps)
+#   ansible-playbook -i inventory/production.yml playbooks/site.yml
+#
+#   # Deploy only Phase 1 (infrastructure)
+#   ansible-playbook -i inventory/production.yml playbooks/site.yml --tags phase1
+#
+#   # Deploy only Phase 2 (GitOps)
+#   ansible-playbook -i inventory/production.yml playbooks/site.yml --tags phase2
+#
+#   # Skip app bootstrap
+#   ansible-playbook -i inventory/production.yml playbooks/site.yml --skip-tags bootstrap
+
+- name: Homelab Infrastructure - Complete Deployment
+  hosts: all
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Display deployment plan
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Homelab Complete Deployment
+          =========================================
+
+          Deployment Phases:
+            Phase 1: Infrastructure (k3s + Optimizations)
+            Phase 2: GitOps Platform (ArgoCD + SOPS)
+            Phase 3: Applications (Bootstrap via ArgoCD)
+            Phase 4: Verification & Health Checks
+
+          Hosts in scope:
+          {% for host in ansible_play_hosts %}
+            • {{ host }} ({{ hostvars[host]['ansible_host'] | default('unknown') }})
+          {% endfor %}
+
+          Estimated total time: 15-25 minutes
+
+          =========================================
+      run_once: true
+      delegate_to: localhost
+      tags: always
+
+# =============================================================================
+# PHASE 1: Infrastructure Deployment
+# =============================================================================
+
+- name: Phase 1.1 - Optimize Raspberry Pi Nodes
+  hosts: raspberry_pi
+  become: yes
+  gather_facts: yes
+  tags: ['phase1', 'optimization', 'rpi']
+
+  roles:
+    - role: rpi_optimization
+
+- name: Phase 1.2 - Deploy k3s Cluster
+  ansible.builtin.import_playbook: deploy_k3s.yml
+  tags: ['phase1', 'k3s', 'cluster']
+
+- name: Phase 1.3 - Verify Infrastructure
+  ansible.builtin.import_playbook: maintenance/health_check.yml
+  tags: ['phase1', 'verify']
+
+# =============================================================================
+# PHASE 2: GitOps Platform
+# =============================================================================
+
+- name: Phase 2.1 - Deploy ArgoCD
+  ansible.builtin.import_playbook: gitops/deploy_argocd.yml
+  tags: ['phase2', 'argocd', 'gitops']
+  vars:
+    auto_approve: true  # Skip confirmation in automated runs
+
+- name: Phase 2.2 - Bootstrap Applications
+  ansible.builtin.import_playbook: gitops/bootstrap_apps.yml
+  tags: ['phase2', 'bootstrap', 'apps']
+
+# =============================================================================
+# PHASE 3: Verification & Summary
+# =============================================================================
+
+- name: Phase 3 - Final Verification
+  hosts: k3s_server
+  become: yes
+  gather_facts: no
+  tags: ['phase3', 'verify', 'always']
+
+  vars:
+    argocd_namespace: argocd
+
+  tasks:
+    - name: Set kubeconfig environment
+      ansible.builtin.set_fact:
+        kubeconfig_env:
+          KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get cluster nodes
+      ansible.builtin.command: kubectl get nodes -o wide
+      environment: "{{ kubeconfig_env }}"
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Get all namespaces
+      ansible.builtin.command: kubectl get namespaces
+      environment: "{{ kubeconfig_env }}"
+      register: all_namespaces
+      changed_when: false
+
+    - name: Get all applications
+      ansible.builtin.command: kubectl get applications -n {{ argocd_namespace }}
+      environment: "{{ kubeconfig_env }}"
+      register: all_apps
+      changed_when: false
+      failed_when: false
+
+    - name: Get all pods (all namespaces)
+      ansible.builtin.command: kubectl get pods -A -o wide
+      environment: "{{ kubeconfig_env }}"
+      register: all_pods
+      changed_when: false
+
+    - name: Get ArgoCD admin password
+      ansible.builtin.command: |
+        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
+      environment: "{{ kubeconfig_env }}"
+      register: argocd_password
+      changed_when: false
+      no_log: true
+      failed_when: false
+
+- name: Post-Deployment Summary
+  hosts: localhost
+  gather_facts: no
+  tags: ['always']
+
+  tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          🎉 Homelab Deployment Complete!
+          =========================================
+
+          ✓ Phase 1: Infrastructure deployed
+            - Raspberry Pi nodes optimized
+            - k3s cluster running ({{ hostvars[groups['k3s_server'][0]]['cluster_nodes'].stdout_lines | length - 1 }} nodes)
+
+          ✓ Phase 2: GitOps platform deployed
+            - ArgoCD installed and configured
+            - SOPS integration enabled
+            - Repository configured
+
+          ✓ Phase 3: Applications bootstrapped
+            - apps-root deployed
+            - Applications syncing via ArgoCD
+
+          =========================================
+          Access Your Homelab
+          =========================================
+
+          1. ArgoCD UI:
+             kubectl port-forward svc/argocd-server -n argocd 8080:443
+             URL: https://localhost:8080
+             Username: admin
+             Password: {{ hostvars[groups['k3s_server'][0]]['argocd_password'].stdout | b64decode if hostvars[groups['k3s_server'][0]]['argocd_password'].rc == 0 else '<run kubectl command>' }}
+
+          2. Monitor applications:
+             kubectl get applications -n argocd -w
+
+          3. Check all pods:
+             kubectl get pods -A
+
+          4. Access media apps (via Tailscale):
+             https://***.tail57bf10.ts.net
+             https://***-1.tail57bf10.ts.net
+             https://***.tail57bf10.ts.net
+
+          =========================================
+          Useful Commands
+          =========================================
+
+          # Check cluster health
+          ansible-playbook -i inventory/production.yml playbooks/maintenance/health_check.yml
+
+          # Emergency recovery (Tailscale proxies)
+          ansible-playbook -i inventory/production.yml playbooks/recovery/emergency_recovery.yml
+
+          # Sync all apps manually
+          kubectl get applications -n argocd -o name | xargs -I {} kubectl patch {} -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}'
+
+          =========================================
+          Next Steps
+          =========================================
+
+          1. Verify all applications are healthy:
+             kubectl get applications -n argocd
+
+          2. Configure SOPS secrets (if needed):
+             - *** VPN credentials
+             - Application API keys
+
+          3. Monitor resource usage:
+             kubectl top nodes
+             kubectl top pods -A
+
+          4. Set up monitoring dashboards:
+             - Grafana for metrics
+             - Loki for logs
+
+          =========================================
+      run_once: true

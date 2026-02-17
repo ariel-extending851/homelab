@@ -11,7 +11,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage-adguard
   local:
-    path: /mnt/ssd/k3s-storage/adguard
+    path: /mnt/storage/k3s-storage/adguard
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -19,12 +19,13 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - rasp-pi-03
+                - k3s-agent-2
 ---
 # IMPORTANT: Host path ownership requirement
-# The directory /mnt/ssd/k3s-storage/adguard on rasp-pi-03 must be owned by UID:GID 65534:65534
+# The directory /mnt/storage/k3s-storage/adguard on k3s-agent-2 must be owned by UID:GID 65534:65534
 # to match the container's security context (nobody:nogroup).
 #
-# One-time setup on rasp-pi-03:
-#   sudo chown -R 65534:65534 /mnt/ssd/k3s-storage/adguard
-#   sudo chmod -R u+rwX,g+rX,o-rwx /mnt/ssd/k3s-storage/adguard
+# One-time setup on k3s-agent-2 (via Ansible or SSM):
+#   sudo mkdir -p /mnt/storage/k3s-storage/adguard
+#   sudo chown -R 65534:65534 /mnt/storage/k3s-storage/adguard
+#   sudo chmod -R u+rwX,g+rX,o-rwx /mnt/storage/k3s-storage/adguard

@@ -1,0 +1,187 @@
+---
+# Emergency Recovery Tasks
+# Migrated from: scripts/emergency-recovery.sh
+# Purpose: Fix Tailscale proxy StatefulSets after cluster recreation
+
+- name: Check if we are running on k3s control plane
+  ansible.builtin.stat:
+    path: /etc/rancher/k3s/k3s.yaml
+  register: k3s_kubeconfig
+  when: inventory_hostname in groups['k3s_server']
+
+- name: Set kubeconfig environment variable
+  ansible.builtin.set_fact:
+    kubeconfig_env:
+      KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: k3s_kubeconfig.stat.exists | default(false)
+
+- name: Pre-flight check - Verify Kubernetes API is available
+  ansible.builtin.command: kubectl get nodes
+  environment: "{{ kubeconfig_env }}"
+  register: k8s_api_check
+  failed_when: false
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Fail if Kubernetes API is not available
+  ansible.builtin.fail:
+    msg: |
+      ERROR: Kubernetes API is not available yet.
+      Please wait for the cluster to fully initialize.
+      Run 'kubectl get nodes' manually to verify.
+  when: k8s_api_check.rc != 0
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Display Kubernetes API status
+  ansible.builtin.debug:
+    msg: "✓ Kubernetes API is available"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Get current Tailscale proxy pod status
+  ansible.builtin.shell: |
+    kubectl get pods -n {{ tailscale_namespace }} -o wide | grep -E "(***|***|***)" || echo "No proxies found"
+  environment: "{{ kubeconfig_env }}"
+  register: current_proxy_status
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Display current proxy status
+  ansible.builtin.debug:
+    msg: "{{ current_proxy_status.stdout_lines }}"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Delete failing Tailscale StatefulSets
+  ansible.builtin.command: >
+    kubectl delete statefulset ts-{{ item }}-ingress
+    -n {{ tailscale_namespace }}
+    --ignore-not-found=true
+  environment: "{{ kubeconfig_env }}"
+  loop: "{{ tailscale_proxy_services }}"
+  register: delete_statefulsets_result
+  changed_when: "'deleted' in delete_statefulsets_result.stdout"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+  when: delete_statefulsets | bool
+
+- name: Display StatefulSet deletion status
+  ansible.builtin.debug:
+    msg: "✓ Deleted StatefulSets to allow recreation on any node"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+  when: delete_statefulsets | bool
+
+- name: Wait for Tailscale operator to recreate pods
+  ansible.builtin.shell: |
+    kubectl get pods -n {{ tailscale_namespace }} -o name 2>/dev/null | grep -E "(***|***)" | wc -l
+  environment: "{{ kubeconfig_env }}"
+  register: pod_count
+  until: pod_count.stdout | int >= 2
+  retries: 6
+  delay: 10
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+  when: wait_for_recreation | bool
+
+- name: Display pod recreation status
+  ansible.builtin.debug:
+    msg: "✓ Pods are being recreated by Tailscale operator"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+  when: wait_for_recreation | bool
+
+- name: Get new pod distribution
+  ansible.builtin.command: >
+    kubectl get pods -n {{ tailscale_namespace }} -o wide
+  environment: "{{ kubeconfig_env }}"
+  register: new_proxy_distribution
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Display new pod distribution
+  ansible.builtin.debug:
+    msg: "{{ new_proxy_distribution.stdout_lines }}"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Wait for pods to be Ready
+  ansible.builtin.command: >
+    kubectl wait --for=condition=Ready
+    pods -n {{ tailscale_namespace }}
+    -l tailscale.com/proxy-class=default
+    --timeout={{ pod_ready_timeout }}s
+  environment: "{{ kubeconfig_env }}"
+  register: pod_ready_result
+  failed_when: false
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Display pod readiness status
+  ansible.builtin.debug:
+    msg: "{{ '✓ All pods are Ready' if pod_ready_result.rc == 0 else '⚠ Timeout waiting for Ready status' }}"
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+
+- name: Test Tailscale endpoint accessibility
+  ansible.builtin.uri:
+    url: "{{ item.value.url }}"
+    method: GET
+    validate_certs: false
+    status_code: "{{ item.value.expected_codes }}"
+    timeout: 30
+  loop: "{{ health_check_endpoints | dict2items }}"
+  register: endpoint_tests
+  failed_when: false
+  changed_when: false
+  delegate_to: localhost
+  run_once: true
+  when: verify_endpoints | bool
+
+- name: Display endpoint test results
+  ansible.builtin.debug:
+    msg: |
+      {% for result in endpoint_tests.results %}
+      {{ '✓' if result.status in health_check_endpoints[result.item.key].expected_codes else '⚠' }} {{ result.item.key | capitalize }}: HTTP {{ result.status | default('000') }}
+      {% endfor %}
+  delegate_to: localhost
+  run_once: true
+  when: verify_endpoints | bool
+
+- name: Generate recovery report
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      Emergency Recovery Complete!
+      =========================================
+
+      Summary:
+      - Deleted failing StatefulSets
+      - Tailscale operator recreated them
+      - Pods now distributed across available nodes
+
+      {% if pod_ready_result.rc == 0 %}
+      ✓ All pods are Ready
+      {% else %}
+      ⚠ Some pods may still be starting
+      {% endif %}
+
+      Next steps:
+      1. Wait 2-3 minutes for full application startup
+      2. Check: kubectl get pods -n {{ tailscale_namespace }} -o wide
+      3. Access services via Tailscale URLs
+
+      If issues persist:
+      - Check pod logs: kubectl logs -n {{ tailscale_namespace }} <pod-name>
+      - Verify node resources: kubectl top nodes
+      - Consider adding swap to low-memory nodes (rasp-pi-03)
+      =========================================
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  run_once: true
+  when: generate_report | bool

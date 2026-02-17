@@ -1,0 +1,104 @@
+---
+# Homelab Production Inventory
+# This file contains static inventory for Raspberry Pi nodes
+# AWS instances are discovered dynamically via terraform_inventory_aws.py
+
+all:
+  vars:
+    # Global variables for all hosts
+    ansible_user: agfonseca
+    ansible_become: true
+    ansible_become_method: sudo
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Kubernetes cluster configuration
+    k3s_version: v1.34.3+k3s1
+    k3s_cluster_domain: cluster.local
+    k3s_service_cidr: 10.43.0.0/16
+    k3s_cluster_cidr: 10.42.0.0/16
+
+    # Tailscale network
+    tailscale_network: tail57bf10.ts.net
+
+  children:
+    # Raspberry Pi nodes (static - always available)
+    raspberry_pi:
+      hosts:
+        rasp-pi-03:
+          ansible_host: 100.81.122.3
+          ansible_user: agfonseca
+          node_ip: 100.81.122.3
+          node_name: rasp-pi-03
+          node_labels:
+            node.kubernetes.io/instance-type: raspberry-pi-3
+            topology.kubernetes.io/zone: home-rack-01
+          node_taints: []
+          # Hardware specs
+          cpu_cores: 4
+          memory_gb: 1
+          architecture: arm64
+
+        rasp-pi-04:
+          ansible_host: 100.82.53.81
+          ansible_user: agfonseca
+          node_ip: 100.82.53.81
+          node_name: rasp-pi-04
+          node_labels:
+            node.kubernetes.io/instance-type: raspberry-pi-4
+            topology.kubernetes.io/zone: home-rack-01
+            storage: media
+          node_taints: []
+          # Hardware specs
+          cpu_cores: 4
+          memory_gb: 8
+          architecture: arm64
+          # Storage configuration
+          storage_path: /mnt/storage
+          media_path: /mnt/storage/data
+          ***_path: /mnt/storage/***
+
+    # AWS instances (managed by Terraform, discovered dynamically)
+    # Use: ansible-playbook -i terraform_inventory_aws.py playbook.yml
+    # Or add them here manually after deployment:
+    aws_instances:
+      hosts:
+        # k3s-server-1:
+        #   ansible_host: <Tailscale IP>
+        #   node_ip: <Private IP>
+        #   instance_type: t3.medium
+        # k3s-agent-2:
+        #   ansible_host: <Tailscale IP>
+        #   node_ip: <Private IP>
+        #   instance_type: t3.small
+
+    # Kubernetes role-based groups
+    k3s_server:
+      hosts:
+        # k3s-server-1:
+
+    k3s_agent:
+      hosts:
+        rasp-pi-03:
+        rasp-pi-04:
+        # k3s-agent-2:
+
+    # Hardware-based groups
+    arm_nodes:
+      hosts:
+        rasp-pi-03:
+        rasp-pi-04:
+
+    amd64_nodes:
+      hosts:
+        # k3s-server-1:
+        # k3s-agent-2:
+
+    # Storage-capable nodes
+    storage_nodes:
+      hosts:
+        rasp-pi-04:
+
+    # Low memory nodes (< 2GB RAM) - need special handling
+    low_memory_nodes:
+      hosts:
+        rasp-pi-03:

@@ -2,12 +2,22 @@
 # Compute Module Variables
 # ==============================================================================
 
-variable "instance_type" {
-  description = "EC2 instance type for k3s nodes"
+variable "server_instance_type" {
+  description = "EC2 instance type for k3s server (control plane)"
   type        = string
 
   validation {
-    condition     = can(regex("^t3\\.(micro|small|medium)$", var.instance_type))
+    condition     = can(regex("^t3\\.(micro|small|medium)$", var.server_instance_type))
+    error_message = "Instance type must be t3.micro, t3.small, or t3.medium for cost optimization."
+  }
+}
+
+variable "agent_instance_type" {
+  description = "EC2 instance type for k3s agent (worker nodes)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^t3\\.(micro|small|medium)$", var.agent_instance_type))
     error_message = "Instance type must be t3.micro, t3.small, or t3.medium for cost optimization."
   }
 }
@@ -74,4 +84,9 @@ variable "localstack_test" {
     condition     = contains(["yes", "no"], var.localstack_test)
     error_message = "localstack_test must be 'yes' or 'no'."
   }
+}
+
+variable "ssm_s3_bucket" {
+  description = "S3 bucket name used by the SSM connection plugin for Ansible file transfer (stdin/stdout relay). Must match the bucket configured in terraform_inventory_aws.py."
+  type        = string
 }

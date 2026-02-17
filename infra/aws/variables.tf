@@ -11,13 +11,24 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "instance_type" {
-  description = "EC2 instance type for k3s nodes"
+variable "server_instance_type" {
+  description = "EC2 instance type for k3s server (control plane)"
+  type        = string
+  default     = "t3.medium"
+
+  validation {
+    condition     = can(regex("^t3\\.(micro|small|medium)$", var.server_instance_type))
+    error_message = "Instance type must be t3.micro, t3.small, or t3.medium for cost optimization."
+  }
+}
+
+variable "agent_instance_type" {
+  description = "EC2 instance type for k3s agent (worker nodes)"
   type        = string
   default     = "t3.small"
 
   validation {
-    condition     = can(regex("^t3\\.(micro|small|medium)$", var.instance_type))
+    condition     = can(regex("^t3\\.(micro|small|medium)$", var.agent_instance_type))
     error_message = "Instance type must be t3.micro, t3.small, or t3.medium for cost optimization."
   }
 }
@@ -64,8 +75,51 @@ variable "k3s_version" {
 }
 
 # ==============================================================================
+# Instance Scheduling Configuration
+# ==============================================================================
+variable "enable_scheduling" {
+  description = "Enable automated instance start/stop scheduling to reduce costs"
+  type        = bool
+  default     = true
+}
+
+variable "schedule_timezone" {
+  description = "Timezone for scheduling (IANA format, e.g., America/Sao_Paulo)"
+  type        = string
+  default     = "America/Sao_Paulo" # Brazil timezone (BRT/BRST)
+}
+
+variable "schedule_start_hour" {
+  description = "Hour to start instances (0-23, in schedule_timezone)"
+  type        = number
+  default     = 10 # 10 AM
+
+  validation {
+    condition     = var.schedule_start_hour >= 0 && var.schedule_start_hour <= 23
+    error_message = "schedule_start_hour must be between 0 and 23."
+  }
+}
+
+variable "schedule_stop_hour" {
+  description = "Hour to stop instances (0-23, in schedule_timezone)"
+  type        = number
+  default     = 21 # 9 PM
+
+  validation {
+    condition     = var.schedule_stop_hour >= 0 && var.schedule_stop_hour <= 23
+    error_message = "schedule_stop_hour must be between 0 and 23."
+  }
+}
+
+# ==============================================================================
 # LocalStack Testing Configuration
 # ==============================================================================
+variable "ssm_s3_bucket" {
+  description = "S3 bucket name used by SSM Session Manager for stdin/stdout relay (Ansible SSM connection plugin). ⚠️ MUST be a separate bucket from the Terraform state bucket to prevent nodes from accessing decrypted secrets in state files."
+  type        = string
+  default     = "homelab-ssm-transfer-bucket"
+}
+
 variable "localstack_test" {
   description = "Enable LocalStack testing mode (yes/no). When 'yes', uses mock secrets instead of SOPS."
   type        = string

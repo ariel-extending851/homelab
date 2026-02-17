@@ -1,0 +1,53 @@
+---
+# Default variables for rpi_optimization role
+
+# Swap configuration
+swap:
+  enabled: true
+  file_path: /swapfile
+  size_mb: 2048  # 2GB
+  swappiness: 10  # Less aggressive (default: 60)
+  vfs_cache_pressure: 50  # Keep cache longer (default: 100)
+  use_fallocate: true  # Try fallocate first, fall back to dd
+
+# Required disk space (safety check)
+required_disk_space_gb: 2
+
+# Memory optimization
+memory:
+  transparent_hugepage: madvise
+  overcommit_memory: 1
+  min_free_kbytes: 16384
+  dirty_ratio: 10
+  dirty_background_ratio: 5
+
+# Kernel tuning for containers
+kernel:
+  max_map_count: 262144
+  max_user_watches: 524288
+  file_max: 2097152
+  netfilter_connection_tracking_max: 131072
+
+# Containerd optimization for ARM
+containerd:
+  max_container_log_line_size: 8192
+  stream_idle_timeout: 4h
+  max_concurrent_downloads: 2
+
+# Log rotation
+log_rotation:
+  enabled: true
+  max_size: 50M
+  max_files: 3
+  compress: true
+
+# Filesystem tuning
+filesystem:
+  mount_options: "noatime,nodiratime,errors=remount-ro"
+  io_scheduler: deadline
+
+# Thermal monitoring (for RPi)
+thermal:
+  enabled: true
+  warning_temp: 70
+  critical_temp: 80

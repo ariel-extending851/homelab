@@ -196,7 +196,6 @@ if [ $TESTS_FAILED -eq 0 ]; then
     log_warning "What was NOT validated (LocalStack limitations):"
     echo "  ❌ EC2 Spot Instance provisioning"
     echo "  ❌ k3s installation (user data execution)"
-    echo "  ❌ CloudNativePG deployment"
     echo "  ❌ Network functionality (security groups)"
     echo "  ❌ IAM role assumption"
     echo ""

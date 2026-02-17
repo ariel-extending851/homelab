@@ -1,0 +1,24 @@
+---
+# ansible/roles/k3s/vars/RedHat.yml
+# OS-specific variables for RedHat-family systems (Amazon Linux 2023, RHEL, CentOS)
+
+# Package manager
+k3s_package_manager: dnf
+
+# Required packages for k3s on Amazon Linux 2023 / RHEL
+k3s_required_packages:
+  - curl
+  - wget
+  - git
+  - jq
+  - iptables
+  - container-selinux
+
+# k3s binary install path
+k3s_bin_dir: /usr/local/bin
+
+# Systemd unit directory
+k3s_systemd_dir: /etc/systemd/system
+
+# SELinux support (Amazon Linux 2023 ships with SELinux)
+k3s_selinux_enabled: true

@@ -41,6 +41,8 @@ k8s/gitops/ssh/*
 !.ralph/PROMPT.md
 !.ralph/ralph.sh
 !.ralph/.gitkeep
+DEPLOYMENT-SUMMARY.md
+
 
 # Temporary plaintext secrets (never commit!)
 plain_secret*.yaml

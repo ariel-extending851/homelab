@@ -13,14 +13,14 @@ concurrency:
 
 jobs:
   # ============================================================================
-  # TERRAFORM VALIDATION (OCI Infrastructure)
+  # TERRAFORM VALIDATION (AWS Infrastructure)
   # ============================================================================
   terraform:
     name: Terraform Check
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra/oci
+        working-directory: infra/aws
 
     steps:
       - name: Checkout Code

@@ -67,5 +67,26 @@ output "k3s_api_endpoint" {
 
 output "estimated_monthly_cost_usd" {
   description = "Estimated monthly cost in USD (based on AWS Pricing Calculator)"
-  value       = "~$17.65 (2× t3.small spot instances + 40GB gp3 EBS)"
+  value       = var.enable_scheduling ? "~$24.59/month (t3.medium + t3.small, 45% uptime with scheduling + EBS storage)" : "~$45.55/month (t3.medium + t3.small, 24/7 + EBS storage)"
+}
+
+# Scheduler Outputs (only when enabled)
+output "scheduler_function_url" {
+  description = "Lambda function URL for manual instance control"
+  value       = var.enable_scheduling && var.localstack_test == "no" ? module.scheduler[0].lambda_function_url : "Scheduling disabled"
+}
+
+output "manual_start_command" {
+  description = "Command to manually start instances"
+  value       = var.enable_scheduling && var.localstack_test == "no" ? module.scheduler[0].manual_start_command : "Scheduling disabled"
+}
+
+output "manual_stop_command" {
+  description = "Command to manually stop instances"
+  value       = var.enable_scheduling && var.localstack_test == "no" ? module.scheduler[0].manual_stop_command : "Scheduling disabled"
+}
+
+output "schedule_summary" {
+  description = "Instance scheduling summary"
+  value       = var.enable_scheduling && var.localstack_test == "no" ? module.scheduler[0].schedule_summary : "Scheduling disabled - instances run 24/7"
 }

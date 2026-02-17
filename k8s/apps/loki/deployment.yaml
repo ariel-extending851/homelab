@@ -18,10 +18,7 @@ spec:
         app: loki
     spec:
       serviceAccountName: loki
-      # Schedule on AWS worker node (x86_64, 2GB RAM)
-      nodeSelector:
-        kubernetes.io/hostname: k3s-agent-2
-
+      # No nodeAffinity — let the scheduler place this on any available node.
       containers:
         # Loki Application
         - name: loki

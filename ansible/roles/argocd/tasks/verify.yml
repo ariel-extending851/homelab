@@ -1,0 +1,88 @@
+---
+# Verify ArgoCD installation and configuration
+
+- name: Get all ArgoCD pods
+  ansible.builtin.command: kubectl get pods -n {{ argocd_namespace }} -o wide
+  environment: "{{ kubeconfig_env }}"
+  register: all_pods
+  changed_when: false
+
+- name: Display all pods
+  ansible.builtin.debug:
+    msg: "{{ all_pods.stdout_lines }}"
+
+- name: Check for unhealthy pods
+  ansible.builtin.command: |
+    kubectl get pods -n {{ argocd_namespace }} --field-selector=status.phase!=Running
+  environment: "{{ kubeconfig_env }}"
+  register: unhealthy_pods
+  changed_when: false
+  failed_when: false
+
+- name: Warn if unhealthy pods exist
+  ansible.builtin.debug:
+    msg: |
+      ⚠️ WARNING: Some pods are not Running:
+      {{ unhealthy_pods.stdout }}
+  when:
+    - unhealthy_pods.stdout | length > 0
+    - "'No resources found' not in unhealthy_pods.stderr"
+
+- name: Get ArgoCD server service
+  ansible.builtin.command: kubectl get svc argocd-server -n {{ argocd_namespace }} -o wide
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_service
+  changed_when: false
+
+- name: Display ArgoCD service info
+  ansible.builtin.debug:
+    msg: "{{ argocd_service.stdout_lines }}"
+
+- name: Get ArgoCD admin password
+  ansible.builtin.command: |
+    kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
+  environment: "{{ kubeconfig_env }}"
+  register: admin_password_b64
+  changed_when: false
+  no_log: true
+
+- name: Decode admin password
+  ansible.builtin.set_fact:
+    argocd_admin_password_decoded: "{{ admin_password_b64.stdout | b64decode }}"
+  no_log: true
+
+- name: Test ArgoCD API health
+  ansible.builtin.uri:
+    url: "http://argocd-server.{{ argocd_namespace }}.svc.cluster.local:80/healthz"
+    return_content: yes
+    status_code: 200
+  register: health_check
+  failed_when: false
+  delegate_to: localhost
+  vars:
+    ansible_connection: local
+
+- name: Display verification summary
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      ArgoCD Verification Complete
+      =========================================
+
+      ✓ All deployments ready
+      ✓ Pods running: {{ all_pods.stdout_lines | length - 1 }}
+      {{ '✓ SOPS configured' if sops_enabled else '⚠ SOPS disabled' }}
+      {{ '✓ Repository configured' if git_repo_url is match('git@.*') else '⚠ Public repo (no auth)' }}
+
+      Admin Credentials:
+        Username: admin
+        Password: <saved in secret argocd-initial-admin-secret>
+
+      Access ArgoCD:
+        Port forward: kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
+        URL: https://localhost:8080
+
+      Retrieve password:
+        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+      =========================================

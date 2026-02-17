@@ -17,10 +17,8 @@ spec:
       labels:
         app: grafana
     spec:
-      # Schedule on AWS control-plane node (x86_64, 2GB RAM)
-      nodeSelector:
-        kubernetes.io/hostname: k3s-server-1
-
+      # No nodeAffinity — let the scheduler place this on any available node.
+      # Prefer to avoid the control plane; use resource requests/limits instead.
       containers:
         # Grafana Application
         - name: grafana

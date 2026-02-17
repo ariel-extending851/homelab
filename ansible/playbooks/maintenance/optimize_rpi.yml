@@ -1,0 +1,122 @@
+---
+# RPi Optimization Playbook
+# Purpose: Optimize Raspberry Pi nodes for Kubernetes workloads
+# Migrated from: scripts/optimize-rpi4-swap.sh
+#
+# Usage:
+#   # Optimize all Raspberry Pi nodes
+#   ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml
+#
+#   # Optimize specific node
+#   ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml -l rasp-pi-04
+#
+#   # Dry run (check mode)
+#   ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml --check
+#
+# What it does:
+#   1. Creates and configures 2GB swap file
+#   2. Optimizes kernel memory parameters
+#   3. Configures container runtime settings
+#   4. Sets up log rotation for SD card longevity
+#   5. Applies ARM-specific optimizations
+
+- name: Optimize Raspberry Pi Nodes for Kubernetes
+  hosts: raspberry_pi
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Override these if needed
+    swap:
+      enabled: true
+      size_mb: 2048
+      swappiness: 10
+      vfs_cache_pressure: 50
+
+  pre_tasks:
+    - name: Display optimization plan
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Raspberry Pi Optimization Playbook
+          =========================================
+          Target nodes: {{ ansible_play_hosts | join(', ') }}
+
+          Optimizations to apply:
+            • Swap: {{ swap.size_mb }}MB ({{ swap.size_mb / 1024 }}GB)
+            • Memory tuning: swappiness={{ swap.swappiness }}
+            • Cache optimization: vfs_cache_pressure={{ swap.vfs_cache_pressure }}
+            • Kernel parameters for containers
+            • Log rotation for SD card longevity
+
+          Estimated time: 2-5 minutes per node
+          =========================================
+      run_once: true
+      delegate_to: localhost
+
+    - name: Gather system facts
+      ansible.builtin.setup:
+        gather_subset:
+          - hardware
+          - memory
+
+    - name: Display node hardware info
+      ansible.builtin.debug:
+        msg: |
+          Node: {{ inventory_hostname }}
+          Architecture: {{ ansible_architecture }}
+          Memory: {{ ansible_memtotal_mb }}MB
+          CPU: {{ ansible_processor_vcpus }} cores
+          Kernel: {{ ansible_kernel }}
+
+    - name: Verify node is Raspberry Pi
+      ansible.builtin.fail:
+        msg: "This playbook should only run on Raspberry Pi nodes (ARM64)"
+      when: ansible_architecture != 'aarch64'
+
+  roles:
+    - role: rpi_optimization
+      tags: ['optimization', 'memory', 'swap']
+
+  post_tasks:
+    - name: Verify optimization success
+      ansible.builtin.command: free -h
+      register: post_memory
+      changed_when: false
+
+    - name: Check swap status
+      ansible.builtin.command: swapon -s
+      register: post_swap
+      changed_when: false
+
+    - name: Display post-optimization status
+      ansible.builtin.debug:
+        msg: |
+
+          =========================================
+          Optimization Complete: {{ inventory_hostname }}
+          =========================================
+
+          Memory Status:
+          {{ post_memory.stdout }}
+
+          Swap Status:
+          {{ post_swap.stdout }}
+
+          ✓ Node optimized for Kubernetes workloads
+          ✓ Changes are persistent across reboots
+
+          =========================================
+
+    - name: Recommend reboot if kernel parameters changed
+      ansible.builtin.debug:
+        msg: |
+
+          ⚠️  RECOMMENDATION: Reboot node for all changes to take full effect
+
+          To reboot:
+            ansible-playbook -i inventory/production.yml playbooks/maintenance/reboot_nodes.yml -l {{ inventory_hostname }}
+
+          Or manually:
+            ssh {{ ansible_user }}@{{ ansible_host }} 'sudo reboot'
+      when: ansible_sysctl is defined

@@ -1,0 +1,13 @@
+/var/log/containerd/*.log {
+    {{ log_rotation.compress | ternary('compress', 'nocompress') }}
+    daily
+    rotate {{ log_rotation.max_files }}
+    missingok
+    notifempty
+    maxsize {{ log_rotation.max_size }}
+    create 0644 root root
+    sharedscripts
+    postrotate
+        systemctl reload containerd > /dev/null 2>&1 || true
+    endscript
+}

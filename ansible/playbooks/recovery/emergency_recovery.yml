@@ -1,0 +1,92 @@
+---
+# Emergency Recovery Playbook
+# Purpose: Fix Tailscale proxy StatefulSets after cluster issues
+# Migrated from: scripts/emergency-recovery.sh
+#
+# Usage:
+#   ansible-playbook -i inventory/production.yml playbooks/recovery/emergency_recovery.yml
+#
+# What it does:
+#   1. Verifies Kubernetes API is available
+#   2. Checks current Tailscale proxy pod status
+#   3. Deletes failing StatefulSets (***, ***, ***)
+#   4. Waits for Tailscale operator to recreate them
+#   5. Verifies pods are Ready
+#   6. Tests endpoint accessibility
+#   7. Generates recovery report
+
+- name: Emergency Recovery - Fix Tailscale Proxies
+  hosts: k3s_server
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Override these if needed
+    tailscale_namespace: tailscale
+    recovery_wait_time: 60
+    pod_ready_timeout: 120
+
+  pre_tasks:
+    - name: Display recovery information
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Emergency Recovery Playbook
+          =========================================
+          Target: {{ inventory_hostname }}
+          Purpose: Fix Tailscale proxy StatefulSets
+
+          This playbook will:
+            1. Verify k8s API availability
+            2. Delete failing StatefulSets
+            3. Wait for operator recreation
+            4. Verify endpoint accessibility
+
+          Estimated time: 2-3 minutes
+          =========================================
+      run_once: true
+      delegate_to: localhost
+
+    - name: Confirm execution
+      ansible.builtin.pause:
+        prompt: |
+
+          This will delete and recreate Tailscale proxy StatefulSets.
+          Services will be briefly unavailable (30-60 seconds).
+
+          Press ENTER to continue or Ctrl+C to abort
+      run_once: true
+      when:
+        - not (ansible_check_mode | default(false))
+        - not (auto_approve | default(false))
+
+  roles:
+    - role: emergency_recovery
+      tags: ['recovery', 'tailscale']
+
+  post_tasks:
+    - name: Final verification
+      ansible.builtin.command: kubectl get pods -n {{ tailscale_namespace }} -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: final_status
+      changed_when: false
+
+    - name: Display final cluster state
+      ansible.builtin.debug:
+        msg: |
+
+          =========================================
+          Recovery Completed Successfully!
+          =========================================
+
+          Final pod status:
+          {{ final_status.stdout }}
+
+          Next steps:
+            1. Test services via Tailscale URLs
+            2. Monitor with: kubectl get pods -n tailscale -w
+            3. Check logs if issues: kubectl logs -n tailscale <pod-name>
+
+          =========================================
+      run_once: true

@@ -1,0 +1,95 @@
+---
+# ArgoCD Installation Tasks
+# Uses kubectl directly — no Python kubernetes library required on the remote host.
+
+- name: Create ArgoCD namespace
+  ansible.builtin.command: kubectl create namespace {{ argocd_namespace }}
+  environment: "{{ kubeconfig_env }}"
+  register: create_ns
+  changed_when: create_ns.rc == 0
+  failed_when: create_ns.rc != 0 and 'already exists' not in create_ns.stderr
+
+- name: Check if ArgoCD is already installed
+  ansible.builtin.command: kubectl get deployment argocd-server -n {{ argocd_namespace }}
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_existing
+  changed_when: false
+  failed_when: false
+
+- name: Display ArgoCD status
+  ansible.builtin.debug:
+    msg: "{{ 'ArgoCD already installed — skipping download/apply' if argocd_existing.rc == 0 else 'Installing ArgoCD ' + argocd_version + '...' }}"
+
+- name: Download ArgoCD manifest
+  ansible.builtin.get_url:
+    url: "{{ argocd_manifest_url }}"
+    dest: /tmp/argocd-install.yaml
+    mode: '0644'
+  when: argocd_existing.rc != 0
+
+- name: Apply ArgoCD manifest
+  ansible.builtin.command: kubectl apply -n {{ argocd_namespace }} -f /tmp/argocd-install.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_apply
+  changed_when: "'created' in argocd_apply.stdout or 'configured' in argocd_apply.stdout"
+  when: argocd_existing.rc != 0
+
+- name: Wait for ArgoCD pods to be scheduled (give API server time to process)
+  ansible.builtin.pause:
+    seconds: 60
+  when: argocd_apply is changed
+
+- name: Wait for ArgoCD server deployment to appear in API
+  ansible.builtin.command: kubectl get deployment argocd-server -n {{ argocd_namespace }}
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_server_exists
+  until: argocd_server_exists.rc == 0
+  retries: 20
+  delay: 10
+  changed_when: false
+
+- name: Wait for ArgoCD server deployment to be ready
+  ansible.builtin.command: >
+    kubectl rollout status deployment/argocd-server
+    -n {{ argocd_namespace }}
+    --timeout=300s
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_server_rollout
+  changed_when: false
+
+- name: Wait for ArgoCD repo-server deployment to be ready
+  ansible.builtin.command: >
+    kubectl rollout status deployment/argocd-repo-server
+    -n {{ argocd_namespace }}
+    --timeout=300s
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_repo_rollout
+  changed_when: false
+
+- name: Wait for ArgoCD application-controller to be ready
+  ansible.builtin.command: >
+    kubectl rollout status statefulset/argocd-application-controller
+    -n {{ argocd_namespace }}
+    --timeout=300s
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_controller_rollout
+  changed_when: false
+
+- name: Get ArgoCD pods status
+  ansible.builtin.command: kubectl get pods -n {{ argocd_namespace }}
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_pods
+  changed_when: false
+
+- name: Display ArgoCD pods
+  ansible.builtin.debug:
+    msg: "{{ argocd_pods.stdout_lines }}"
+
+- name: Display installation summary
+  ansible.builtin.debug:
+    msg: |
+      ✓ ArgoCD {{ argocd_version }} installed
+      ✓ Namespace: {{ argocd_namespace }}
+      ✓ Server: Ready
+      ✓ Repo Server: Ready
+      ✓ Application Controller: Ready

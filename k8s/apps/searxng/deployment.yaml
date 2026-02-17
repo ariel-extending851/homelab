@@ -61,11 +61,7 @@ spec:
       labels:
         app: searxng
     spec:
-      # Schedule on AWS worker node (x86_64, 2GB RAM)
-      # Migrated from rasp-pi-03 → OCI k3s-node-1 → AWS k3s-agent-2
-      nodeSelector:
-        kubernetes.io/hostname: k3s-agent-2
-
+      # No nodeAffinity — let the scheduler place this on any available node.
       containers:
         # SearXNG Application
         - name: searxng

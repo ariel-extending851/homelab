@@ -1,0 +1,106 @@
+---
+# Common variables for all hosts
+# These apply to both Raspberry Pi and AWS instances
+
+# Project metadata
+project_name: homelab
+env: production
+maintainer: agfonseca
+
+# Kubernetes cluster configuration
+k3s_version: v1.34.3+k3s1
+k3s_cluster_name: homelab-k3s
+k3s_cluster_domain: cluster.local
+k3s_service_cidr: 10.43.0.0/16
+k3s_cluster_cidr: 10.42.0.0/16
+
+# k3s server configuration (control plane)
+k3s_server_config:
+  write-kubeconfig-mode: "0644"
+  disable:
+    - traefik  # We use Tailscale ingress instead
+  node-taint: []
+  cluster-init: false
+  flannel-backend: vxlan
+
+# k3s agent configuration (worker nodes)
+k3s_agent_config:
+  node-label: []
+  node-taint: []
+
+# Tailscale configuration
+tailscale_network: tail57bf10.ts.net
+tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
+
+# Container runtime configuration
+containerd_max_container_log_line_size: 16384
+containerd_config_override: true
+
+# System resource limits
+default_max_open_files: 1048576
+default_max_processes: 1048576
+
+# Monitoring endpoints
+prometheus_enabled: true
+prometheus_port: 9100
+
+# Application namespaces
+app_namespaces:
+  - media
+  - monitoring
+  - tailscale
+  - argocd
+
+# Common packages to install on all nodes
+common_packages:
+  - curl
+  - wget
+  - vim
+  - git
+  - htop
+  - iotop
+  - net-tools
+  - tmux
+  - jq
+
+# Timezone configuration
+timezone: America/Sao_Paulo
+
+# Log rotation settings
+log_rotation:
+  max_size: 100M
+  max_files: 5
+  compress: true
+
+# Backup configuration
+backup_enabled: true
+backup_retention_days: 7
+backup_path: /var/backups/homelab
+
+# Security settings
+firewall_enabled: true
+fail2ban_enabled: false  # Tailscale provides network security
+ssh_password_auth: false
+ssh_permit_root_login: false
+
+# Update and maintenance
+auto_update_enabled: false
+reboot_after_update: false
+maintenance_window: "03:00-05:00"
+
+# Emergency recovery settings
+emergency_recovery:
+  enabled: true
+  check_interval: 300  # 5 minutes
+  max_retries: 3
+  timeout: 120  # seconds
+
+# Health check configuration
+health_check:
+  enabled: true
+  interval: 60  # seconds
+  timeout: 30
+  retries: 3
+  endpoints:
+    kubernetes_api: "https://localhost:6443/healthz"
+    tailscale: "http://localhost:41641/localapi/v0/status"

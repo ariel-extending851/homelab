@@ -1,0 +1,111 @@
+---
+# Deploy ArgoCD GitOps Platform
+# Purpose: Install ArgoCD with SOPS support and repository configuration
+#
+# Usage:
+#   ansible-playbook -i inventory/production.yml playbooks/gitops/deploy_argocd.yml
+#
+# What it does:
+#   1. Pre-flight checks (k3s running, SOPS keys available)
+#   2. Install ArgoCD from official manifest
+#   3. Configure SOPS plugin for encrypted secrets
+#   4. Set up Git repository credentials
+#   5. Verify installation
+#
+# Prerequisites:
+#   - k3s cluster running
+#   - SOPS age key at ~/.config/sops/age/keys.txt
+#   - Git deploy key at ~/.ssh/homelab-deploy-key (if private repo)
+
+- name: Deploy ArgoCD GitOps Platform
+  hosts: k3s_server
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Override these if needed
+    argocd_version: v2.13.2
+    argocd_namespace: argocd
+    sops_enabled: true
+
+  pre_tasks:
+    - name: Display ArgoCD deployment information
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          ArgoCD Deployment Playbook
+          =========================================
+          Target: {{ inventory_hostname }}
+          Version: {{ argocd_version }}
+          Namespace: {{ argocd_namespace }}
+          SOPS: {{ 'Enabled' if sops_enabled else 'Disabled' }}
+
+          This playbook will:
+            1. Install ArgoCD {{ argocd_version }}
+            2. Configure SOPS for secret decryption
+            3. Set up Git repository access
+            4. Verify installation
+
+          Estimated time: 5-10 minutes
+          =========================================
+      run_once: true
+      delegate_to: localhost
+
+    - name: Confirm execution
+      ansible.builtin.pause:
+        prompt: |
+
+          This will install ArgoCD and configure GitOps.
+
+          Press ENTER to continue or Ctrl+C to abort
+      run_once: true
+      when:
+        - not (ansible_check_mode | default(false))
+        - not (auto_approve | default(false))
+
+  roles:
+    - role: argocd
+      tags: ['argocd', 'gitops']
+
+  post_tasks:
+    - name: Get ArgoCD admin password
+      ansible.builtin.command: |
+        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: admin_password_encoded
+      changed_when: false
+      no_log: true
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+
+          =========================================
+          ArgoCD Deployment Complete!
+          =========================================
+
+          Access ArgoCD UI:
+            1. Port forward:
+               kubectl port-forward svc/argocd-server -n {{ argocd_namespace }} 8080:443
+
+            2. Open browser:
+               https://localhost:8080
+
+            3. Login credentials:
+               Username: admin
+               Password: {{ admin_password_encoded.stdout | b64decode }}
+
+          Next steps:
+            1. Bootstrap applications:
+               ansible-playbook -i inventory/production.yml playbooks/gitops/bootstrap_apps.yml
+
+            2. Or manually apply apps-root:
+               kubectl apply -f k8s/gitops/apps-root.yaml
+
+            3. Monitor sync:
+               kubectl get applications -n argocd -w
+
+          =========================================
+      run_once: true
+      no_log: false

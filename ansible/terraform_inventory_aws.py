@@ -50,11 +50,42 @@ class TerraformInventoryAWS:
             )
             return json.loads(result.stdout)
         except subprocess.CalledProcessError as e:
-            print(f"ERROR: Failed to read Terraform outputs: {e.stderr}", file=sys.stderr)
+            print(
+                f"ERROR: Failed to read Terraform outputs: {e.stderr}", file=sys.stderr
+            )
             sys.exit(1)
         except json.JSONDecodeError as e:
             print(f"ERROR: Invalid JSON from Terraform: {e}", file=sys.stderr)
             sys.exit(1)
+
+    def _get_tailscale_ips(self) -> dict:
+        """Return a dict of {tailscale-hostname: tailscale-ipv4} for online peers.
+
+        Uses `tailscale status --json` which is always available locally since
+        this machine is itself on the tailnet. Falls back to an empty dict so
+        the caller can use private/public IPs as a fallback.
+        """
+        try:
+            result = subprocess.run(
+                ["tailscale", "status", "--json"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            data = json.loads(result.stdout)
+            peers = data.get("Peer", {})
+            ips = {}
+            for peer in peers.values():
+                hostname = peer.get("HostName", "")
+                tailscale_ips = peer.get("TailscaleIPs", [])
+                # Only include online peers with a v4 address
+                if hostname and tailscale_ips and peer.get("Online", False):
+                    ipv4 = next((ip for ip in tailscale_ips if ":" not in ip), None)
+                    if ipv4:
+                        ips[hostname] = ipv4
+            return ips
+        except Exception:
+            return {}
 
     def build_inventory(self):
         """Build Ansible inventory from Terraform outputs"""
@@ -70,36 +101,66 @@ class TerraformInventoryAWS:
         agent_private_ip = outputs.get("k3s_agent_private_ip", {}).get("value", "")
         agent_instance_id = outputs.get("k3s_agent_instance_id", {}).get("value", "")
 
-        if not server_public_ip:
+        if not server_instance_id:
             print(
-                "ERROR: Missing required Terraform output (k3s_server_public_ip). "
+                "ERROR: Missing required Terraform output (k3s_server_instance_id). "
                 "Ensure you have run 'terraform apply' in the infra/aws/ directory.",
                 file=sys.stderr,
             )
             sys.exit(1)
 
-        # Add k3s server
+        # Resolve Tailscale IPs via `tailscale status` — Zero Trust access model.
+        # Ansible connects over the private Tailscale mesh, not public internet.
+        # Public IPs are retained as metadata only (no public SSH ingress).
+        tailscale_ips = self._get_tailscale_ips()
+        server_tailscale_ip = tailscale_ips.get("k3s-server-1", server_private_ip)
+        agent_tailscale_ip = tailscale_ips.get("k3s-agent-2", agent_private_ip)
+
+        # SSM configuration from environment variables (set by Terraform or CI/CD)
+        SSM_BUCKET = os.environ.get("ANSIBLE_AWS_SSM_BUCKET_NAME", "")
+        SSM_REGION = os.environ.get(
+            "ANSIBLE_AWS_SSM_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        )
+
+        if not SSM_BUCKET:
+            print(
+                "WARNING: ANSIBLE_AWS_SSM_BUCKET_NAME environment variable not set. "
+                "Ansible SSM connection may fail. Set it to the S3 bucket used for SSM Session Manager.",
+                file=sys.stderr,
+            )
+
+        # Add k3s server — connect via SSM (Zero Trust, no SSH keys required)
         server_hostname = "k3s-server"
         self.inventory["k3s_server"]["hosts"].append(server_hostname)
         self.inventory["_meta"]["hostvars"][server_hostname] = {
-            "ansible_host": server_public_ip,
-            "ansible_user": "ec2-user",  # AWS default user for Amazon Linux
+            "ansible_host": server_instance_id,
+            "ansible_connection": "amazon.aws.aws_ssm",
+            "ansible_aws_ssm_region": SSM_REGION,
+            "ansible_aws_ssm_bucket_name": SSM_BUCKET,
+            "ansible_remote_tmp": "/tmp/ansible-ssm",
+            "ansible_user": "ec2-user",
             "private_ip": server_private_ip,
             "public_ip": server_public_ip,
+            "tailscale_ip": server_tailscale_ip,
             "instance_id": server_instance_id,
             "node_type": "server",
             "k3s_control_node": True,
         }
 
-        # Add k3s agent (if exists)
-        if agent_public_ip:
+        # Add k3s agent — connect via SSM (Zero Trust, no SSH keys required)
+        if agent_instance_id:
             agent_hostname = "k3s-agent"
             self.inventory["k3s_agent"]["hosts"].append(agent_hostname)
             self.inventory["_meta"]["hostvars"][agent_hostname] = {
-                "ansible_host": agent_public_ip,
-                "ansible_user": "ec2-user",  # AWS default user for Amazon Linux
+                "ansible_host": agent_instance_id,
+                "ansible_connection": "amazon.aws.aws_ssm",
+                "ansible_aws_ssm_region": SSM_REGION,
+                "ansible_aws_ssm_bucket_name": SSM_BUCKET,
+                "ansible_remote_tmp": "/tmp/ansible-ssm",
+                "ansible_user": "ec2-user",
                 "private_ip": agent_private_ip,
                 "public_ip": agent_public_ip,
+                "tailscale_ip": agent_tailscale_ip,
                 "instance_id": agent_instance_id,
                 "node_type": "agent",
                 "k3s_control_node": False,
@@ -133,10 +194,36 @@ def main():
         type=str,
         help="Get variables for a specific host (Ansible standard)",
     )
+    parser.add_argument(
+        "--terraform-dir",
+        type=str,
+        default=os.environ.get("TF_DIR", "../infra/aws"),
+        help="Path to Terraform directory (default: ../infra/aws, or TF_DIR env var)",
+    )
+    parser.add_argument(
+        "--ssm-bucket",
+        type=str,
+        default=os.environ.get("ANSIBLE_AWS_SSM_BUCKET_NAME", ""),
+        help="S3 bucket for SSM Session Manager (default: ANSIBLE_AWS_SSM_BUCKET_NAME env var)",
+    )
+    parser.add_argument(
+        "--ssm-region",
+        type=str,
+        default=os.environ.get(
+            "ANSIBLE_AWS_SSM_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        ),
+        help="AWS region for SSM (default: ANSIBLE_AWS_SSM_REGION or AWS_DEFAULT_REGION env var)",
+    )
 
     args = parser.parse_args()
 
-    inventory = TerraformInventoryAWS()
+    # Override environment variables with command-line arguments if provided
+    if args.ssm_bucket:
+        os.environ["ANSIBLE_AWS_SSM_BUCKET_NAME"] = args.ssm_bucket
+    if args.ssm_region:
+        os.environ["ANSIBLE_AWS_SSM_REGION"] = args.ssm_region
+
+    inventory = TerraformInventoryAWS(terraform_dir=args.terraform_dir)
 
     if args.list:
         print(json.dumps(inventory.list_inventory(), indent=2))

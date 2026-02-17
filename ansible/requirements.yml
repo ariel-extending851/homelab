@@ -1,0 +1,16 @@
+---
+# Ansible Collections Requirements
+# Install with: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  # Kubernetes core collection (for k8s module)
+  - name: kubernetes.core
+    version: ">=3.0.0"
+
+  # Community SOPS collection (for encrypted secrets)
+  - name: community.sops
+    version: ">=1.6.0"
+
+  # Community general collection (utilities)
+  - name: community.general
+    version: ">=8.0.0"
