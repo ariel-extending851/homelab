@@ -1,0 +1,120 @@
+---
+- name: Converge gatekeeper role on OpenWrt test instance
+  hosts: all
+  gather_facts: false
+
+  pre_tasks:
+    - name: Ensure OpenWrt UCI config directory exists in test container
+      ansible.builtin.raw: |
+        [ -d /etc/config ] || mkdir -p /etc/config
+      changed_when: false
+
+    - name: Ensure OpenWrt runtime lock directory exists in test container
+      ansible.builtin.raw: |
+        [ -d /var/lock ] || mkdir -p /var/lock
+      changed_when: false
+
+    - name: Seed minimal UCI network config for Molecule fixture when missing
+      ansible.builtin.raw: |
+        set -eu
+        if [ ! -s /etc/config/network ]; then
+          printf "%s\n" \
+            "config interface 'loopback'" \
+            "        option device 'lo'" \
+            "        option proto 'static'" \
+            "        option ipaddr '127.0.0.1'" \
+            "        option netmask '255.0.0.0'" \
+            "" \
+            "config interface 'lan'" \
+            "        option device 'eth0'" \
+            "        option proto 'static'" \
+            "        option ipaddr '192.168.8.1'" \
+            "        option netmask '255.255.255.0'" \
+            "" \
+            "config interface 'wan'" \
+            "        option device 'eth1'" \
+            "        option proto 'dhcp'" > /etc/config/network
+          echo CHANGED
+        else
+          echo OK
+        fi
+      register: gatekeeper_fixture_network_seed
+      changed_when: "'CHANGED' in gatekeeper_fixture_network_seed.stdout"
+
+    - name: Seed minimal UCI wireless config for Molecule fixture when missing
+      ansible.builtin.raw: |
+        set -eu
+        if [ ! -s /etc/config/wireless ]; then
+          printf "%s\n" \
+            "config wifi-device 'radio0'" \
+            "        option type 'mac80211'" \
+            "" \
+            "config wifi-iface 'default_radio0'" \
+            "        option device 'radio0'" \
+            "        option mode 'ap'" \
+            "        option ssid 'molecule-24g'" \
+            "        option key 'molecule-pass'" \
+            "        option encryption 'psk2'" \
+            "" \
+            "config wifi-device 'radio1'" \
+            "        option type 'mac80211'" \
+            "" \
+            "config wifi-iface 'default_radio1'" \
+            "        option device 'radio1'" \
+            "        option mode 'ap'" \
+            "        option ssid 'molecule-5g'" \
+            "        option key 'molecule-pass'" \
+            "        option encryption 'psk2'" \
+            "" \
+            "config wifi-iface 'guest2g'" \
+            "        option device 'radio0'" \
+            "        option mode 'ap'" \
+            "        option ssid 'molecule-24g-guest'" \
+            "        option key 'molecule-guest-pass'" \
+            "        option encryption 'psk2'" \
+            "        option network 'guest'" \
+            "        option isolate '1'" \
+            "        option disabled '1'" \
+            "" \
+            "config wifi-iface 'guest5g'" \
+            "        option device 'radio1'" \
+            "        option mode 'ap'" \
+            "        option ssid 'molecule-5g-guest'" \
+            "        option key 'molecule-guest-pass'" \
+            "        option encryption 'psk2'" \
+            "        option network 'guest'" \
+            "        option isolate '1'" \
+            "        option disabled '1'" > /etc/config/wireless
+          echo CHANGED
+        else
+          echo OK
+        fi
+      register: gatekeeper_fixture_wireless_seed
+      changed_when: "'CHANGED' in gatekeeper_fixture_wireless_seed.stdout"
+
+    - name: Stub OpenWrt restart scripts when ubus is unavailable in Molecule
+      ansible.builtin.raw: |
+        set -eu
+        if [ ! -S /var/run/ubus.sock ]; then
+          changed=0
+          for svc in network firewall; do
+            if [ -x "/etc/init.d/$svc" ] && [ ! -f "/etc/init.d/${svc}.orig" ]; then
+              mv "/etc/init.d/$svc" "/etc/init.d/${svc}.orig"
+              printf "%s\n" "#!/bin/sh" "exit 0" > "/etc/init.d/$svc"
+              chmod +x "/etc/init.d/$svc"
+              changed=1
+            fi
+          done
+          if [ "$changed" -eq 1 ]; then
+            echo CHANGED
+          else
+            echo OK
+          fi
+        else
+          echo OK
+        fi
+      register: gatekeeper_fixture_restart_stub
+      changed_when: "'CHANGED' in gatekeeper_fixture_restart_stub.stdout"
+
+  roles:
+    - role: gatekeeper

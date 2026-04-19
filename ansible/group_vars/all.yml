@@ -7,6 +7,11 @@ project_name: homelab
 env: production
 maintainer: agfonseca
 
+# Network topology configuration
+network_cidr: "192.168.8.0/24"        # Admin Network (Trusted zone)
+guest_network_cidr: "192.168.9.0/24"  # Guest/IoT Network (Isolated zone)
+gateway_ip: "192.168.8.1"             # Primary Gateway (Opal in Bridge Mode)
+
 # Kubernetes cluster configuration
 k3s_version: v1.34.3+k3s1
 k3s_cluster_name: homelab-k3s
@@ -30,7 +35,6 @@ k3s_agent_config:
 
 # Tailscale configuration
 tailscale_network: tail57bf10.ts.net
-tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
 
 # Container runtime configuration
 containerd_max_container_log_line_size: 16384
@@ -71,6 +75,7 @@ log_rotation:
   max_size: 100M
   max_files: 5
   compress: true
+  enabled: true
 
 # Backup configuration
 backup_enabled: true

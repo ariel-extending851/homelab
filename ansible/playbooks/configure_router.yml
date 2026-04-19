@@ -1,0 +1,7 @@
+---
+- name: Configure OpenWrt Gatekeeper Router
+  hosts: router
+  gather_facts: false
+
+  roles:
+    - gatekeeper

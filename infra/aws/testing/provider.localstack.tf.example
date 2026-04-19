@@ -1,60 +1,80 @@
 # ==============================================================================
-# LocalStack Provider Configuration
+# LocalStack Provider Configuration — DOCUMENTATION EXAMPLE
 # ==============================================================================
-# This file configures Terraform to use LocalStack instead of real AWS.
+# This file documents how the AWS provider is overridden for LocalStack testing.
+# It is NOT loaded by Terraform directly (the .example extension is ignored).
 #
-# USAGE:
-# 1. Ensure LocalStack is running:
-#    docker run -d -p 4566:4566 localstack/localstack:latest
+# The actual runtime file used by `make hybrid-dry-run` is:
+#   infra/aws/testing/provider_override.tf          (gitignored)
 #
-# 2. Copy this file to enable LocalStack:
-#    cp provider.localstack.tf.example provider.localstack.tf
+# Its committed template is:
+#   infra/aws/testing/provider_override.tf.disabled (tracked, safe to read)
 #
-# 3. Run Terraform as normal:
-#    terraform init
-#    terraform plan -var-file="terraform.tfvars.localstack"
+# USAGE (one-time setup on a fresh checkout):
+#   cp infra/aws/testing/provider_override.tf.disabled \
+#      infra/aws/testing/provider_override.tf
+#   # OR just run: make hybrid-dry-run   (Makefile copies automatically)
 #
-# 4. To switch back to real AWS:
-#    rm provider.localstack.tf
-#    terraform init -reconfigure
+# PREREQUISITES:
+#   1. LocalStack running:
+#        docker run -d --name localstack -p 4566:4566 localstack/localstack
+#   2. tflocal installed:
+#        pip install terraform-local
+#   3. awslocal installed:
+#        pip install awscli-local
 #
-# NOTE: This file is .gitignore'd to prevent accidental commits
+# IMPORTANT — this is an OVERRIDE file, not a standalone config.
+# It only contains the `provider "aws" {}` block which Terraform merges with
+# the root `provider "aws" {}` in main.tf.  Do NOT add a `terraform {}` block
+# here — that would produce a duplicate-block error.
 # ==============================================================================
 
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    sops = {
-      source  = "carlpett/sops"
-      version = "~> 0.7.0"
-    }
-  }
-}
-
-# SOPS Provider (works with LocalStack)
-provider "sops" {}
-
-# LocalStack Provider Configuration
 provider "aws" {
   region = var.aws_region
 
-  # LocalStack endpoints
-  access_key                  = "test"
-  secret_key                  = "test"
-  skip_credentials_validation = true
-  skip_requesting_account_id  = true
-  skip_metadata_api_check     = true
+  # ── Credential isolation ──────────────────────────────────────────────────
+  # Hard-code dummy values so that any real credentials injected by mise,
+  # direnv, or ~/.aws/credentials are completely shadowed.  These strings have
+  # no value outside LocalStack.
+  access_key = "test"
+  secret_key = "test"
 
+  # ── Skip all real-AWS validation paths ───────────────────────────────────
+  # Without these flags Terraform contacts STS / EC2 IMDS even when endpoint
+  # overrides are present, producing 403 Forbidden errors against real AWS.
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+  skip_region_validation      = true   # prevents region look-up against real partition
+
+  # ── S3 path-style URLs ────────────────────────────────────────────────────
+  # LocalStack exposes S3 via path-style URLs (localhost:4566/<bucket>),
+  # not the virtual-hosted style (bucket.s3.amazonaws.com) used by real AWS.
+  s3_use_path_style = true
+
+  # ── Per-service endpoint overrides ────────────────────────────────────────
+  # Every service used by the root module and its children must be listed.
+  # Any service NOT listed falls through to the real AWS endpoint.
   endpoints {
+    # Core compute / network
     ec2 = "http://localhost:4566"
     iam = "http://localhost:4566"
-    ssm = "http://localhost:4566"
+
+    # Auth & identity — route to LocalStack to block all real STS calls
     sts = "http://localhost:4566"
+
+    # Systems Manager — used by Ansible SSM connection plugin
+    ssm         = "http://localhost:4566"
+    ssmmessages = "http://localhost:4566"
+
+    # S3 — Terraform state backend + SSM transfer bucket
+    s3 = "http://localhost:4566"
+
+    # Lambda / EventBridge — scheduler module
+    # (disabled when localstack_test = "yes" but listed for completeness)
+    lambda      = "http://localhost:4566"
+    eventbridge = "http://localhost:4566"
+    scheduler   = "http://localhost:4566"
   }
 
   default_tags {
@@ -65,18 +85,3 @@ provider "aws" {
     }
   }
 }
-
-# Override SOPS to use mock data for LocalStack testing
-# Comment this out if you want to test real SOPS integration
-# data "sops_file" "secrets" {
-#   source_file = "${path.module}/terraform.tfvars.sops.yaml"
-# }
-
-# Mock secrets for LocalStack testing (when SOPS is disabled)
-# Uncomment if you don't want to test SOPS integration
-# locals {
-#   secrets = {
-#     ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMockKeyForLocalStackTesting localstack-test"
-#     k3s_token      = "mock-k3s-token-for-localstack-testing-only"
-#   }
-# }

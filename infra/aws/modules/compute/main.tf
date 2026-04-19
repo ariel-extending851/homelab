@@ -232,6 +232,15 @@ resource "aws_ec2_fleet" "k3s_server" {
       launch_template_id = aws_launch_template.k3s_server.id
       version            = "$Latest"
     }
+    override {
+      instance_type = "t3.micro"
+    }
+    override {
+      instance_type = "t3a.micro"
+    }
+    override {
+      instance_type = "t3.small"
+    }
   }
 
   target_capacity_specification {
@@ -276,6 +285,15 @@ resource "aws_ec2_fleet" "k3s_agent" {
     launch_template_specification {
       launch_template_id = aws_launch_template.k3s_agent.id
       version            = "$Latest"
+    }
+    override {
+      instance_type = "t3.micro"
+    }
+    override {
+      instance_type = "t3a.micro"
+    }
+    override {
+      instance_type = "t3.small"
     }
   }
 

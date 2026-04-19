@@ -1,0 +1,44 @@
+---
+# Converge: apply the argocd role in check mode.
+# All kubectl/shell/copy/patch tasks are gated with "when: not ansible_check_mode"
+# so they are safely skipped. We verify that:
+#   - All debug/banner tasks render without crashing
+#   - No undefined variable errors from skipped tasks
+#   - The role's default() guards work correctly
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  check_mode: true    # <-- entire play runs in dry-run mode
+
+  pre_tasks:
+    # Simulate /etc/rancher/k3s/k3s.yaml existing so preflight stat passes
+    - name: Create /etc/rancher/k3s directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+      check_mode: false
+
+    - name: Create fake k3s kubeconfig
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: touch
+        mode: '0600'
+      check_mode: false    # This pre_task must actually run to set up the file
+      changed_when: false  # touch updates mtime on every run — suppress false changed
+
+    # Create fake kubectl on PATH so command module doesn't immediately error
+    - name: Install fake kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Molecule stub: always exit 0 with empty output
+          exit 0
+      check_mode: false
+
+  roles:
+    - role: argocd

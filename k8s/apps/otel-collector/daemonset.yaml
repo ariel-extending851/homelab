@@ -26,8 +26,13 @@ spec:
           args: ["--config=/conf/otel-collector-config"]
 
           securityContext:
-            privileged: true # Required for host access (logs, metrics)
+            allowPrivilegeEscalation: false
             runAsUser: 0
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - DAC_READ_SEARCH  # Read host log files via hostPath mounts
 
           livenessProbe:
             httpGet:

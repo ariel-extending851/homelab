@@ -4,11 +4,11 @@ kind: Kustomization
 namespace: prometheus
 
 resources:
-  - namespace.yaml
-  - rbac.yaml
-  - secret.yaml
-  - pvc.yaml
-  - configmap.yaml
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
+- namespace.yaml
+- rbac.yaml
+- secret.yaml
+- pvc.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml

@@ -4,10 +4,10 @@ kind: Kustomization
 namespace: golink
 
 resources:
-  - namespace.yaml
-  - secret.yaml
-  - pvc.yaml
-  - rbac.yaml
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
+- namespace.yaml
+- secret.yaml
+- pvc.yaml
+- rbac.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml

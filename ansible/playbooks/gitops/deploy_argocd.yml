@@ -50,6 +50,8 @@
           =========================================
       run_once: true
       delegate_to: localhost
+      tags:
+        - validate
 
     - name: Confirm execution
       ansible.builtin.pause:
@@ -65,17 +67,22 @@
 
   roles:
     - role: argocd
-      tags: ['argocd', 'gitops']
+      tags: ['argocd', 'gitops', 'validate']
 
   post_tasks:
     - name: Get ArgoCD admin password
       ansible.builtin.command: |
         kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
       environment:
+        # Use the server-local kubeconfig (runs on the remote k3s-server host).
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: admin_password_encoded
       changed_when: false
+      failed_when: false
       no_log: true
+      when: not ansible_check_mode
+      tags:
+        - validate
 
     - name: Display completion message
       ansible.builtin.debug:
@@ -94,7 +101,9 @@
 
             3. Login credentials:
                Username: admin
-               Password: {{ admin_password_encoded.stdout | b64decode }}
+               Password: retrieve with:
+                 kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret \
+                   -o jsonpath="{.data.password}" | base64 -d
 
           Next steps:
             1. Bootstrap applications:
@@ -108,4 +117,5 @@
 
           =========================================
       run_once: true
-      no_log: false
+      tags:
+        - validate

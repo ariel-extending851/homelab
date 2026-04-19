@@ -1,0 +1,22 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 160        # playbooks have long kubectl commands
+    level: warning
+  truthy:
+    allowed-values: ["true", "false", "yes", "no"]
+    level: warning
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false   # required by ansible-lint compatibility
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true  # required by ansible-lint compatibility
+
+ignore: |
+  .git/
+  molecule/*/molecule.yml   # molecule.yml has docker-specific non-standard keys

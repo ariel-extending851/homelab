@@ -1,0 +1,16 @@
+---
+# Run the full k3s role against the server container.
+# The role's main.yml gates install_server.yml on:
+#   when: k3s_control_node | bool and not ansible_check_mode
+# Both conditions are satisfied: k3s_control_node=true and check_mode=false.
+#
+# The curl|sh install is skipped via its `creates:` guard (k3s.service pre-exists).
+# The systemd module uses the /bin/systemctl stub from prepare.yml.
+
+- name: Converge (install scenario)
+  hosts: k3s_server
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: k3s

@@ -1,0 +1,64 @@
+---
+# Molecule scenario: default
+# Tests emergency_recovery role — Tailscale proxy StatefulSet recovery.
+#
+# Strategy: kubectl stub returns healthy cluster state so all preflight checks
+# pass. verify_endpoints is disabled to avoid real HTTP calls. The scenario
+# validates: kubeconfig_env is always defined, preflight passes, StatefulSet
+# deletion tasks run without error, and the recovery report is generated.
+
+driver:
+  name: docker
+
+platforms:
+  - name: k3s-emergency-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: k3s-emergency-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          k3s-emergency-test:
+      k3s_server:
+        hosts:
+          k3s-emergency-test:
+    group_vars:
+      all:
+        ansible_become: false
+        # Disable features that require real network or real cluster
+        verify_endpoints: false
+        wait_for_recreation: false
+        delete_statefulsets: true
+        generate_report: true
+        tailscale_namespace: tailscale
+        tailscale_network: molecule.test
+        tailscale_proxy_services:
+          - ***
+          - ***
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible

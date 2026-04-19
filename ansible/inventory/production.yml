@@ -1,33 +1,46 @@
 ---
 # Homelab Production Inventory
-# This file contains static inventory for Raspberry Pi nodes
-# AWS instances are discovered dynamically via terraform_inventory_aws.py
+# Architecture: Hybrid Cloud
+#   - Control Plane (k3s_server): AWS EC2 (discovered dynamically via terraform_inventory_aws.py)
+#   - Workers (k3s_agent):        Raspberry Pi 3 & 4  +  one AWS EC2 agent
+#
+# Usage:
+#   Pi-only runs:  ansible-playbook -i inventory/production.yml          playbooks/site.yml
+#   Full hybrid:   ansible-playbook -i inventory/production.yml \
+#                                   -i terraform_inventory_aws.py       playbooks/site.yml
+#
+# Tailscale is used for ALL inter-node communication (SSH management and
+# k3s cluster traffic).  Each node's ansible_host and node_ip are its
+# Tailscale IP so that Ansible and k3s both route over the encrypted mesh.
 
 all:
   vars:
-    # Global variables for all hosts
-    ansible_user: agfonseca
+    # ── SSH / Ansible globals ─────────────────────────────────────────────
+    ansible_user: ubuntu
+    ansible_ssh_args: ''
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts'
+    ansible_scp_extra_args: '-O'
     ansible_become: true
     ansible_become_method: sudo
     ansible_python_interpreter: /usr/bin/python3
 
-    # Kubernetes cluster configuration
+    # ── Kubernetes cluster ────────────────────────────────────────────────
     k3s_version: v1.34.3+k3s1
     k3s_cluster_domain: cluster.local
     k3s_service_cidr: 10.43.0.0/16
     k3s_cluster_cidr: 10.42.0.0/16
 
-    # Tailscale network
+    # ── Tailscale network ─────────────────────────────────────────────────
     tailscale_network: tail57bf10.ts.net
 
   children:
-    # Raspberry Pi nodes (static - always available)
+    # ── Raspberry Pi nodes (static — always available) ─────────────────────
     raspberry_pi:
       hosts:
         rasp-pi-03:
-          ansible_host: 100.81.122.3
-          ansible_user: agfonseca
-          node_ip: 100.81.122.3
+          ansible_host: 192.168.8.12    # Admin Network (Local LAN)
+          ansible_user: ubuntu
+          node_ip: 100.75.83.105         # Tailscale IP used for flannel / kubelet registration
           node_name: rasp-pi-03
           node_labels:
             node.kubernetes.io/instance-type: raspberry-pi-3
@@ -39,9 +52,9 @@ all:
           architecture: arm64
 
         rasp-pi-04:
-          ansible_host: 100.82.53.81
-          ansible_user: agfonseca
-          node_ip: 100.82.53.81
+          ansible_host: 192.168.8.11
+          ansible_user: ubuntu
+          node_ip: 100.84.176.35         # Tailscale IP
           node_name: rasp-pi-04
           node_labels:
             node.kubernetes.io/instance-type: raspberry-pi-4
@@ -57,48 +70,48 @@ all:
           media_path: /mnt/storage/data
           ***_path: /mnt/storage/***
 
-    # AWS instances (managed by Terraform, discovered dynamically)
+    # ── AWS instances (managed by Terraform, discovered dynamically) ────────
     # Use: ansible-playbook -i terraform_inventory_aws.py playbook.yml
-    # Or add them here manually after deployment:
-    aws_instances:
-      hosts:
-        # k3s-server-1:
-        #   ansible_host: <Tailscale IP>
-        #   node_ip: <Private IP>
-        #   instance_type: t3.medium
-        # k3s-agent-2:
-        #   ansible_host: <Tailscale IP>
-        #   node_ip: <Private IP>
-        #   instance_type: t3.small
-
-    # Kubernetes role-based groups
-    k3s_server:
-      hosts:
-        # k3s-server-1:
-
+    # Or merge the static mock for dry-run:
+    #   ansible-playbook -i inventory/production.yml -i inventory/mock_aws.yml
     k3s_agent:
       hosts:
-        rasp-pi-03:
+        rasp-pi-03:   # formerly control plane — migrated to agent role
         rasp-pi-04:
-        # k3s-agent-2:
+        # k3s-agent-aws:  (added by terraform_inventory_aws.py at runtime)
 
-    # Hardware-based groups
+    # ── Hardware-based groups ─────────────────────────────────────────────
     arm_nodes:
       hosts:
         rasp-pi-03:
         rasp-pi-04:
 
-    amd64_nodes:
-      hosts:
-        # k3s-server-1:
-        # k3s-agent-2:
-
-    # Storage-capable nodes
+    # ── Storage-capable nodes ─────────────────────────────────────────────
     storage_nodes:
       hosts:
         rasp-pi-04:
 
-    # Low memory nodes (< 2GB RAM) - need special handling
+    # ── Low-memory nodes (< 2 GB RAM) — need special scheduling ──────────
     low_memory_nodes:
       hosts:
         rasp-pi-03:
+
+    # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
+    router:
+      hosts:
+        opal-gateway:
+          ansible_host: 192.168.8.1
+          ansible_connection: ssh
+          ansible_user: root
+          ansible_python_interpreter: /bin/false
+          ansible_ssh_common_args: '-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -o RequiredRSASize=1024 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts'
+          ansible_password: "{{ lookup('env', 'ROUTER_SSH_PASS') }}"
+          ansible_become: false
+
+    # ── PC Tower (Fedora) ──────────────────────────────────────────────────
+    workstations:
+      hosts:
+        pc-tower:
+          ansible_host: 192.168.8.120
+          ansible_user: "{{ lookup('env', 'USER') }}"
+          ansible_connection: ssh

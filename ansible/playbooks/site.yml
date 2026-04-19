@@ -1,23 +1,40 @@
 ---
-# Master Site Playbook - Complete Homelab Deployment
-# Purpose: Complete homelab infrastructure deployment from scratch to fully operational
+# ansible/playbooks/site.yml
+# Master Site Playbook — Complete Homelab Deployment
+#
+# Architecture: Hybrid Cloud
+#   Control Plane (k3s_server) → AWS EC2 only
+#   Workers (k3s_agent)        → Raspberry Pi 3 & 4  +  AWS EC2 agent
+#   GitOps (ArgoCD)            → AWS k3s_server only
 #
 # Usage:
-#   # Deploy everything (k3s + ArgoCD + apps)
-#   ansible-playbook -i inventory/production.yml playbooks/site.yml
+#   # Full deploy (static Pi inventory + dynamic AWS inventory):
+#   ansible-playbook -i inventory/production.yml \
+#                    -i terraform_inventory_aws.py \
+#                    playbooks/site.yml
 #
-#   # Deploy only Phase 1 (infrastructure)
-#   ansible-playbook -i inventory/production.yml playbooks/site.yml --tags phase1
+#   # Pi-only (agents) with mock AWS server for dry-run:
+#   ansible-playbook -i inventory/production.yml \
+#                    -i inventory/mock_aws.yml \
+#                    playbooks/site.yml --check
 #
-#   # Deploy only Phase 2 (GitOps)
-#   ansible-playbook -i inventory/production.yml playbooks/site.yml --tags phase2
-#
-#   # Skip app bootstrap
-#   ansible-playbook -i inventory/production.yml playbooks/site.yml --skip-tags bootstrap
+#   # Phase selectors:
+#   --tags phase0   Pre-migration cleanup (Pi server → agent)
+#   --tags phase1   Infrastructure  (Tailscale, RPi optimisation, k3s)
+#   --tags phase2   GitOps platform (ArgoCD + SOPS + app bootstrap)
+#   --tags phase3   Final verification
+#   --skip-tags bootstrap   Skip app bootstrap
 
-- name: Homelab Infrastructure - Complete Deployment
+# =============================================================================
+# BANNER
+# =============================================================================
+
+- name: Homelab Infrastructure — Complete Deployment
   hosts: all
-  gather_facts: yes
+  gather_facts: true
+  tags:
+    - always
+    - validate
 
   pre_tasks:
     - name: Display deployment plan
@@ -27,18 +44,23 @@
           Homelab Complete Deployment
           =========================================
 
+          Architecture: Hybrid Cloud
+            Control Plane → AWS EC2  (k3s_server)
+            Workers       → Raspberry Pi + AWS EC2  (k3s_agent)
+            GitOps        → ArgoCD on AWS k3s_server only
+
           Deployment Phases:
-            Phase 1: Infrastructure (k3s + Optimizations)
+            Phase 0: Pre-migration cleanup (Pi server → agent demotion)
+            Phase 1: Infrastructure (k3s + RPi optimisations)
             Phase 2: GitOps Platform (ArgoCD + SOPS)
-            Phase 3: Applications (Bootstrap via ArgoCD)
-            Phase 4: Verification & Health Checks
+            Phase 3: Final Verification & Summary
 
           Hosts in scope:
-          {% for host in ansible_play_hosts %}
+          {% for host in ansible_play_hosts_all | select('match', '^[A-Za-z0-9][A-Za-z0-9._-]*$') | list %}
             • {{ host }} ({{ hostvars[host]['ansible_host'] | default('unknown') }})
           {% endfor %}
 
-          Estimated total time: 15-25 minutes
+          Estimated total time: 20-30 minutes
 
           =========================================
       run_once: true
@@ -46,97 +68,291 @@
       tags: always
 
 # =============================================================================
+# KUBECONFIG REFRESH (pre-flight — runs on localhost, no remote connection)
+# -----------------------------------------------------------------------------
+# Every run of this playbook refreshes the local kubeconfig file so that a
+# replaced Spot instance (new Tailscale IP) never breaks subsequent plays.
+#
+# How it works:
+#   1. Reads the current server Tailscale IP from the dynamic inventory
+#      (terraform_inventory_aws.py already resolves it via `tailscale status`)
+#   2. Fetches /etc/rancher/k3s/k3s.yaml from k3s-server over SSM
+#   3. Replaces the loopback placeholder (127.0.0.1) with the real Tailscale IP
+#   4. Writes the result to {{ kubeconfig_local_path }}
+#   5. Sets the kubeconfig_local_path fact for all downstream plays
+#
+# Result: make ansible-deploy is fully self-healing — no manual
+#         `make k8s-kubeconfig` step required after a Spot replacement.
+# =============================================================================
+
+- name: Pre-flight — Refresh local kubeconfig (self-healing Spot resilience)
+  hosts: k3s_server
+  become: true
+  gather_facts: false
+  tags: ['always', 'kubeconfig', 'validate']
+
+  vars:
+    kubeconfig_local_path: /tmp/k3s-homelab-kubeconfig.yaml
+    kubeconfig_remote_path: /etc/rancher/k3s/k3s.yaml
+
+  tasks:
+    - name: Check if kubeconfig exists on server
+      ansible.builtin.stat:
+        path: "{{ kubeconfig_remote_path }}"
+      register: k3s_kubeconfig_stat
+      tags: ['always', 'kubeconfig']
+
+    - name: Slurp raw kubeconfig from k3s server
+      ansible.builtin.slurp:
+        src: "{{ kubeconfig_remote_path }}"
+      register: k3s_kubeconfig_raw
+      when: k3s_kubeconfig_stat.stat.exists
+      tags: ['always', 'kubeconfig']
+
+    - name: Resolve server Tailscale IP from inventory
+      ansible.builtin.set_fact:
+        # tailscale_ip is injected by terraform_inventory_aws.py at runtime.
+        # Falls back to private_ip if Tailscale is temporarily unavailable.
+        k3s_server_tailscale_ip: "{{ hostvars[inventory_hostname]['tailscale_ip']
+                                     | default(hostvars[inventory_hostname]['private_ip']) }}"
+      tags: ['always', 'kubeconfig']
+
+    - name: Write refreshed kubeconfig to localhost
+      ansible.builtin.copy:
+        content: "{{ (k3s_kubeconfig_raw.content | b64decode)
+                     | replace('127.0.0.1', k3s_server_tailscale_ip) }}"
+        dest: "{{ kubeconfig_local_path }}"
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+      when: k3s_kubeconfig_stat.stat.exists
+      tags: ['always', 'kubeconfig']
+
+    - name: Set kubeconfig_local_path fact for downstream plays
+      ansible.builtin.set_fact:
+        kubeconfig_local_path: "{{ kubeconfig_local_path }}"
+      delegate_to: localhost
+      delegate_facts: true
+      tags: ['always', 'kubeconfig']
+
+    - name: Confirm kubeconfig is ready
+      ansible.builtin.debug:
+        msg: >
+          🔄 Kubeconfig refreshed 🚀 API server: https://{{ k3s_server_tailscale_ip }}:6443
+          📁 {{ kubeconfig_local_path }}
+      when: k3s_kubeconfig_stat.stat.exists
+      tags: ['always', 'kubeconfig']
+
+# =============================================================================
+# PHASE 0: Pre-migration cleanup
+# Ensures any Raspberry Pi that was previously a k3s control plane is fully
+# wiped before it is configured as an agent.  This play is a no-op when the
+# node was never a server.
+# =============================================================================
+
+- name: Phase 0 — Remove legacy k3s server role from Raspberry Pi nodes
+  hosts: raspberry_pi
+  become: true
+  gather_facts: false
+  tags: ['phase0', 'cleanup', 'migration', 'pre-migration']
+
+  vars:
+    k3s_rancher_data_dir: /var/lib/rancher/k3s
+    k3s_config_dir: /etc/rancher/k3s
+
+  tasks:
+    - name: Detect legacy k3s server unit on Pi node
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: pi_k3s_server_unit
+
+    - name: Display Pi node migration state
+      ansible.builtin.debug:
+        msg: |
+          [{{ inventory_hostname }}] k3s server unit present: {{ pi_k3s_server_unit.stat.exists }}
+          Action: {{ 'Full server uninstall' if pi_k3s_server_unit.stat.exists else 'Nothing to do' }}
+
+    - name: Stop legacy k3s server service
+      ansible.builtin.systemd:
+        name: k3s
+        state: stopped
+      when: pi_k3s_server_unit.stat.exists
+      failed_when: false
+
+    - name: Run k3s server uninstall script on Pi
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+      when:
+        - pi_k3s_server_unit.stat.exists
+        - not ansible_check_mode
+      changed_when: true
+
+    - name: Purge residual k3s data directory
+      ansible.builtin.file:
+        path: "{{ k3s_rancher_data_dir }}"
+        state: absent
+      when: pi_k3s_server_unit.stat.exists
+
+    - name: Purge residual k3s config directory
+      ansible.builtin.file:
+        path: "{{ k3s_config_dir }}"
+        state: absent
+      when: pi_k3s_server_unit.stat.exists
+
+    - name: Reload systemd after Pi server uninstall
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: pi_k3s_server_unit.stat.exists
+
+    - name: Confirm Pi node is clean
+      ansible.builtin.debug:
+        msg: "✓ {{ inventory_hostname }} — server cleanup {{ 'completed' if pi_k3s_server_unit.stat.exists else 'skipped (not a server)' }}"
+
+# =============================================================================
 # PHASE 1: Infrastructure Deployment
 # =============================================================================
 
-- name: Phase 1.1 - Optimize Raspberry Pi Nodes
+- name: Phase 1.0 — Ensure Tailscale SSH is Enabled
+  hosts: all
+  become: true
+  gather_facts: false
+  tags: ['phase1', 'tailscale', 'ssh', 'validate']
+
+  roles:
+    - role: tailscale
+
+- name: Phase 1.1 — Optimise Raspberry Pi Nodes
   hosts: raspberry_pi
-  become: yes
-  gather_facts: yes
-  tags: ['phase1', 'optimization', 'rpi']
+  become: true
+  gather_facts: true
+  tags: ['phase1', 'optimization', 'rpi', 'validate']
 
   roles:
     - role: rpi_optimization
 
-- name: Phase 1.2 - Deploy k3s Cluster
+- name: Phase 1.2 — Deploy k3s Cluster
   ansible.builtin.import_playbook: deploy_k3s.yml
-  tags: ['phase1', 'k3s', 'cluster']
+  tags: ['phase1', 'k3s', 'cluster', 'validate']
 
-- name: Phase 1.3 - Verify Infrastructure
+- name: Phase 1.3 — Verify Infrastructure
   ansible.builtin.import_playbook: maintenance/health_check.yml
-  tags: ['phase1', 'verify']
+  tags: ['phase1', 'verify', 'validate']
 
 # =============================================================================
 # PHASE 2: GitOps Platform
+# ArgoCD is scoped to k3s_server (AWS EC2 control plane) only.
+# The deploy_argocd.yml and bootstrap_apps.yml playbooks already target
+# hosts: k3s_server, so no additional scoping is needed here.
 # =============================================================================
 
-- name: Phase 2.1 - Deploy ArgoCD
+- name: Phase 2.1 — Deploy ArgoCD (AWS k3s_server only)
   ansible.builtin.import_playbook: gitops/deploy_argocd.yml
-  tags: ['phase2', 'argocd', 'gitops']
+  tags: ['phase2', 'argocd', 'gitops', 'validate']
   vars:
-    auto_approve: true  # Skip confirmation in automated runs
+    auto_approve: true   # skip interactive pause in automated runs
 
-- name: Phase 2.2 - Bootstrap Applications
+- name: Phase 2.2 — Bootstrap Applications (AWS k3s_server only)
   ansible.builtin.import_playbook: gitops/bootstrap_apps.yml
-  tags: ['phase2', 'bootstrap', 'apps']
+  tags: ['phase2', 'bootstrap', 'apps', 'validate']
 
 # =============================================================================
-# PHASE 3: Verification & Summary
+# PHASE 3: Final Verification & Summary
+# Queries the AWS k3s_server for cluster state.  Guards every reference to
+# groups['k3s_server'] so the play degrades gracefully when the static
+# inventory has no k3s_server hosts (Pi-only run or dry-run without AWS).
 # =============================================================================
 
-- name: Phase 3 - Final Verification
-  hosts: k3s_server
-  become: yes
-  gather_facts: no
-  tags: ['phase3', 'verify', 'always']
+- name: Phase 3 — Final Verification (k3s_server)
+  # Target k3s_server when the group is populated, fall back to localhost so
+  # the play always has a valid host pattern (avoids the phantom-host "{" error
+  # that occurs when an if/else template resolves to an empty dict literal).
+  hosts: "{{ (groups['k3s_server'] | default([]) | length > 0) | ternary('k3s_server', 'localhost') }}"
+  become: true
+  gather_facts: false
+  ignore_unreachable: true   # mock AWS hosts are unreachable in dry-run; log and continue
+  tags: ['phase3', 'verify', 'validate']
 
   vars:
     argocd_namespace: argocd
+    _has_server: "{{ (groups['k3s_server'] | default([]) | length > 0) | bool }}"
 
   tasks:
+    - name: Skip verification (no k3s_server in inventory)
+      ansible.builtin.debug:
+        msg: >
+          Phase 3 verification skipped — no hosts in k3s_server group.
+          This is expected when running Pi-only or dry-run mode.
+      when: not (_has_server | bool)
+      run_once: true
+
     - name: Set kubeconfig environment
       ansible.builtin.set_fact:
         kubeconfig_env:
           KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: _has_server | bool
 
     - name: Get cluster nodes
       ansible.builtin.command: kubectl get nodes -o wide
-      environment: "{{ kubeconfig_env }}"
+      environment: "{{ kubeconfig_env | default({}) }}"
       register: cluster_nodes
       changed_when: false
+      when:
+        - _has_server | bool
+        - not ansible_check_mode
 
     - name: Get all namespaces
       ansible.builtin.command: kubectl get namespaces
-      environment: "{{ kubeconfig_env }}"
+      environment: "{{ kubeconfig_env | default({}) }}"
       register: all_namespaces
       changed_when: false
+      when:
+        - _has_server | bool
+        - not ansible_check_mode
 
-    - name: Get all applications
+    - name: Get ArgoCD applications
       ansible.builtin.command: kubectl get applications -n {{ argocd_namespace }}
-      environment: "{{ kubeconfig_env }}"
+      environment: "{{ kubeconfig_env | default({}) }}"
       register: all_apps
       changed_when: false
       failed_when: false
+      when:
+        - _has_server | bool
+        - not ansible_check_mode
 
-    - name: Get all pods (all namespaces)
+    - name: Get all pods across namespaces
       ansible.builtin.command: kubectl get pods -A -o wide
-      environment: "{{ kubeconfig_env }}"
+      environment: "{{ kubeconfig_env | default({}) }}"
       register: all_pods
       changed_when: false
+      when:
+        - _has_server | bool
+        - not ansible_check_mode
 
-    - name: Get ArgoCD admin password
-      ansible.builtin.command: |
-        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
-      environment: "{{ kubeconfig_env }}"
+    - name: Retrieve ArgoCD admin password
+      ansible.builtin.command: >
+        kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret
+        -o jsonpath="{.data.password}"
+      environment: "{{ kubeconfig_env | default({}) }}"
       register: argocd_password
       changed_when: false
       no_log: true
       failed_when: false
+      when:
+        - _has_server | bool
+        - not ansible_check_mode
+
+# =============================================================================
+# PHASE 3: Post-Deployment Summary (always runs on localhost)
+# =============================================================================
 
 - name: Post-Deployment Summary
   hosts: localhost
-  gather_facts: no
-  tags: ['always']
+  gather_facts: false
+  tags: ['always', 'validate']
+
+  vars:
+    _server_group: "{{ groups['k3s_server'] | default([]) }}"
+    _has_server: "{{ _server_group | length > 0 }}"
+    _server_host: "{{ _server_group[0] | default('') }}"
 
   tasks:
     - name: Display completion message
@@ -146,28 +362,38 @@
           🎉 Homelab Deployment Complete!
           =========================================
 
+          ✓ Phase 0: Pi pre-migration cleanup run
           ✓ Phase 1: Infrastructure deployed
-            - Raspberry Pi nodes optimized
-            - k3s cluster running ({{ hostvars[groups['k3s_server'][0]]['cluster_nodes'].stdout_lines | length - 1 }} nodes)
+            - Raspberry Pi nodes optimised (workers only)
+            - k3s agents joined cluster
+            {% if _has_server | bool %}
+            - Cluster nodes: {{ hostvars[_server_host]['cluster_nodes'].stdout_lines | default(['(check mode)']) | length - 1 }}
+            {% else %}
+            - (No k3s_server in inventory — AWS not yet provisioned)
+            {% endif %}
 
-          ✓ Phase 2: GitOps platform deployed
+          ✓ Phase 2: GitOps platform (AWS k3s_server)
             - ArgoCD installed and configured
             - SOPS integration enabled
-            - Repository configured
 
           ✓ Phase 3: Applications bootstrapped
-            - apps-root deployed
-            - Applications syncing via ArgoCD
 
           =========================================
           Access Your Homelab
           =========================================
 
+          {% if _has_server | bool %}
+          Kubeconfig (auto-refreshed this run):
+             export KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml
+
           1. ArgoCD UI:
              kubectl port-forward svc/argocd-server -n argocd 8080:443
              URL: https://localhost:8080
              Username: admin
-             Password: {{ hostvars[groups['k3s_server'][0]]['argocd_password'].stdout | b64decode if hostvars[groups['k3s_server'][0]]['argocd_password'].rc == 0 else '<run kubectl command>' }}
+             Password: {{ (hostvars[_server_host]['argocd_password'].stdout | b64decode)
+                           if (hostvars[_server_host]['argocd_password'] is defined
+                               and hostvars[_server_host]['argocd_password'].rc | default(1) == 0)
+                           else '<run: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d>' }}
 
           2. Monitor applications:
              kubectl get applications -n argocd -w
@@ -179,38 +405,34 @@
              https://***.tail57bf10.ts.net
              https://***-1.tail57bf10.ts.net
              https://***.tail57bf10.ts.net
+          {% else %}
+          AWS k3s_server not in inventory.
+          Provision AWS with Terraform, then re-run with:
+            ansible-playbook -i inventory/production.yml \
+                             -i terraform_inventory_aws.py \
+                             playbooks/site.yml --tags phase2,phase3
+          {% endif %}
 
           =========================================
           Useful Commands
           =========================================
 
-          # Check cluster health
-          ansible-playbook -i inventory/production.yml playbooks/maintenance/health_check.yml
+          # Full hybrid deploy (Pi agents + AWS server):
+          ansible-playbook -i inventory/production.yml \
+                           -i terraform_inventory_aws.py \
+                           playbooks/site.yml
 
-          # Emergency recovery (Tailscale proxies)
-          ansible-playbook -i inventory/production.yml playbooks/recovery/emergency_recovery.yml
+          # Pi-only (agents) dry-run with mock AWS:
+          make hybrid-dry-run
 
-          # Sync all apps manually
-          kubectl get applications -n argocd -o name | xargs -I {} kubectl patch {} -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}'
+          # Check cluster health:
+          ansible-playbook -i inventory/production.yml \
+                           -i terraform_inventory_aws.py \
+                           playbooks/maintenance/health_check.yml
 
-          =========================================
-          Next Steps
-          =========================================
-
-          1. Verify all applications are healthy:
-             kubectl get applications -n argocd
-
-          2. Configure SOPS secrets (if needed):
-             - *** VPN credentials
-             - Application API keys
-
-          3. Monitor resource usage:
-             kubectl top nodes
-             kubectl top pods -A
-
-          4. Set up monitoring dashboards:
-             - Grafana for metrics
-             - Loki for logs
+          # Emergency recovery:
+          ansible-playbook -i inventory/production.yml \
+                           playbooks/recovery/emergency_recovery.yml
 
           =========================================
       run_once: true

@@ -1,0 +1,24 @@
+---
+# Converge tailscale role on a host named exactly rasp-pi-04.
+# Pre-task installs a local stub so role validation can run without real daemon auth.
+
+- name: Converge tailscale role
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Install fake tailscale binary for Molecule
+      ansible.builtin.copy:
+        dest: /usr/local/bin/tailscale
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          case "$1" in
+            status) exit 0 ;;
+            set) exit 0 ;;
+            *) exit 0 ;;
+          esac
+
+  roles:
+    - role: tailscale

@@ -1,0 +1,120 @@
+---
+# Verify that install_server.yml produced the expected filesystem artifacts:
+#   1. Server config rendered by template with required keys
+#   2. Token file persisted
+#   3. Server URL file persisted
+
+- name: Verify k3s install scenario artifacts
+  hosts: k3s_server
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: k3s binary exists and is executable
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s
+      register: k3s_bin
+
+    - name: Assert k3s binary is executable
+      ansible.builtin.assert:
+        that:
+          - k3s_bin.stat.exists
+          - k3s_bin.stat.executable
+        fail_msg: "/usr/local/bin/k3s should exist and be executable"
+
+    - name: k3s server config file exists (created by template task)
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/config.yaml
+      register: config_file
+
+    - name: Assert config file was created by the template
+      ansible.builtin.assert:
+        that: config_file.stat.exists
+        fail_msg: >
+          /etc/rancher/k3s/config.yaml was not created.
+          The template task in install_server.yml may not have run.
+
+    - name: Read rendered server config
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/config.yaml
+      register: config_raw
+
+    - name: Parse rendered config as YAML
+      ansible.builtin.set_fact:
+        k3s_config: "{{ config_raw.content | b64decode | from_yaml }}"
+
+    - name: Assert cluster-cidr is present in rendered config
+      ansible.builtin.assert:
+        that: "'cluster-cidr' in k3s_config"
+        fail_msg: >
+          'cluster-cidr' missing from rendered config.
+          Got: {{ k3s_config.keys() | list }}
+
+    - name: Assert node-name is present in rendered config
+      ansible.builtin.assert:
+        that: "'node-name' in k3s_config"
+        fail_msg: >
+          'node-name' missing from rendered config.
+          Got: {{ k3s_config.keys() | list }}
+
+    - name: Assert cluster-cidr value matches molecule group_vars
+      ansible.builtin.assert:
+        that: k3s_config['cluster-cidr'] == "10.42.0.0/16"
+        fail_msg: >
+          cluster-cidr should be '10.42.0.0/16', got '{{ k3s_config["cluster-cidr"] }}'
+
+    - name: Assert flannel-backend is present
+      ansible.builtin.assert:
+        that: "'flannel-backend' in k3s_config"
+        fail_msg: "'flannel-backend' missing from rendered config"
+
+    - name: k3s token file persisted by install_server.yml
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s-token
+      register: token_file
+
+    - name: Assert token file was written
+      ansible.builtin.assert:
+        that: token_file.stat.exists
+        fail_msg: >
+          /etc/rancher/k3s/k3s-token not found.
+          The 'Save token to config directory' task may not have run.
+
+    - name: k3s server URL file persisted by install_server.yml
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s-server-url
+      register: url_file
+
+    - name: Assert server URL file was written
+      ansible.builtin.assert:
+        that: url_file.stat.exists
+        fail_msg: >
+          /etc/rancher/k3s/k3s-server-url not found.
+          The 'Save server URL to file' task may not have run.
+
+    - name: Read server URL content
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s-server-url
+      register: url_raw
+
+    - name: Assert server URL contains expected host
+      ansible.builtin.assert:
+        that: "'127.0.0.1' in (url_raw.content | b64decode)"
+        fail_msg: >
+          Server URL should contain '127.0.0.1'.
+          Got: {{ url_raw.content | b64decode }}
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =============================================
+          k3s install scenario — verify PASSED
+          =============================================
+          ✓ /usr/local/bin/k3s  exists and executable
+          ✓ /etc/rancher/k3s/config.yaml rendered by template
+            cluster-cidr:   {{ k3s_config['cluster-cidr'] }}
+            flannel-backend: {{ k3s_config['flannel-backend'] }}
+            node-name:       {{ k3s_config['node-name'] }}
+          ✓ /etc/rancher/k3s/k3s-token  written
+          ✓ /etc/rancher/k3s/k3s-server-url  written
+          =============================================

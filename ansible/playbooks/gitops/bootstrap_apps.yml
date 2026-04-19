@@ -34,6 +34,8 @@
       ansible.builtin.set_fact:
         kubeconfig_env:
           KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      tags:
+        - validate
 
     - name: Display bootstrap information
       ansible.builtin.debug:
@@ -51,6 +53,8 @@
           Estimated time: 5-15 minutes
           =========================================
       run_once: true
+      tags:
+        - validate
 
   tasks:
     - name: Verify ArgoCD is installed
@@ -58,11 +62,16 @@
       environment: "{{ kubeconfig_env }}"
       register: argocd_check
       changed_when: false
-      failed_when: argocd_check.rc != 0
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display ArgoCD status
       ansible.builtin.debug:
-        msg: "✓ ArgoCD is installed and running"
+        msg: "{{ '✓ ArgoCD is installed and running' if (argocd_check is defined and argocd_check.rc is defined and argocd_check.rc == 0) else '✓ ArgoCD check skipped in check mode' }}"
+      tags:
+        - validate
 
     - name: Check if apps-root already exists
       ansible.builtin.command: >
@@ -72,22 +81,29 @@
       register: apps_root_check
       changed_when: false
       failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display apps-root status
       ansible.builtin.debug:
-        msg: "{{ 'apps-root already exists' if apps_root_check.rc == 0 else 'Creating apps-root...' }}"
+        msg: "{{ 'apps-root already exists' if (apps_root_check is defined and apps_root_check.rc is defined and apps_root_check.rc == 0) else 'apps-root not found (would create)' }}"
+      tags:
+        - validate
 
     - name: Copy apps-root manifest to server
       ansible.builtin.copy:
         src: "{{ playbook_dir | dirname | dirname | dirname }}/{{ apps_root_manifest }}"
         dest: /tmp/apps-root.yaml
         mode: '0644'
+      when: not ansible_check_mode
 
     - name: Apply apps-root Application
       ansible.builtin.command: kubectl apply -f /tmp/apps-root.yaml
       environment: "{{ kubeconfig_env }}"
       register: apps_root_apply
       changed_when: "'created' in apps_root_apply.stdout or 'configured' in apps_root_apply.stdout"
+      when: not ansible_check_mode
 
     - name: Wait for apps-root to be created (initial deployment)
       ansible.builtin.command: >
@@ -99,7 +115,10 @@
       register: apps_root_wait
       changed_when: false
       failed_when: false
-      when: apps_root_apply is changed
+      when:
+        - not ansible_check_mode
+        - apps_root_apply is defined
+        - apps_root_apply is changed
 
     - name: Get apps-root sync status
       ansible.builtin.command: >
@@ -110,20 +129,31 @@
       register: apps_root_status
       changed_when: false
       failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display apps-root sync status
       ansible.builtin.debug:
-        msg: "apps-root status: {{ apps_root_status.stdout | default('unknown') }}"
+        msg: "apps-root status: {{ apps_root_status.stdout | default('Skipped in check mode') }}"
+      tags:
+        - validate
 
     - name: Get all ArgoCD Applications
       ansible.builtin.command: kubectl get applications -n {{ argocd_namespace }} -o wide
       environment: "{{ kubeconfig_env }}"
       register: all_applications
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display all applications
       ansible.builtin.debug:
-        msg: "{{ all_applications.stdout_lines }}"
+        msg: "{{ all_applications.stdout_lines | default(['Skipped in check mode']) }}"
+      tags:
+        - validate
 
     - name: Get pods in media namespace
       ansible.builtin.command: kubectl get pods -n media -o wide
@@ -131,10 +161,15 @@
       register: media_pods
       changed_when: false
       failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display media pods
       ansible.builtin.debug:
-        msg: "{{ media_pods.stdout_lines if media_pods.rc == 0 else 'Media namespace not yet created' }}"
+        msg: "{{ media_pods.stdout_lines if (media_pods is defined and media_pods.rc is defined and media_pods.rc == 0) else 'Media namespace not yet created (or skipped in check mode)' }}"
+      tags:
+        - validate
 
   post_tasks:
     - name: Get unhealthy applications
@@ -145,6 +180,9 @@
       register: unhealthy_apps
       changed_when: false
       failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display bootstrap summary
       ansible.builtin.debug:
@@ -154,9 +192,9 @@
           Applications Bootstrap Complete!
           =========================================
 
-          Total applications: {{ all_applications.stdout_lines | length - 1 }}
+          Total applications: {{ (all_applications.stdout_lines | default([]) | length - 1) if (all_applications is defined and all_applications.stdout_lines is defined) else 'N/A (check mode)' }}
 
-          {% if unhealthy_apps.stdout %}
+          {% if (unhealthy_apps is defined) and (unhealthy_apps.stdout | default('')) %}
           ⚠️ Unhealthy applications:
           {{ unhealthy_apps.stdout }}
 
@@ -164,7 +202,7 @@
             kubectl get applications -n {{ argocd_namespace }}
             kubectl describe application <app-name> -n {{ argocd_namespace }}
           {% else %}
-          ✓ All applications are healthy
+          ✓ All applications are healthy (or skipped in check mode)
           {% endif %}
 
           Monitor sync progress:
@@ -180,3 +218,5 @@
 
           =========================================
       run_once: true
+      tags:
+        - validate

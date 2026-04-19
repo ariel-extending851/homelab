@@ -1,3 +1,6 @@
+# ENV
+.*env*
+
 # Terraform
 .terraform/
 *.tfstate
@@ -44,7 +47,14 @@ k8s/gitops/ssh/*
 DEPLOYMENT-SUMMARY.md
 
 
+# Mise local configuration (never commit!)
+mise.toml.local
+
+
 # Temporary plaintext secrets (never commit!)
 plain_secret*.yaml
 temp_*.yaml
 *_plaintext.yaml
+
+# ArgoCD manifest cache (download via: make argocd-manifest-fetch)
+ansible/roles/argocd/files/argocd-*-install.yaml

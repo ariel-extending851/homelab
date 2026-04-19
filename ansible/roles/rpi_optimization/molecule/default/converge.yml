@@ -1,0 +1,63 @@
+---
+# Converge: apply the rpi_optimization role against the Docker container.
+# No Pi needed — sysctl writes go into the privileged container.
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    # Ensure required packages exist in the slim image (sudo+python3 already done in prepare.yml)
+    - name: Install prerequisite packages
+      ansible.builtin.apt:
+        name:
+          - procps      # free, swapon
+          - util-linux  # fallocate, mkswap, swapon
+          - logrotate
+        update_cache: true
+        cache_valid_time: 3600
+      changed_when: false
+
+    # Ensure /etc/fstab exists (missing in slim images)
+    - name: Ensure /etc/fstab exists
+      ansible.builtin.file:
+        path: /etc/fstab
+        state: touch
+        mode: '0644'
+      changed_when: false
+
+    # Ensure /etc/sysctl.d exists
+    - name: Ensure /etc/sysctl.d exists
+      ansible.builtin.file:
+        path: /etc/sysctl.d
+        state: directory
+        mode: '0755'
+
+    # Ensure /var/log/containerd exists for logrotate template
+    - name: Ensure /var/log/containerd exists
+      ansible.builtin.file:
+        path: /var/log/containerd
+        state: directory
+        mode: '0755'
+
+    # Override ansible_mounts so the disk-space check always passes in CI.
+    # The role uses: ansible_mounts | selectattr('mount', 'equalto', '/') | first
+    # Docker containers may not expose a clean '/' entry in gathered mounts.
+    - name: Inject simulated root mount fact
+      ansible.builtin.set_fact:
+        ansible_mounts:
+          - mount: /
+            size_available: 10737418240   # 10 GB — always passes the 2GB check
+            size_total: 32212254720
+            device: overlay
+            fstype: overlay
+
+    # Signal to the role that we are running under Molecule/Docker.
+    # This gates tasks that are unsupported on overlayfs (e.g. swapon).
+    - name: Set molecule_testing flag
+      ansible.builtin.set_fact:
+        molecule_testing: true
+
+  roles:
+    - role: rpi_optimization

@@ -1,0 +1,54 @@
+---
+# Verify: assert the argocd role ran in check mode without errors.
+# Since check_mode=true was used in converge, we assert the safe
+# side effects and that no unexpected files were written.
+
+- name: Verify argocd
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # The role should NOT have written anything real in check mode
+    - name: Assert ArgoCD namespace was NOT created (check mode)
+      ansible.builtin.command: test ! -f /tmp/argocd-install.yaml
+      changed_when: false
+      register: no_install_yaml
+      failed_when: no_install_yaml.rc != 0
+
+    - name: Assert SOPS secret file was NOT written (SOPS disabled)
+      ansible.builtin.command: test ! -f /tmp/argocd-cmp-plugin.yaml
+      changed_when: false
+      register: no_cmp_plugin
+      failed_when: no_cmp_plugin.rc != 0
+
+    - name: Assert repo secret file was NOT written (check mode)
+      ansible.builtin.command: test ! -f /tmp/argocd-repo-secret.yaml
+      changed_when: false
+      register: no_repo_secret
+      failed_when: no_repo_secret.rc != 0
+
+    - name: Assert fake kubectl stub is in place
+      ansible.builtin.stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_stub
+      failed_when: not kubectl_stub.stat.exists
+
+    - name: Assert fake k3s kubeconfig is in place
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: k3s_config
+      failed_when: not k3s_config.stat.exists
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          argocd — Molecule Verify PASSED
+          =========================================
+          ✓ Role ran in check mode without errors
+          ✓ No kubectl apply side-effects (check mode)
+          ✓ No SOPS secret written (sops_enabled=false)
+          ✓ No repo secret written (check mode)
+          ✓ All default() guards prevented undefined var crashes
+          =========================================

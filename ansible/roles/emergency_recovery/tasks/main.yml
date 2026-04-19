@@ -15,6 +15,11 @@
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   when: k3s_kubeconfig.stat.exists | default(false)
 
+- name: Set empty kubeconfig env if kubeconfig file is missing
+  ansible.builtin.set_fact:
+    kubeconfig_env: {}
+  when: not (k3s_kubeconfig.stat.exists | default(false))
+
 - name: Pre-flight check - Verify Kubernetes API is available
   ansible.builtin.command: kubectl get nodes
   environment: "{{ kubeconfig_env }}"

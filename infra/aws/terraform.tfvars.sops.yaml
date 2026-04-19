@@ -1,24 +1,25 @@
-# ==============================================================================
-# SOPS-Encrypted Terraform Variables for AWS Homelab
-# ==============================================================================
-# SSH Public Key (will be encrypted by SOPS)
-ssh_public_key: ENC[AES256_GCM,data:5ZcWJRkAddZ6zpOvy/z45CY7qbEh39pen3G9+0g1VESaWIZ/NyViQhR7qQTTPzMhIZoUZ2IuemJhU63Dpctbp7QAO1wjDZs0dOvVUWplfxI=,iv:xRs/M7HWA6I+Z5N2szL/7cjEoyJMCIo3klu/UseVZNY=,tag:A4YYqWvxgpFTpPo/TKrbqA==,type:str]
-# k3s Cluster Token (will be encrypted by SOPS)
-k3s_token: ENC[AES256_GCM,data:aCcBoPb1QD9eQgcphjCMZOz2EBIdf68Kx7bb2TIm5eAcGb8yimNN+7hfky4=,iv:oI1cEaQLSV3AF5oLaj0LHuhrVig63oFyi0zaYC5/Rl0=,tag:QKfsn6ZyE4+naTZ3pbZenA==,type:str]
-# Tailscale Auth Key (Zero Trust mesh network)
-tailscale_auth_key: ENC[AES256_GCM,data:mfcOK5FY2TNuIGU9yb49ij9x6hkWeRqHeZ0itFvgYhx9RluKHBwXUW+W6hAxW66rJMOcXLGZK/dLr+/8W3Y=,iv:552+X3CV3y+3NQpM+FQ/DUDsdJtAj3XXlABsE2PkT3k=,tag:qQn9dsTU08zh9w3azNdtZA==,type:str]
+#ENC[AES256_GCM,data:TainFV8vad3RexGjvRC9drnAyJNYs5hCFlQ47j78uvqMu3Jt8VFib0Yn0JnrHL/g8jNa1BUUsSLoaTQAmIW+oRe25HCDbjYvmqUsH9yS+A==,iv:+9KwnaAbpIa/Ymt9zPAOIRj85F42flGglUb3ofoNp1M=,tag:w76oshSBQ+Q7zVvGDWeaYw==,type:comment]
+#ENC[AES256_GCM,data:01gKdcEDKAssHPIVb2AXhyiItt0TPVYQScc8zrDW8LZfEWmTTPRV2rsRdS/YoERE2Wno,iv:G43I7IcJ6RLOZ2OVps/fVS4un7IEbXnfkvDh5MTP4LA=,tag:Un7xujnk631AmbznxEyufQ==,type:comment]
+#ENC[AES256_GCM,data:Wnd42TF2fyploTULZ76LJLLWZtuuaYA79EA26G/vUVmU2/9xEqK1rc5vc3BCDaVWzb6iJTeOC5cFW/nOI937yH1SqTglID8Dt4EDBziBoQ==,iv:MFZCb+Xbtk9UZmhJS27Lj9hBtIDAZ/cvoxMo+jHIh3I=,tag:JH+se5Ci+5gmj9Xtw8hmyA==,type:comment]
+#ENC[AES256_GCM,data:RA5mWNHTcL/oHKf/n6Rg2RbmK3WnaGNWc9qQyxDSjIsX9Hevw4JgaLFY3Q==,iv:DzNJ8cIAIhX+RrQ1LWepWpLGHz+qZZrVjg+prVfZ1Q0=,tag:KdOTqbspfr2+AiDxPFTEew==,type:comment]
+ssh_public_key: ENC[AES256_GCM,data:coXTeS50l1KRkbA/ySh1t41cseyFLy2tG5T+m1oOVKqCMDECiWciaI0qUMIjXbYBwBbzo1ldCiQ0ihUKmLrQPNyczCYkRxe4N2ugB9DstTvVU61uQAcYncG07cAcZm82eTXGnry7KyT9hRYyutauJFrwg0osJcAdjYo8lSDr2dEPtfXaUGbpKNOcOkYEz4DOZbAVsq+eTq9F3r25r4SISVzHfUmK9Ttqdpj+rjf3rRHDqjrxEpWwSSHkdNF91sDXJu0NuHv5PVrRJ3Q/zAPPkY/zNVzV5sg=,iv:DyI8djFGeZIBE9FT4R4L2vBXzGPlsqZ2LFh7DiQg3AY=,tag:uvX4CsXw53F08U45vL0XIQ==,type:str]
+#ENC[AES256_GCM,data:YCBaMCNHB0NDWv0kD+8hnSFhQKLePgexPKl8a5vXPvgX8wH4M+eVJBEjTKIu3A==,iv:mzNLp9rgK8uLyvKfw3jZXvRCklBiz1FH7MMh5QB5F9U=,tag:MljlAo9WwmaSQEb5YWPCrg==,type:comment]
+k3s_token: ENC[AES256_GCM,data:pBjXxIDQJ93r2UGqVMOzFmF6PwrHNXW/3+U6wNreVrVvFo+UPMLLWDqmAukexgK+Tj1c05TVmdU0RpGubWvD0vARa0aJP2Z0DEudRyAbRC3wsAz0OQDUdvuWizOAKz5371FfPMcR9aKsVtQhNAe9lTJYTRAp61T/EcMCCux7Cjo88U5kQB4180/7TyYdQqkS9F7Cl3qL0eFo6vTROR1DGLO42XXXP5o=,iv:TiWfJQBlYxL0bkDl/Yx7trWB9mCSuKS6FII0IU7yMMY=,tag:yMiS3/y+yu2iyDDgfNRrYA==,type:str]
+#ENC[AES256_GCM,data:IitGkyHMAERhMx8qao4E32YlMKy6tfAEr8Is3Z/nhLAFMPmn1eHySn665p5c,iv:am2p9w27ZEWmtaThhJogE7XJ2RFq9nc2pZgVloXRcLk=,tag:MpC1DHb+ou/X7xeG3INk4A==,type:comment]
+tailscale_auth_key: ENC[AES256_GCM,data:LwGQ5xzQ8u9ajwoHzG5l/4qgJ2UxzuqFG6ALNIb6hA65BvUPJSUzZjhtfrrlbS3PuAcea6NT+8pHBhyolgQKYBmJlup8bduU1VJ7DSUppXKIUlOLsV0/qnooQpwdnwqt5iLIat+EXZT6vo60MH2mKHEum2emBalhd2FBqgsMwcniy8GqccOT0RMujMEKY8msTwZTTu8K6cEAkvgZ1p7rja4QjlgSl9tgU6vYhGaI2ELqPXzp/JbYZOOmvC4xcIU=,iv:pyFW8cYhvR0kFqOmX5mtx9e4CCrTMnkvtbItiHCokko=,tag:V6F3Rq+ZprvrkBFUvRAEiw==,type:str]
+tailscale_api_key: ENC[AES256_GCM,data:HoJPD5youD+Ip+sGqjGCDwypdpzeei5Y9E+p83ofPt/cBc0kDUQvBmvVR2OftZ6/XIjgt5pfXTZKvyQ1,iv:BSz64AJEKItKoP2hbeRl0Me5M8amhoqVuf89rXH9eQw=,tag:f3BD8Aj5qBxfG+LhDEmihw==,type:str]
 sops:
     age:
         - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB3QXgrNi9sZUtieU9JNFRB
-            WHRQZGcxakJMS0dyMzd5WUJRZnV3S2hOd1M4CnZGcmdVUDg4cy9KUFdqZE1ydXlI
-            L2ZEWDIxaTgrTHlJUytoUTJsSktJNEEKLS0tIElGbWlWUExUajVNajlmNHpZWUdv
-            d09OSWFwQS9ENVEweEJLeGkrYnNUUVEKEQU+Fr7rIkapPd8vrWWZ9GFo4adTbxij
-            q1fSdQdxxc9ogqzko9hZt/N4VLS90vgXxWAqzzjpTiF5bOd8np9s+g==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4K3FiNXFRVHAzMElzN25p
+            YU9FS0l0QVZoQ2xQS2hOTnJDT2I0MmliMW44Cm1LeHV2THUzUmZSckRYNDRYUmV6
+            WHByTVk5Q2Q1SE1ueWxkNTY2b2tpa0UKLS0tIDFTaklWaWlqcXd0NS83U1N3NVdH
+            Vzh1QWZWV0RQNDV0aFNSVENLazVKSU0KQ57w/oF/F0NMknZrllMF/dVHjj1poXM7
+            LiOezR1hO+uNJTfpNvbTFWnObL8ltT90G3O2BC0VhEVWpniS7eUGHQ==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-02-14T16:07:02Z"
-    mac: ENC[AES256_GCM,data:Pvn78kVuWTNb4XGkSYAOtFeGgE5L8gMRI7eHjKaEmzMljB7mUL4qhgsg0VMEHJQcyBc/xoca42s+yrQA3gHJa7JtQT/pZAhr4/qwcvEL4yZ27qSajaIt+eFIMrTKXMIHF8NY/vzJU13yDaHMEHZgHTrHiDOfh1yL/2u2yzMeT7I=,iv:BLccFgM5ANta82N6pIkNfwijeh9YuTX06MUFIxSgibU=,tag:9YDi5g1VTxHPOutd5QqtMg==,type:str]
-    encrypted_regex: ^(ssh_public_key|k3s_token|tailscale_auth_key)$
-    version: 3.11.0
+    lastmodified: "2026-03-25T19:54:39Z"
+    mac: ENC[AES256_GCM,data:dmreYrtsSkmNCJiKYcYfrB3mgEhYjjkaohVvbE6bheNruhRf2MdT7P6Usg5FRO8THc6u7fFWVo1bq92FEhgnoJ10O8bFzNs5uRCoJWwXkCevBcORVBl3fuCs1cZDqwAZHMtUBhGSvrl38T7J7VTVasbev1XSEpYzyna+03YT2aU=,iv:eEqSzJnTxshh2JfUQZjAiNzRvpwn9vwSd2KYgybGMg8=,tag:mV5vIocYPO80hAsRcotcmw==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.12.1

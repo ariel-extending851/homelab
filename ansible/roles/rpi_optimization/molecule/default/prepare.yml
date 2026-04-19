@@ -1,0 +1,13 @@
+---
+# Prepare: bootstrap the container before converge runs.
+# This runs BEFORE gather_facts so python3/sudo must be installed via raw.
+
+- name: Prepare
+  hosts: all
+  gather_facts: false   # can't gather facts until python3 is installed
+
+  tasks:
+    - name: Bootstrap python3 and sudo (raw — no python needed)
+      ansible.builtin.raw: |
+        apt-get update -qq && apt-get install -y -qq sudo python3 2>&1
+      changed_when: false

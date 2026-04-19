@@ -1,0 +1,17 @@
+---
+# Converge: run configure_sops.yml without check_mode so every task executes.
+# Only the SOPS configuration tasks are included — not preflight or install —
+# which avoids needing a fully running ArgoCD deployment in the container.
+# The kubectl stub (installed in prepare.yml) handles all cluster calls.
+
+- name: Converge (sops scenario)
+  hosts: all
+  become: true
+  gather_facts: true
+  check_mode: false
+
+  tasks:
+    - name: Run configure_sops tasks
+      ansible.builtin.include_role:
+        name: argocd
+        tasks_from: configure_sops

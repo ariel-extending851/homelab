@@ -4,7 +4,8 @@ kind: Kustomization
 namespace: kube-state-metrics
 
 resources:
-  - namespace.yaml
-  - rbac.yaml
-  - deployment.yaml
-  - service.yaml
+- namespace.yaml
+- rbac.yaml
+- deployment.yaml
+- service.yaml
+- pdb.yaml

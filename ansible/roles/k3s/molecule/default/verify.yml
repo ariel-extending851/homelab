@@ -1,0 +1,89 @@
+---
+# Verify: assert expected post-converge state on both containers.
+# Because converge ran with check_mode: true, no real k3s installation
+# happened — we verify the side-effect-free assertions that prove the
+# role logic ran correctly.
+
+- name: Verify — k3s server node
+  hosts: k3s-server-node
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Assert fake kubectl stub is in place
+      ansible.builtin.stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_stub
+      failed_when: not kubectl_stub.stat.exists
+
+    - name: Assert fake k3s kubeconfig is in place
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: k3s_config
+      failed_when: not k3s_config.stat.exists
+
+    - name: Assert k3s binary was NOT installed (check mode — no curl ran)
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+      failed_when: k3s_binary.stat.exists   # should NOT exist
+
+    - name: Assert k3s server unit was NOT created (check mode)
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_server_unit
+      failed_when: k3s_server_unit.stat.exists   # should NOT exist
+
+    - name: Display server verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          k3s role — Molecule Verify PASSED (server)
+          =========================================
+          ✓ kubectl stub present
+          ✓ k3s kubeconfig path present
+          ✓ k3s binary NOT installed (check mode)
+          ✓ k3s.service unit NOT created (check mode)
+          ✓ All variable defaults rendered without errors
+          ✓ server-config.yaml.j2 template rendered
+          =========================================
+
+- name: Verify — k3s agent node
+  hosts: k3s-agent-node
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Assert k3s binary was NOT installed (check mode — no curl ran)
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary_agent
+      failed_when: k3s_binary_agent.stat.exists
+
+    - name: Assert k3s-agent unit was NOT created (check mode)
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: k3s_agent_unit
+      failed_when: k3s_agent_unit.stat.exists
+
+    - name: Assert max-pods was NOT written to agent config (server-only flag)
+      # max-pods is only written by post_install.yml when k3s_control_node=true.
+      # On an agent node the file should either not exist or lack max-pods.
+      ansible.builtin.shell: |
+        grep -q '^max-pods:' /etc/rancher/k3s/config.yaml 2>/dev/null && echo FOUND || echo ABSENT
+      register: max_pods_check
+      changed_when: false
+      failed_when: max_pods_check.stdout == 'FOUND'
+
+    - name: Display agent verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          k3s role — Molecule Verify PASSED (agent)
+          =========================================
+          ✓ k3s binary NOT installed (check mode)
+          ✓ k3s-agent.service NOT created (check mode)
+          ✓ max-pods NOT in agent config (server-only flag correctly scoped)
+          ✓ agent-config.yaml.j2 template rendered without errors
+          ✓ server-to-agent promotion logic exercised safely
+          =========================================

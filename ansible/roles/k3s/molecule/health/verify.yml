@@ -1,0 +1,73 @@
+---
+# Verify that:
+# 1. The system utilities health_check.yml relies on work in the container.
+# 2. The kubectl stub returns the expected node and pod output.
+
+- name: Verify system health commands
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: uptime returns exit 0
+      ansible.builtin.command: uptime
+      register: uptime_out
+      changed_when: false
+
+    - name: uptime exit code is 0
+      ansible.builtin.assert:
+        that: uptime_out.rc == 0
+        fail_msg: "uptime command failed with rc={{ uptime_out.rc }}"
+
+    - name: free -h returns memory info
+      ansible.builtin.command: free -h
+      register: free_out
+      changed_when: false
+
+    - name: free output contains Mem row
+      ansible.builtin.assert:
+        that: "'Mem:' in free_out.stdout"
+        fail_msg: "free -h output missing 'Mem:' — got: {{ free_out.stdout }}"
+
+    - name: df -h / returns disk info
+      ansible.builtin.command: df -h /
+      register: df_out
+      changed_when: false
+
+    - name: df output has filesystem data
+      ansible.builtin.assert:
+        that: df_out.rc == 0
+        fail_msg: "df -h / failed with rc={{ df_out.rc }}"
+
+- name: Verify kubectl stub responses
+  hosts: k3s_server
+  gather_facts: false
+
+  tasks:
+    - name: kubectl get nodes returns node listing
+      ansible.builtin.command: kubectl get nodes -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: nodes_out
+      changed_when: false
+
+    - name: Node listing contains expected node name
+      ansible.builtin.assert:
+        that: "'k3s-health-node' in nodes_out.stdout"
+        fail_msg: "Expected 'k3s-health-node' in node listing — got: {{ nodes_out.stdout }}"
+
+    - name: Node is reported as Ready
+      ansible.builtin.assert:
+        that: "'Ready' in nodes_out.stdout"
+        fail_msg: "Expected 'Ready' in node listing — got: {{ nodes_out.stdout }}"
+
+    - name: kubectl get pods returns pod listing
+      ansible.builtin.command: kubectl get pods -A -o wide
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: pods_out
+      changed_when: false
+
+    - name: Pod listing contains Running pods
+      ansible.builtin.assert:
+        that: "'Running' in pods_out.stdout"
+        fail_msg: "Expected 'Running' in pod listing — got: {{ pods_out.stdout }}"

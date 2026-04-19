@@ -7,10 +7,10 @@
     dnf install -y python3 python3-pip
   args:
     executable: /bin/bash
-  # default('') produces a silent skip on systems where ansible_os_family is undefined.
-  # This is intentional: the raw module runs before facts are gathered, so ansible_os_family
-  # may not be set on the first connection. On non-RedHat systems the skip is correct behaviour.
-  when: ansible_os_family | default('') == "RedHat"
+  # Skipped in check mode: python3 is already available (prepare step or base image).
+  # In check mode the raw module would still execute (no check-mode support), triggering
+  # unnecessary dnf network calls that can fail in isolated CI containers.
+  when: ansible_os_family | default('') == "RedHat" and not ansible_check_mode
   changed_when: false
   become: true
 
@@ -20,6 +20,8 @@
       - ansible_architecture in ["aarch64", "x86_64"]
     fail_msg: "This role supports ARM64 (aarch64) and x86_64 (AMD64) architectures only. Found: {{ ansible_architecture }}"
     success_msg: "Architecture check passed: {{ ansible_architecture }}"
+  tags:
+    - validate
 
 - name: Verify minimum system requirements
   ansible.builtin.assert:
@@ -27,11 +29,15 @@
       - ansible_memtotal_mb >= 512
     fail_msg: "Minimum 512MB RAM required for k3s"
     success_msg: "Memory check passed: {{ ansible_memtotal_mb }}MB"
+  tags:
+    - validate
 
 - name: Check if k3s is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/k3s
   register: k3s_binary
+  tags:
+    - validate
 
 - name: Get installed k3s version
   ansible.builtin.command: /usr/local/bin/k3s --version
@@ -39,12 +45,25 @@
   changed_when: false
   failed_when: false
   when: k3s_binary.stat.exists
+  tags:
+    - validate
 
-- name: Display current k3s installation status
+- name: Display k3s installation status (installed)
   ansible.builtin.debug:
-    msg: >-
-      k3s is {{ 'already installed: ' + k3s_installed_version.stdout.split()[2]
-      if k3s_binary.stat.exists else 'not installed' }}
+    msg: "k3s is already installed: {{ k3s_installed_version.stdout.split(' ')[2] }}"
+  when:
+    - k3s_binary.stat.exists
+    - k3s_installed_version.stdout is defined
+    - k3s_installed_version.stdout != ""
+  tags:
+    - validate
+
+- name: Display k3s installation status (not installed)
+  ansible.builtin.debug:
+    msg: "k3s is not installed"
+  when: not k3s_binary.stat.exists
+  tags:
+    - validate
 
 - name: Ensure required directories exist
   ansible.builtin.file:
@@ -54,6 +73,7 @@
   loop:
     - "{{ k3s_config_dir }}"
     - "{{ k3s_data_dir }}"
+  when: not ansible_check_mode
 
 - name: Check if Tailscale is active (when k3s_use_tailscale is enabled)
   ansible.builtin.systemd:
@@ -61,6 +81,8 @@
   register: tailscale_status
   failed_when: false
   when: k3s_use_tailscale | bool
+  tags:
+    - validate
 
 - name: Warn if Tailscale is not running
   ansible.builtin.debug:
@@ -68,3 +90,5 @@
   when:
     - k3s_use_tailscale | bool
     - tailscale_status.status.ActiveState | default('inactive') != 'active'
+  tags:
+    - validate

@@ -5,16 +5,22 @@
   ansible.builtin.stat:
     path: /etc/rancher/k3s/k3s.yaml
   register: k3s_kubeconfig
+  tags:
+    - validate
 
 - name: Fail if not on k3s control plane
   ansible.builtin.fail:
     msg: "This role must run on k3s control plane (server node)"
-  when: not k3s_kubeconfig.stat.exists
+  when: not k3s_kubeconfig.stat.exists and not ansible_check_mode
+  tags:
+    - validate
 
 - name: Set kubeconfig environment
   ansible.builtin.set_fact:
     kubeconfig_env:
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tags:
+    - validate
 
 - name: Verify Kubernetes API is available
   ansible.builtin.command: kubectl get nodes
@@ -22,10 +28,14 @@
   register: k8s_api_check
   failed_when: k8s_api_check.rc != 0
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Display cluster info
   ansible.builtin.debug:
     msg: "{{ k8s_api_check.stdout_lines }}"
+  tags:
+    - validate
+  when: not ansible_check_mode
 
 - name: Check if SOPS age key exists (if SOPS enabled)
   ansible.builtin.stat:
@@ -33,7 +43,13 @@
   register: sops_key_file
   delegate_to: localhost
   become: false
-  when: sops_enabled | bool
+  vars:
+    ansible_become: false
+  when:
+    - sops_enabled | bool
+    - not ansible_check_mode
+  tags:
+    - validate
 
 - name: Fail if SOPS key not found
   ansible.builtin.fail:
@@ -47,7 +63,10 @@
         Set sops_enabled=false in group_vars/all.yml
   when:
     - sops_enabled | bool
+    - not ansible_check_mode
     - not sops_key_file.stat.exists
+  tags:
+    - validate
 
 - name: Read SOPS age private key
   ansible.builtin.slurp:
@@ -55,14 +74,22 @@
   register: sops_private_key_content
   delegate_to: localhost
   become: false
-  when: sops_enabled | bool
+  vars:
+    ansible_become: false
+  when:
+    - sops_enabled | bool
+    - not ansible_check_mode
   no_log: true
 
 - name: Set SOPS key fact
   ansible.builtin.set_fact:
     sops_age_private_key: "{{ sops_private_key_content.content | b64decode }}"
-  when: sops_enabled | bool
+  when:
+    - sops_enabled | bool
+    - not ansible_check_mode
   no_log: true
+  tags:
+    - validate
 
 - name: Display pre-flight check summary
   ansible.builtin.debug:
@@ -71,3 +98,5 @@
       ✓ Running on k3s control plane
       {{ '✓ SOPS age key loaded' if sops_enabled else '⚠ SOPS disabled' }}
       Ready to install ArgoCD {{ argocd_version }}
+  tags:
+    - validate

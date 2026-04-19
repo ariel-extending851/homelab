@@ -1,0 +1,106 @@
+---
+# Verify that install_agent.yml produced the expected filesystem artifacts:
+#   1. Agent config rendered by template with required keys
+#   2. Token file written with correct content
+#   3. Agent service file present
+#   4. k3s binary executable
+
+- name: Verify k3s agent scenario artifacts
+  hosts: k3s_agent
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: k3s binary exists and is executable
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s
+      register: k3s_bin
+
+    - name: Assert k3s binary is executable
+      ansible.builtin.assert:
+        that:
+          - k3s_bin.stat.exists
+          - k3s_bin.stat.executable
+        fail_msg: "/usr/local/bin/k3s should exist and be executable"
+
+    - name: k3s agent config file exists (created by template task)
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/config.yaml
+      register: config_file
+
+    - name: Assert agent config file was created by the template
+      ansible.builtin.assert:
+        that: config_file.stat.exists
+        fail_msg: >
+          /etc/rancher/k3s/config.yaml was not created.
+          The template task in install_agent.yml may not have run.
+
+    - name: Read rendered agent config
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/config.yaml
+      register: config_raw
+
+    - name: Parse rendered config as YAML
+      ansible.builtin.set_fact:
+        k3s_agent_config_rendered: "{{ config_raw.content | b64decode | from_yaml }}"
+
+    - name: Assert node-name is present in rendered agent config
+      ansible.builtin.assert:
+        that: "'node-name' in k3s_agent_config_rendered"
+        fail_msg: >
+          'node-name' missing from rendered agent config.
+          Got keys: {{ k3s_agent_config_rendered.keys() | list }}
+
+    - name: Assert node-name value matches molecule host_vars
+      ansible.builtin.assert:
+        that: k3s_agent_config_rendered['node-name'] == 'k3s-agent-test'
+        fail_msg: >
+          node-name should be 'k3s-agent-test',
+          got '{{ k3s_agent_config_rendered["node-name"] }}'
+
+    - name: k3s token file written by install_agent.yml
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s-token
+      register: token_file
+
+    - name: Assert token file was written
+      ansible.builtin.assert:
+        that: token_file.stat.exists
+        fail_msg: >
+          /etc/rancher/k3s/k3s-token not found.
+          The 'Create k3s token file' task may not have run.
+
+    - name: Read token file content
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s-token
+      register: token_raw
+
+    - name: Assert token content matches molecule var
+      ansible.builtin.assert:
+        that: (token_raw.content | b64decode) == 'molecule-test-token'
+        fail_msg: >
+          Token content mismatch.
+          Got: '{{ token_raw.content | b64decode }}'
+
+    - name: k3s-agent service file exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: agent_service
+
+    - name: Assert k3s-agent service file is present
+      ansible.builtin.assert:
+        that: agent_service.stat.exists
+        fail_msg: "/etc/systemd/system/k3s-agent.service should exist"
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =============================================
+          k3s agent scenario — verify PASSED
+          =============================================
+          ✓ /usr/local/bin/k3s  exists and executable
+          ✓ /etc/rancher/k3s/config.yaml rendered by template
+            node-name: {{ k3s_agent_config_rendered['node-name'] }}
+          ✓ /etc/rancher/k3s/k3s-token  written
+          ✓ /etc/systemd/system/k3s-agent.service  present
+          =============================================

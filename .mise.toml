@@ -1,20 +1,78 @@
 [tools]
-oci = "latest"
+# Core Infrastructure
+terraform = "latest"
+ansible = { version = "13.4.0", pipx_args = "--include-deps", uvx = "false" }
+infracost = "latest"
+sops = "latest"
+
+# Cloud & Kubernetes Tools
 awscli = "latest"
-neovim = "latest"
-"kubectl" = "latest"
-"helm" = "latest"
-"minikube" = "latest"
-"terraform" = "latest"
-trufflehog = "latest"
-"node" = "lts"
-"npm" = "11.7.0"
-"pipx" = "1.8.0"
-"npm:@google/gemini-cli" = "latest"
+kubectl = "latest"
+kustomize = "5.8.1"
+jq = "latest"
+
+# Local Testing (LocalStack)
+localstack = "4.13.1"
 "pipx:terraform-local" = "latest"
 "pipx:awscli-local" = "latest"
+
+# Quality Assurance & Linting
 "pipx:pre-commit" = "latest"
-localstack = "4.13.1"
+"pipx:ansible-lint" = "26.1.1"
+"pipx:yamllint" = "1.38.0"
+"pipx:molecule" = "25.12.0"
+"pipx:ansible-core" = "2.18.0"
+
+# Runtimes
+node = "lts"
+npm = "11.12.1"
+pipx = "1.8.0"
+
+[tasks.setup-molecule-deps]
+description = "Inject AWS/SSM deps into ansible-core and Docker plugin into molecule"
+run = '''
+# Função para encontrar o Python real por trás de um binário gerenciado pelo mise
+get_python_from_bin() {
+    local bin_name=$1
+    local bin_path
+    bin_path=$(mise which "$bin_name" 2>/dev/null)
+    if [ -n "$bin_path" ]; then
+        # Lê a primeira linha (#!...), remove o prefixo #! e qualquer argumento extra
+        head -n 1 "$bin_path" | sed 's/^#!//' | sed 's/ .*//' | tr -d '\r'
+    fi
+}
+
+# 1. Configura dependências do Ansible
+ANSIBLE_PYTHON=$(get_python_from_bin ansible-playbook)
+echo "  🔍 Ansible Python detectado em: $ANSIBLE_PYTHON"
+
+if [ -x "$ANSIBLE_PYTHON" ]; then
+    "$ANSIBLE_PYTHON" -m pip install --quiet requests docker kubernetes boto3 botocore
+    echo "  ✓ Dependências de AWS/SSM instaladas no ambiente do Ansible"
+else
+    echo "  ❌ Erro: Não foi possível localizar o Python do Ansible"
+    exit 1
+fi
+
+# 2. Configura dependências do Molecule
+MOLECULE_PYTHON=$(get_python_from_bin molecule)
+echo "  🔍 Molecule Python detectado em: $MOLECULE_PYTHON"
+
+if [ -x "$MOLECULE_PYTHON" ]; then
+    "$MOLECULE_PYTHON" -m pip install --quiet "molecule-plugins[docker]"
+    echo "  ✓ Plugin de Docker injetado no ambiente do Molecule"
+else
+    echo "  ❌ Erro: Não foi possível localizar o Python do Molecule"
+    exit 1
+fi
+'''
+
+[tasks.install-ssm-plugin]
+description = "Installs the AWS SSM session manager plugin (deb)"
+run = """
+curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "/tmp/session-manager-plugin.deb"
+sudo dpkg -i /tmp/session-manager-plugin.deb
+"""
 
 [settings]
 experimental = true
@@ -24,3 +82,10 @@ experimental = true
 [env]
 AWS_PROFILE = "Homelab"
 AWS_DEFAULT_REGION = "us-east-1"
+
+ANSIBLE_AWS_SSM_BUCKET_NAME = "homelab-ssm-transfer-bucket"
+
+SOPS_AGE_KEY_FILE = "/home/vscode/.config/sops/age/keys.txt"
+
+TF_VAR_ssh_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"
+TF_VAR_k3s_api_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"

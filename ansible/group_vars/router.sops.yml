@@ -1,0 +1,17 @@
+wifi_password: ENC[AES256_GCM,data:OrNO3TalmY8Erw==,iv:GuPk0Ip3NknkBQt5+6VoSXwUwwf/lb/+2CiSFQTKqLI=,tag:w8Q0vgJPIiefwVfeqqVyHQ==,type:str]
+wifi_guest_password: ENC[AES256_GCM,data:y8ZDq1t40Kl5WweztrU=,iv:SyaqEC3SaQyoW24fg7ZltfEgZ87U+Ce7NAum0F5ush4=,tag:mXSEM6h0E4NbZfagdZ79GA==,type:str]
+sops:
+    age:
+        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGWlJ0VU1hT1h4ZEoweVRN
+            d2RMRFVjaG1YREhEbW5QVTFPU292M3lqYlhVCjR3TERWcUhYbGxFWS9tTGZCUUNE
+            cWJnYjIrV0dQa0JoTTIyZExxU1dKWFkKLS0tIHdkekQwWk5YU2lVS1JXSEgrVC9s
+            ejFZY2RtSFhsc1FUemVwSU1EZ1NqVmsKy7cXL3S1e1zk8uniZNZiHc3CKBppvRpW
+            SBopxNIWLuHS8hwOCJH8aHjCZphGWqt9zUdbwLKwHp8pqe9y3ncTLA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-04-17T22:38:34Z"
+    mac: ENC[AES256_GCM,data:Z7wZlTAr7rrR4lwX8x2A8mXlezIEpJpNVNjegfrEQIloCiE1YZq2vqv8+Cc+AjzubDXj8riNk1yUfhCOq9H3YzrySCLqu0u/sVbhvognS4ZA/kFuH8ByNk2M0rH5IyDJT7cjCouO0LF7tMsL0/5RhOTNdmoA4nWTn4gs8xa2NtY=,iv:P7P4f+9WFm/fsKZDy0v8Q3uTTJd1kaqm8Qy6dfohLr0=,tag:hwvq5Qe8HqULEjqWVfkPew==,type:str]
+    encrypted_regex: ^(wifi_password|wifi_guest_password)$
+    version: 3.12.2

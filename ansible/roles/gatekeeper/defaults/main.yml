@@ -1,0 +1,15 @@
+---
+# Gatekeeper defaults for OpenWrt router policy
+wifi_ssid: APTO52BL33
+wifi_guest_ssid_24: GL-SFT1200-1b5-Guest
+wifi_guest_ssid_5: GL-SFT1200-1b5-5G-Guest
+# Safe placeholders only. Override in group_vars/router.sops.yml.
+wifi_password: vaulted
+wifi_guest_password: vaulted_guest
+pi_tailscale_ip: 192.168.8.10
+pi_adguard_ip: 192.168.8.11
+network_cidr: 192.168.8.0/24
+guest_network_cidr: 192.168.9.0/24
+wan_static_ip: 192.168.0.2
+wan_gateway: 192.168.0.1
+wan_dns: 1.1.1.1

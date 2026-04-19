@@ -3,6 +3,9 @@ extends: default
 # Ignore Helm templates (Go template syntax is not valid YAML)
 ignore: |
   k8s/charts/*/templates/
+  **/*.sops.yml
+  **/*.sops.yaml
+  k8s/apps/**/*secret*.yaml
 
 rules:
   # Disable line length check (conflicts with long K8s resource names/URLs)
@@ -24,3 +27,11 @@ rules:
   braces:
     min-spaces-inside: 0
     max-spaces-inside: 1
+
+  # Allow both indented and non-indented sequences.
+  # Kustomization files use `resources:\n- item` (no indent) by convention;
+  # Ansible tasks use the indented form. Both are valid YAML.
+  indentation:
+    spaces: 2
+    indent-sequences: whatever
+    check-multi-line-strings: false

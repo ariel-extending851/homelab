@@ -4,7 +4,8 @@ kind: Kustomization
 namespace: blackbox
 
 resources:
-  - namespace.yaml
-  - configmap.yaml
-  - deployment.yaml
-  - service.yaml
+- namespace.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- pdb.yaml

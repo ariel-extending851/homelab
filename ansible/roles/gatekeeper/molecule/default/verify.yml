@@ -1,0 +1,174 @@
+---
+- name: Verify gatekeeper OpenWrt UCI state
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - ../../defaults/main.yml
+
+  tasks:
+    - name: Verify flow_offloading is enabled
+      ansible.builtin.raw: uci -q show firewall.@defaults[0].flow_offloading | grep -q "='1'"
+      register: verify_flow_offload
+      changed_when: false
+      failed_when: verify_flow_offload.rc != 0
+
+    - name: Verify flow_offloading_hw is enabled
+      ansible.builtin.raw: uci -q show firewall.@defaults[0].flow_offloading_hw | grep -q "='1'"
+      register: verify_flow_offload_hw
+      changed_when: false
+      failed_when: verify_flow_offload_hw.rc != 0
+
+    - name: Verify 2.4GHz SSID matches expected value
+      ansible.builtin.raw: uci -q show wireless.default_radio0.ssid | grep -q "='{{ wifi_ssid }}'"
+      register: verify_wifi0_ssid
+      changed_when: false
+      failed_when: verify_wifi0_ssid.rc != 0
+
+    - name: Verify 5GHz SSID matches expected value
+      ansible.builtin.raw: uci -q show wireless.default_radio1.ssid | grep -q "='{{ wifi_ssid }}'"
+      register: verify_wifi1_ssid
+      changed_when: false
+      failed_when: verify_wifi1_ssid.rc != 0
+
+    - name: Verify Tailscale reverse route target
+      ansible.builtin.raw: uci -q show network.tailscale_reverse_route.target | grep -q "='100.64.0.0'"
+      register: verify_route_target
+      changed_when: false
+      failed_when: verify_route_target.rc != 0
+
+    - name: Verify Tailscale reverse route gateway
+      ansible.builtin.raw: uci -q show network.tailscale_reverse_route.gateway | grep -q "='{{ pi_tailscale_ip }}'"
+      register: verify_route_gateway
+      changed_when: false
+      failed_when: verify_route_gateway.rc != 0
+
+    - name: Verify WAN input policy is REJECT
+      ansible.builtin.raw: |
+        uci show firewall | sed -n "s/^firewall\.\([^=]*\)=zone$/\1/p" | while read -r zone; do
+          if uci -q show firewall.$zone | grep -Eq "network='[^']*wan([^']*)?'"; then
+            uci -q show firewall.$zone.input | grep -q "='REJECT'"
+          fi
+        done
+      register: verify_wan_input
+      changed_when: false
+      failed_when: verify_wan_input.rc != 0
+
+    - name: Verify WAN forward policy is REJECT
+      ansible.builtin.raw: |
+        uci show firewall | sed -n "s/^firewall\.\([^=]*\)=zone$/\1/p" | while read -r zone; do
+          if uci -q show firewall.$zone | grep -Eq "network='[^']*wan([^']*)?'"; then
+            uci -q show firewall.$zone.forward | grep -q "='REJECT'"
+          fi
+        done
+      register: verify_wan_forward
+      changed_when: false
+      failed_when: verify_wan_forward.rc != 0
+
+    - name: Fail if WiFi password is the default placeholder 'vaulted'
+      ansible.builtin.raw: |
+        if uci -q get wireless.default_radio0.key | grep -q "vaulted"; then
+          exit 1
+        else
+          exit 0
+        fi
+      register: verify_password_not_placeholder
+      changed_when: false
+      failed_when: verify_password_not_placeholder.rc != 0
+
+    - name: Verify Guest 2.4GHz SSID matches expected value
+      ansible.builtin.raw: uci -q show wireless.guest2g.ssid | grep -q "='{{ wifi_guest_ssid_24 }}'"
+      register: verify_guest_wifi0_ssid
+      changed_when: false
+      failed_when: verify_guest_wifi0_ssid.rc != 0
+
+    - name: Verify Guest 5GHz SSID matches expected value
+      ansible.builtin.raw: uci -q show wireless.guest5g.ssid | grep -q "='{{ wifi_guest_ssid_5 }}'"
+      register: verify_guest_wifi1_ssid
+      changed_when: false
+      failed_when: verify_guest_wifi1_ssid.rc != 0
+
+    - name: Verify guest WiFi client isolation is enabled
+      ansible.builtin.raw: uci -q show wireless.guest2g.isolate | grep -q "='1'"
+      register: verify_guest_isolate
+      changed_when: false
+      failed_when: verify_guest_isolate.rc != 0
+
+    - name: Verify guest network interface exists with correct IP
+      ansible.builtin.raw: uci -q show network.guest.ipaddr | grep -q "='192.168.9.1'"
+      register: verify_guest_network
+      changed_when: false
+      failed_when: verify_guest_network.rc != 0
+
+    - name: Verify WAN interface is configured as static
+      ansible.builtin.raw: uci -q show network.wan.proto | grep -q "='static'"
+      register: verify_wan_proto
+      changed_when: false
+      failed_when: verify_wan_proto.rc != 0
+
+    - name: Verify WAN static IP is set
+      ansible.builtin.raw: uci -q show network.wan.ipaddr | grep -q "='{{ wan_static_ip }}'"
+      register: verify_wan_ip
+      changed_when: false
+      failed_when: verify_wan_ip.rc != 0
+
+    - name: Verify WAN gateway is set
+      ansible.builtin.raw: uci -q show network.wan.gateway | grep -q "='{{ wan_gateway }}'"
+      register: verify_wan_gw
+      changed_when: false
+      failed_when: verify_wan_gw.rc != 0
+
+    - name: Verify main WiFi uses sae-mixed encryption
+      ansible.builtin.raw: uci -q show wireless.default_radio0.encryption | grep -q "='sae-mixed'"
+      register: verify_wifi_enc_24
+      changed_when: false
+      failed_when: verify_wifi_enc_24.rc != 0
+
+    - name: Verify 5GHz WiFi uses sae-mixed encryption
+      ansible.builtin.raw: uci -q show wireless.default_radio1.encryption | grep -q "='sae-mixed'"
+      register: verify_wifi_enc_5
+      changed_when: false
+      failed_when: verify_wifi_enc_5.rc != 0
+
+    - name: Verify guest WiFi uses sae-mixed encryption
+      ansible.builtin.raw: uci -q show wireless.guest2g.encryption | grep -q "='sae-mixed'"
+      register: verify_guest_enc
+      changed_when: false
+      failed_when: verify_guest_enc.rc != 0
+
+    - name: Verify Zero Trust rule blocks guest to admin
+      ansible.builtin.raw: |
+        uci show firewall | grep -q "name='block_guest_to_admin'"
+      register: verify_zero_trust
+      changed_when: false
+      failed_when: verify_zero_trust.rc != 0
+
+    - name: Verify Zero Trust rule target is REJECT
+      ansible.builtin.raw: |
+        rule=$(uci show firewall | grep "name='block_guest_to_admin'" | cut -d'.' -f2 | cut -d'=' -f1)
+        uci -q show firewall.$rule.target | grep -q "='REJECT'"
+      register: verify_zero_trust_target
+      changed_when: false
+      failed_when: verify_zero_trust_target.rc != 0
+
+    - name: Verify DNS hijack rule is absent when Pi is unreachable (Molecule default)
+      ansible.builtin.raw: |
+        if uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then
+          exit 1
+        else
+          exit 0
+        fi
+      register: verify_dns_hijack_absent
+      changed_when: false
+      failed_when: verify_dns_hijack_absent.rc != 0
+
+    - name: Verify DNS rebinding protection is enabled
+      ansible.builtin.raw: uci -q show dhcp | grep -q "rebind_protection='1'"
+      register: verify_rebind
+      changed_when: false
+      failed_when: verify_rebind.rc != 0
+
+    - name: Verify dnsmasq upstream is fallback DNS when Pi is unreachable (Molecule default)
+      ansible.builtin.raw: uci -q show dhcp | grep -q "server='{{ wan_dns }}'"
+      register: verify_dns_server
+      changed_when: false
+      failed_when: verify_dns_server.rc != 0

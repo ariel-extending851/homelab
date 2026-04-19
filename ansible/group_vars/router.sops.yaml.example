@@ -1,0 +1,5 @@
+---
+# Copy this file to router.sops.yaml and encrypt it with SOPS.
+# This file is intentionally plaintext example data only.
+wifi_password: "REPLACE_WITH_REAL_WIFI_PASSWORD"
+wifi_guest_password: "REPLACE_WITH_REAL_GUEST_WIFI_PASSWORD"

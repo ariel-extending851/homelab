@@ -5,23 +5,32 @@
 - name: Apply Raspberry Pi optimizations (if applicable)
   when:
     - k3s_pi_optimizations | bool
-    - ansible_memtotal_mb < 8192  # Less than 8GB RAM
+    - ansible_memtotal_mb < 8192 # Less than 8GB RAM
+    - groups['k3s_server'] | default([]) | length > 0
   block:
     - name: Add node label for Raspberry Pi
-      ansible.builtin.command: >
-        kubectl --kubeconfig={{ k3s_kubeconfig_path }}
-        label node {{ ansible_hostname }}
-        node.kubernetes.io/instance-type=raspberry-pi
-        --overwrite
-      delegate_to: "{{ groups['k3s_server'][0] }}"
-      changed_when: true
+      command: >
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml
+        label node {{ k3s_node_name }}
+        node.kubernetes.io/instance-type=raspberry-pi --overwrite
+      become: true
+      delegate_to: "{{ (groups['k3s_server'] | default(['localhost']))[0] }}"
+      when: "'raspberry_pi' in group_names"
+      register: label_result
+      until: label_result.rc == 0
+      retries: 5
+      delay: 10
 
-    - name: Set max pods for Raspberry Pi
+    # max-pods is a server-only flag; the agent config rejects it at startup.
+    - name: Set max pods for Raspberry Pi (server nodes only)
       ansible.builtin.lineinfile:
         path: "{{ k3s_config_dir }}/config.yaml"
-        regexp: '^max-pods:'
+        regexp: "^max-pods:"
         line: "max-pods: {{ k3s_pi_max_pods }}"
+        create: true
+        mode: "0644"
       notify: Restart k3s
+      when: k3s_control_node | bool
 
 - name: Label Oracle Cloud nodes
   ansible.builtin.command: >
@@ -29,10 +38,11 @@
     label node {{ ansible_hostname }}
     node.kubernetes.io/instance-type=oracle-cloud
     --overwrite
-  delegate_to: "{{ groups['k3s_server'][0] }}"
-  changed_when: true
+  delegate_to: "{{ (groups['k3s_server'] | default(['localhost']))[0] }}"
+  changed_when: false
   when:
-    - ansible_memtotal_mb >= 8192  # 8GB+ RAM (Oracle Cloud instances)
+    - ansible_memtotal_mb >= 8192 # 8GB+ RAM (Oracle Cloud instances)
+    - groups['k3s_server'] | default([]) | length > 0
 
 - name: Ensure k3s service is enabled
   ansible.builtin.systemd:
@@ -45,5 +55,5 @@
     path: "{{ ansible_env.HOME }}/.bashrc"
     line: "export KUBECONFIG={{ k3s_kubeconfig_path }}"
     create: true
-    mode: '0644'
+    mode: "0644"
   when: k3s_control_node | bool

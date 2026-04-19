@@ -5,20 +5,34 @@
 - name: Include OS-specific variables
   ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
   ignore_errors: true
+  tags:
+    - validate
 
 - name: Pre-flight checks
   ansible.builtin.include_tasks: preflight.yml
+  tags:
+    - validate
 
 - name: Install k3s server (control plane)
   ansible.builtin.include_tasks: install_server.yml
-  when: k3s_control_node | bool
+  when: k3s_control_node | bool and not ansible_check_mode
+  tags:
+    - validate
 
 - name: Install k3s agent (worker)
   ansible.builtin.include_tasks: install_agent.yml
-  when: not k3s_control_node | bool
+  when: not k3s_control_node | bool and not ansible_check_mode
+  tags:
+    - validate
 
 - name: Post-installation configuration
   ansible.builtin.include_tasks: post_install.yml
+  when: not ansible_check_mode
+  tags:
+    - validate
 
 - name: Verify k3s installation
   ansible.builtin.include_tasks: verify.yml
+  when: not ansible_check_mode
+  tags:
+    - validate

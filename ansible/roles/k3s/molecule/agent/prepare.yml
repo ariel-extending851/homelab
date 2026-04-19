@@ -1,0 +1,100 @@
+---
+# Prepare: install Python, create filesystem stubs for the agent scenario.
+#
+# Stubs created here:
+#   /usr/local/bin/k3s           — binary stub (version check + exit 0)
+#   /bin/systemctl               — fools ansible.builtin.systemd without real systemd
+#   /usr/bin/systemctl           — overwritten so Ansible finds it regardless of search path
+#   /etc/systemd/system/k3s-agent.service — triggers the `creates:` guard in install_agent.yml
+#
+# NOT created (agent path does not need them):
+#   /usr/local/bin/kubectl       — only used in server verify block
+#   /etc/rancher/k3s/k3s.yaml   — only used by server kubeconfig tasks
+#   /var/lib/rancher/k3s/server/node-token — server-only slurp task
+
+- name: Prepare k3s agent test environment
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Install Python3 (required for Ansible modules)
+      ansible.builtin.raw: apt-get update -qq && apt-get install -y -qq python3
+      changed_when: false
+
+    - name: Create required directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /usr/local/bin
+        - /etc/rancher/k3s
+        - /etc/systemd/system
+        - /var/lib/rancher/k3s/agent
+
+    - name: Create k3s binary stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/k3s
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stub: returns a realistic version string for preflight checks.
+          case "$1" in
+            --version|version) echo "k3s version v1.34.3+k3s1 (abc12345)" ;;
+          esac
+          exit 0
+
+    - name: Install systemctl stub (overwrite existing systemctl at all standard paths)
+      ansible.builtin.copy:
+        dest: "{{ item }}"
+        mode: '0755'
+        # Reports k3s-agent as already active + enabled so ansible.builtin.systemd
+        # sees the desired state immediately and makes no changes.
+        content: |
+          #!/bin/bash
+          case "$1" in
+            daemon-reload)
+              exit 0 ;;
+            show)
+              printf "Type=simple\n"
+              printf "ActiveState=active\n"
+              printf "SubState=running\n"
+              printf "LoadState=loaded\n"
+              printf "UnitFileState=enabled\n"
+              printf "UnitFilePreset=disabled\n"
+              printf "FragmentPath=/etc/systemd/system/k3s-agent.service\n"
+              printf "MainPID=1\n"
+              printf "NeedDaemonReload=no\n"
+              printf "ConditionResult=yes\n"
+              printf "AssertResult=yes\n"
+              exit 0 ;;
+            is-active)
+              echo "active"; exit 0 ;;
+            is-enabled)
+              echo "enabled"; exit 0 ;;
+            enable|disable|start|stop|restart|reload|try-restart)
+              exit 0 ;;
+            *)
+              exit 0 ;;
+          esac
+      loop:
+        - /bin/systemctl
+        - /usr/bin/systemctl
+
+    - name: Pre-create k3s-agent service file (guards curl | sh install script)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s-agent.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Lightweight Kubernetes Node
+          After=network-online.target
+
+          [Service]
+          Type=exec
+          EnvironmentFile=/etc/systemd/system/k3s-agent.service.env
+          ExecStart=/usr/local/bin/k3s agent
+
+          [Install]
+          WantedBy=multi-user.target

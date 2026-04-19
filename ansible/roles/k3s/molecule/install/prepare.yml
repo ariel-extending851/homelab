@@ -1,0 +1,137 @@
+---
+# Prepare: install Python, create filesystem stubs, and pre-populate all
+# artifacts that would normally be created by the k3s install script.
+#
+# Stubs created here:
+#   /usr/local/bin/k3s      — binary stub (version check + exit 0)
+#   /bin/systemctl           — fools ansible.builtin.systemd without real systemd
+#   /usr/bin/systemctl       — symlink so Ansible finds it regardless of search path
+#   /usr/local/bin/kubectl   — satisfies "Wait for k3s API server to respond"
+#   /etc/systemd/system/k3s.service — triggers the `creates:` guard in install_server.yml
+#   /etc/rancher/k3s/k3s.yaml       — satisfies the `wait_for` path check
+#   /var/lib/rancher/k3s/server/node-token — satisfies the slurp task
+
+- name: Prepare k3s install test environment
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Install Python3 (required for Ansible modules)
+      ansible.builtin.raw: apt-get update -qq && apt-get install -y -qq python3
+      changed_when: false
+
+    - name: Create required directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /usr/local/bin
+        - /etc/rancher/k3s
+        - /etc/systemd/system
+        - /var/lib/rancher/k3s/server
+        - /var/lib/rancher/k3s/agent
+
+    - name: Create k3s binary stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/k3s
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stub: returns a realistic version string for preflight checks.
+          case "$1" in
+            --version|version) echo "k3s version v1.34.3+k3s1 (abc12345)" ;;
+          esac
+          exit 0
+
+    - name: Install systemctl stub (overwrite existing systemctl at all standard paths)
+      ansible.builtin.copy:
+        dest: "{{ item }}"
+        mode: '0755'
+        # Makes ansible.builtin.systemd believe k3s is already active + enabled.
+        # The module checks is-active, is-enabled, show, and daemon-reload.
+        # By reporting the desired state immediately, the module reports ok (no change).
+        content: |
+          #!/bin/bash
+          case "$1" in
+            daemon-reload)
+              exit 0 ;;
+            show)
+              printf "Type=simple\n"
+              printf "ActiveState=active\n"
+              printf "SubState=running\n"
+              printf "LoadState=loaded\n"
+              printf "UnitFileState=enabled\n"
+              printf "UnitFilePreset=disabled\n"
+              printf "FragmentPath=/etc/systemd/system/k3s.service\n"
+              printf "MainPID=1\n"
+              printf "NeedDaemonReload=no\n"
+              printf "ConditionResult=yes\n"
+              printf "AssertResult=yes\n"
+              exit 0 ;;
+            is-active)
+              echo "active"; exit 0 ;;
+            is-enabled)
+              echo "enabled"; exit 0 ;;
+            enable|disable|start|stop|restart|reload|try-restart)
+              exit 0 ;;
+            *)
+              exit 0 ;;
+          esac
+      loop:
+        - /bin/systemctl
+        - /usr/bin/systemctl
+
+    - name: Create kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stub: handles both table output and jsonpath queries used by the k3s role.
+          args="$*"
+          if [[ "$args" == *"jsonpath="*"items[0].metadata.name"* ]]; then
+            echo -n "k3s-install-test"
+          elif [[ "$args" == *"jsonpath="*"Ready"* ]]; then
+            echo -n "True"
+          elif [[ "$args" == *"jsonpath"* ]]; then
+            echo -n "k3s-install-test"
+          else
+            echo "NAME              STATUS   ROLES           AGE   VERSION"
+            echo "k3s-install-test  Ready    control-plane   1m    v1.34.3+k3s1"
+          fi
+          exit 0
+
+    - name: Pre-create k3s server service file (guards curl | sh install script)
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Lightweight Kubernetes
+          After=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/k3s server
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Pre-create k3s kubeconfig (satisfies wait_for path check)
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/k3s.yaml
+        mode: '0600'
+        content: |
+          apiVersion: v1
+          kind: Config
+          clusters: []
+          users: []
+          contexts: []
+
+    - name: Pre-create k3s node token (satisfies slurp task)
+      ansible.builtin.copy:
+        dest: /var/lib/rancher/k3s/server/node-token
+        mode: '0600'
+        content: "K10molecule-test-token::server:molecule-test-secret"

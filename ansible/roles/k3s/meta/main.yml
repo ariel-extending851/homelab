@@ -21,8 +21,7 @@ galaxy_info:
         - bookworm
     - name: Fedora
       versions:
-        - 38
-        - 39
+        - all
 
   galaxy_tags:
     - kubernetes
@@ -31,6 +30,6 @@ galaxy_info:
     - orchestration
     - arm64
     - homelab
-    - hybrid-cloud
+    - hybridcloud
 
 dependencies: []

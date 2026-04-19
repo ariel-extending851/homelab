@@ -1,38 +1,39 @@
 {
     "name": "Homelab Platform Engine",
-    "build": {
-        "dockerfile": "Dockerfile",
-        "context": "..", // Importante: Permite copiar o .mise.toml da raiz
-        "args": { "USERNAME": "dev" }
+    "runArgs": ["--network=host"],
+    "image": "mcr.microsoft.com/devcontainers/base:noble",
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        "ghcr.io/devcontainers/features/python:1": {},
+        "ghcr.io/devcontainers-extra/features/mise:1": {},
+	"ghcr.io/devcontainers-extra/features/tailscale:1": {}
     },
+    "mounts": [
+        "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.config/sops,target=/home/vscode/.config/sops,type=bind,consistency=cached"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
                 "hashicorp.terraform",
-                "fwcd.kotlin",
-                "vscjava.vscode-java-pack",
                 "ms-azuretools.vscode-docker",
                 "ms-kubernetes-tools.vscode-kubernetes-tools",
                 "redhat.vscode-yaml",
-                "esbenp.prettier-vscode",
                 "eamodio.gitlens",
                 "github.copilot",
-                "asvetliakov.vscode-neovim"
+                "vscodevim.vim"
             ],
             "settings": {
-                "vscode-neovim.neovimExecutablePaths.linux": "/home/dev/.local/share/mise/shims/nvim",
+                "vscode-neovim.neovimExecutablePaths.linux": "/home/vscode/.local/share/mise/shims/nvim",
                 "terminal.integrated.defaultProfile.linux": "bash"
             }
         }
     },
-    "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-    },
     "remoteEnv": {
-        "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
+        "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
+        "BW_SESSION": "${localEnv:BW_SESSION}",
+        "NODE_OPTIONS": "--dns-result-order=ipv4first"
     },
-
-    "remoteUser": "dev",
-
-    "postCreateCommand": "mise trust && (test -d ~/.config/nvim || git clone https://github.com/LazyVim/starter ~/.config/nvim) && /home/dev/.local/share/mise/shims/nvim --headless +LazySync +qa"
+    "postCreateCommand": "mise trust && mise reshim && mise x -- make setup",
+    "remoteUser": "vscode"
 }

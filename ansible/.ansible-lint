@@ -1,0 +1,32 @@
+---
+# ansible-lint configuration for homelab ansible/ directory
+# Ref: https://ansible-lint.readthedocs.io/configuring/
+#
+# Profile: basic — enforces real safety/idempotency rules.
+# Target: production profile (requires var-naming refactor across all roles).
+# Tech debt: var-naming[no-role-prefix] tracked separately.
+
+profile: basic
+
+# Exclude molecule test files and generated inventory scripts
+exclude_paths:
+  - molecule/
+  - terraform_inventory.py
+  - terraform_inventory_aws.py
+  - .git/
+
+# Rules to treat as warnings rather than failures
+warn_list:
+  - experimental
+  - no-changed-when       # we use changed_when: false explicitly where needed
+  - risky-shell-pipe      # pragmatic: many pipes use set -e instead of pipefail
+
+# Rules skipped globally (documented tech debt)
+skip_list:
+  - role-name             # our roles use underscores, not hyphens — intentional
+  - fqcn[action-core]     # short module names used intentionally in some places
+  - var-naming            # TODO: prefix all role vars — tracked as tech debt
+  - yaml[line-length]     # yamllint handles line length; ansible-lint duplication
+  - yaml[comments-indentation]  # yamllint handles this
+
+use_default_rules: true

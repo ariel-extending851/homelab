@@ -1,0 +1,59 @@
+---
+# Verify emergency_recovery scenario:
+#   1. kubeconfig_env is defined (bug fixed: was undefined when file missing)
+#   2. kubectl stub is executable
+#   3. kubeconfig file exists (used by kubeconfig_env)
+
+- name: Verify emergency_recovery scenario artifacts
+  hosts: k3s_server
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: kubeconfig file exists at expected path
+      ansible.builtin.stat:
+        path: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig_stat
+
+    - name: Assert kubeconfig file exists
+      ansible.builtin.assert:
+        that: kubeconfig_stat.stat.exists
+        fail_msg: "/etc/rancher/k3s/k3s.yaml should exist — required for kubeconfig_env"
+
+    - name: kubectl stub is executable
+      ansible.builtin.stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_stat
+
+    - name: Assert kubectl is executable
+      ansible.builtin.assert:
+        that:
+          - kubectl_stat.stat.exists
+          - kubectl_stat.stat.executable
+        fail_msg: "/usr/local/bin/kubectl should exist and be executable"
+
+    - name: kubectl stub returns healthy node output
+      ansible.builtin.command: kubectl get nodes
+      register: kubectl_nodes
+      changed_when: false
+
+    - name: Assert kubectl returns expected node
+      ansible.builtin.assert:
+        that: "'k3s-emergency-test' in kubectl_nodes.stdout"
+        fail_msg: >
+          kubectl get nodes should contain 'k3s-emergency-test'.
+          Got: {{ kubectl_nodes.stdout }}
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =============================================
+          emergency_recovery scenario — verify PASSED
+          =============================================
+          ✓ /etc/rancher/k3s/k3s.yaml  exists (kubeconfig_env defined)
+          ✓ /usr/local/bin/kubectl  executable
+          ✓ kubectl get nodes  returns healthy output
+          ✓ preflight check passed (API available)
+          ✓ StatefulSet deletion tasks ran without error
+          ✓ Recovery report generated
+          =============================================

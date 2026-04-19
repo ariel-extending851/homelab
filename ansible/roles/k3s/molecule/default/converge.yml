@@ -1,0 +1,76 @@
+---
+# Converge: apply the k3s role in check mode against both server and agent
+# containers.  All curl/shell/systemd tasks are skipped via their
+# "creates:" guards or "when: not ansible_check_mode" conditions.
+#
+# We validate:
+#   • All variable defaults render without errors
+#   • Templates (server-config.yaml.j2, agent-config.yaml.j2) produce valid YAML
+#   • preflight.yml assertions pass (arch + memory checks)
+#   • install_server.yml detects state correctly in check mode
+#   • install_agent.yml server-to-agent promotion logic runs safely
+#   • post_install.yml scoping (max-pods only on server) is exercised
+#   • No undefined-variable crashes in any task file
+
+- name: Converge — apply k3s role in check mode (server node)
+  hosts: k3s-server-node
+  become: true
+  gather_facts: true
+  check_mode: true
+
+  pre_tasks:
+    # Simulate pre-existing k3s directories so stat tasks succeed
+    - name: Create /etc/rancher/k3s directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+      check_mode: false
+
+    - name: Create fake k3s kubeconfig
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: touch
+        mode: '0600'
+      check_mode: false
+      changed_when: false
+
+    # Provide a fake kubectl so command tasks don't immediately fail
+    - name: Install fake kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Molecule stub — always exits 0 with empty output
+          exit 0
+      check_mode: false
+
+  roles:
+    - role: k3s
+
+- name: Converge — apply k3s role in check mode (agent node)
+  hosts: k3s-agent-node
+  become: true
+  gather_facts: true
+  check_mode: true
+
+  pre_tasks:
+    - name: Create /etc/rancher/k3s directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+      check_mode: false
+
+    - name: Install fake kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          exit 0
+      check_mode: false
+
+  roles:
+    - role: k3s

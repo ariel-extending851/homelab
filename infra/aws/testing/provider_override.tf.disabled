@@ -1,0 +1,72 @@
+# infra/aws/testing/provider_override.tf.disabled
+# LocalStack Provider Override — TEMPLATE (committed, safe to read)
+#
+# This file is the committed source-of-truth for the gitignored runtime file
+# infra/aws/testing/provider_override.tf (matched by .gitignore: testing/*_override.tf).
+#
+# The Makefile copies it automatically when the runtime file is missing:
+#   make hybrid-dry-run   →  copies .disabled → provider_override.tf if absent
+#
+# Manual activation (fresh checkout):
+#   cp infra/aws/testing/provider_override.tf.disabled \
+#      infra/aws/testing/provider_override.tf
+#
+# ⚠️  NEVER replace access_key / secret_key with real credentials here.
+#     "test" is the LocalStack default and is meaningless outside of it.
+
+provider "aws" {
+  region = var.aws_region
+
+  # ── Credential isolation ──────────────────────────────────────────────────
+  # Hard-code dummy values so that any real credentials injected by mise,
+  # direnv, or ~/.aws/credentials are completely shadowed.  These strings have
+  # no value outside LocalStack.
+  access_key = "test"
+  secret_key = "test"
+
+  # ── Skip all real-AWS validation paths ───────────────────────────────────
+  # Without these flags Terraform phones home to STS / EC2 IMDS even when
+  # endpoint overrides are set, producing 403 Forbidden errors.
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+  skip_region_validation      = true   # prevents region look-up against real partition
+
+  # ── S3 path-style URLs ────────────────────────────────────────────────────
+  # LocalStack exposes S3 via path-style URLs (localhost:4566/<bucket>),
+  # not the virtual-hosted style (bucket.s3.amazonaws.com) used by real AWS.
+  s3_use_path_style = true
+
+  # ── Per-service endpoint overrides ────────────────────────────────────────
+  # Every service used by the root module and its children must be listed here.
+  # Services omitted will fall through to the real AWS endpoint.
+  endpoints {
+    # Core compute / network
+    ec2 = "http://localhost:4566"
+    iam = "http://localhost:4566"
+
+    # Auth & identity — must point to LocalStack to block real STS calls
+    sts = "http://localhost:4566"
+
+    # Systems Manager (SSM) — used by Ansible connection plugin
+    ssm         = "http://localhost:4566"
+    ssmmessages = "http://localhost:4566"
+
+    # S3 — Terraform state backend + SSM transfer bucket
+    s3 = "http://localhost:4566"
+
+    # Lambda / EventBridge — used by scheduler module
+    # (scheduler is disabled when localstack_test = "yes" but listed for safety)
+    lambda      = "http://localhost:4566"
+    eventbridge = "http://localhost:4566"
+    scheduler   = "http://localhost:4566"
+  }
+
+  default_tags {
+    tags = {
+      Project     = "Lab-DevOps-Pro"
+      ManagedBy   = "Terraform"
+      Environment = "localstack-test"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+---
+# Tailscale Configuration Tasks
+# Ensures Tailscale is running with SSH server enabled
+# Configures Subnet Routing and Exit Node exclusively for the RPi 4
+
+- name: Check if Tailscale is installed
+  ansible.builtin.command: which tailscale
+  register: tailscale_installed
+  failed_when: false
+  changed_when: false
+  tags:
+    - validate
+
+- name: Fail if Tailscale is not installed
+  ansible.builtin.fail:
+    msg: "Tailscale is not installed. Please install it first."
+  when: tailscale_installed.rc != 0
+  tags:
+    - validate
+
+# --- INÍCIO DA CONFIGURAÇÃO DE ROUTING (Apenas RPi 4) ---
+- name: Enable IPv4 forwarding for Tailscale Subnet Router
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: inventory_hostname == 'rasp-pi-04'
+
+- name: Enable IPv6 forwarding for Tailscale Subnet Router
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: inventory_hostname == 'rasp-pi-04'
+# --- FIM DA CONFIGURAÇÃO DE ROUTING ---
+
+- name: Check Tailscale status
+  ansible.builtin.command: tailscale status
+  register: tailscale_status
+  failed_when: false
+  changed_when: false
+  tags:
+    - validate
+
+# Configuração para Clientes Normais (RPi 3, AWS)
+- name: Enable Tailscale SSH (Standard Nodes)
+  ansible.builtin.command: tailscale set --ssh --accept-risk=lose-ssh
+  when:
+    - tailscale_status.rc == 0
+    - inventory_hostname != 'rasp-pi-04'
+  async: 10
+  poll: 0
+  changed_when: false
+
+# Configuração Avançada para o Gatekeeper da Malha (RPi 4)
+- name: Configure Tailscale Subnet Router & Exit Node (RPi 4 ONLY)
+  ansible.builtin.command: >
+    tailscale set --ssh --accept-risk=lose-ssh
+    --advertise-routes=192.168.8.0/24
+    --advertise-exit-node
+    --snat-subnet-routes=false
+  when:
+    - tailscale_status.rc == 0
+    - inventory_hostname == 'rasp-pi-04'
+  async: 10
+  poll: 0
+  changed_when: false
+
+- name: Wait for SSH connection to resume
+  ansible.builtin.wait_for_connection:
+    timeout: 60
+    delay: 5
+
+- name: Verify Tailscale SSH is running
+  ansible.builtin.command: tailscale status
+  register: tailscale_verification
+  changed_when: false
+  tags:
+    - validate
+
+- name: Display Tailscale status
+  ansible.builtin.debug:
+    msg: "Tailscale is running correctly on {{ inventory_hostname }}"
+  when: tailscale_verification.rc == 0
+  tags:
+    - validate

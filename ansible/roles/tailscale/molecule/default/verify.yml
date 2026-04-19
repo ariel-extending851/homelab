@@ -1,0 +1,30 @@
+---
+# Verify kernel forwarding state expected from tailscale role on rasp-pi-04.
+
+- name: Verify tailscale sysctl forwarding
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Read IPv4 forwarding sysctl value
+      ansible.builtin.command: sysctl -n net.ipv4.ip_forward
+      register: ipv4_forward
+      changed_when: false
+
+    - name: Assert IPv4 forwarding is enabled
+      ansible.builtin.assert:
+        that:
+          - ipv4_forward.stdout | trim == '1'
+        fail_msg: "Expected net.ipv4.ip_forward=1, got {{ ipv4_forward.stdout | trim }}"
+
+    - name: Read IPv6 forwarding sysctl value
+      ansible.builtin.command: sysctl -n net.ipv6.conf.all.forwarding
+      register: ipv6_forward
+      changed_when: false
+
+    - name: Assert IPv6 forwarding is enabled
+      ansible.builtin.assert:
+        that:
+          - ipv6_forward.stdout | trim == '1'
+        fail_msg: "Expected net.ipv6.conf.all.forwarding=1, got {{ ipv6_forward.stdout | trim }}"

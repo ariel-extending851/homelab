@@ -1,0 +1,6 @@
+---
+# Validation wrapper — runs site.yml with the validate tag only (check mode friendly).
+- name: Validation — import site playbook with validate tag
+  import_playbook: site.yml
+  tags:
+    - validate

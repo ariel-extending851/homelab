@@ -1,0 +1,70 @@
+---
+# Molecule scenario: sops
+# Tests configure_sops.yml with sops_enabled=true in a Docker container.
+#
+# Strategy: run without check_mode so the actual copy/shell tasks execute.
+# A kubectl stub handles all cluster calls with predictable responses,
+# allowing us to assert that the real SOPS manifest files from
+# k8s/gitops/sops/ are correctly copied and contain the expected content.
+
+driver:
+  name: docker
+
+platforms:
+  - name: argocd-sops-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: argocd-sops-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          argocd-sops-test:
+    group_vars:
+      all:
+        # Docker containers run as root — sudo-based escalation is unnecessary
+        # and fails in debian:bookworm-slim which has no sudo package installed.
+        ansible_become: false
+        argocd_namespace: argocd
+        sops_enabled: true
+        # Fake but structurally valid Age key — never used for real decryption
+        sops_age_public_key: "age1testpublickey000000000000000000000000000000000000000"
+        sops_age_private_key: "AGE-SECRET-KEY-1TESTFAKEPRIVATEKEY0000000000000000000000000000000"
+        sops_age_private_key_path: /tmp/fake-age-key.txt
+        kubeconfig_env:
+          KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+scenario:
+  # Skip idempotence: the kubectl stub is stateless so the "secret already
+  # exists" and "cmp-sops already present" branches can't be simulated.
+  # Real idempotence is guaranteed by the shell/when guards in configure_sops.yml.
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

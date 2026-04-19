@@ -1,0 +1,91 @@
+---
+# Molecule scenario: agent
+# Tests install_agent.yml — the k3s worker node installation path (Case A: fresh install).
+#
+# Strategy: pre-create /etc/systemd/system/k3s-agent.service to trigger the
+# `creates:` guard and skip the real curl | sh install. A systemctl stub
+# satisfies ansible.builtin.systemd for the k3s-agent unit. The role renders
+# agent-config.yaml.j2 and writes the token file — both are verified.
+#
+# Key assertions in verify.yml:
+#   • /etc/rancher/k3s/config.yaml rendered by template (node-name present)
+#   • /etc/rancher/k3s/k3s-token written with correct content
+#   • /etc/systemd/system/k3s-agent.service exists
+#   • systemctl reports k3s-agent as active + enabled
+
+driver:
+  name: docker
+
+platforms:
+  - name: k3s-agent-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: k3s-agent-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          k3s-agent-test:
+      k3s_agent:
+        hosts:
+          k3s-agent-test:
+    group_vars:
+      all:
+        # Docker containers run as root — sudo-based escalation is unnecessary.
+        ansible_become: false
+        # ── k3s role variables ────────────────────────────────────────────────
+        k3s_version: "v1.34.3+k3s1"
+        k3s_channel: stable
+        k3s_install_url: "https://get.k3s.io"
+        k3s_config_dir: /etc/rancher/k3s
+        k3s_data_dir: /var/lib/rancher/k3s
+        k3s_token_file: /etc/rancher/k3s/k3s-token
+        k3s_server_url_file: /etc/rancher/k3s/k3s-server-url
+        k3s_kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+        k3s_pi_optimizations: false
+        k3s_pi_max_pods: 50
+        k3s_use_tailscale: false
+        k3s_advertise_on_tailscale: false
+        k3s_protect_kernel_defaults: false
+        k3s_secrets_encryption: false
+        k3s_enable_etcd_snapshots: false
+        k3s_etcd_snapshot_schedule: "0 */12 * * *"
+        k3s_etcd_snapshot_retention: 5
+        k3s_cluster_name: hl-homelab
+        k3s_server_url: "https://127.0.0.1:6443"
+        k3s_node_token: "molecule-test-token"
+        k3s_agent_config:
+          node_label: []
+          node_taint: []
+    host_vars:
+      k3s-agent-test:
+        k3s_control_node: false
+        node_ip: "127.0.0.1"
+        node_name: k3s-agent-test
+
+scenario:
+  # Skip idempotence: pre-created stubs affect which branches run on each iteration.
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible

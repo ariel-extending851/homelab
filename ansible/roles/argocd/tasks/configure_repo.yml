@@ -11,6 +11,8 @@
       Branch: {{ git_repo_branch }}
       Path: {{ git_repo_path }}
       =========================================
+  tags:
+    - validate
 
 - name: Check if SSH deploy key exists
   ansible.builtin.stat:
@@ -18,7 +20,13 @@
   register: ssh_key_file
   delegate_to: localhost
   become: false
-  when: git_repo_url is match('git@.*')
+  vars:
+    ansible_become: false
+  when:
+    - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+  tags:
+    - validate
 
 - name: Read SSH private key
   ansible.builtin.slurp:
@@ -26,8 +34,13 @@
   register: ssh_private_key_content
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   when:
     - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - ssh_key_file is defined
+    - ssh_key_file.stat is defined
     - ssh_key_file.stat.exists
   no_log: true
 
@@ -53,6 +66,9 @@
         enableLfs: "false"
   when:
     - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - ssh_key_file is defined
+    - ssh_key_file.stat is defined
     - ssh_key_file.stat.exists
   no_log: true
 
@@ -63,6 +79,9 @@
   changed_when: "'created' in repo_secret_apply.stdout or 'configured' in repo_secret_apply.stdout"
   when:
     - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - ssh_key_file is defined
+    - ssh_key_file.stat is defined
     - ssh_key_file.stat.exists
   no_log: true
 
@@ -72,15 +91,20 @@
     state: absent
   when:
     - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - ssh_key_file is defined
+    - ssh_key_file.stat is defined
     - ssh_key_file.stat.exists
 
 - name: Display repository configuration (SSH)
   ansible.builtin.debug:
     msg: |
-      ✓ SSH deploy key configured
+      ✓ SSH deploy key configured (or skipped in check mode)
       ✓ Repository: {{ git_repo_url }}
       ArgoCD can now clone private repositories
   when: git_repo_url is match('git@.*')
+  tags:
+    - validate
 
 - name: Display repository configuration (HTTPS - no auth needed)
   ansible.builtin.debug:
@@ -89,6 +113,8 @@
       No authentication configured
       Repository: {{ git_repo_url }}
   when: not (git_repo_url is match('git@.*'))
+  tags:
+    - validate
 
 - name: Verify ArgoCD can access repository
   ansible.builtin.command: |
@@ -98,8 +124,10 @@
   register: argocd_repos
   changed_when: false
   failed_when: false
+  when: not ansible_check_mode
 
 - name: Display configured repositories
   ansible.builtin.debug:
-    msg: "{{ argocd_repos.stdout | from_json if argocd_repos.rc == 0 else 'Unable to list repositories (ArgoCD CLI may not be ready)' }}"
-  when: argocd_repos.stdout | length > 0
+    msg: "{{ argocd_repos.stdout | from_json if (argocd_repos is defined and argocd_repos.rc is defined and argocd_repos.rc == 0 and argocd_repos.stdout | length > 0) else 'Skipped in check mode' }}"
+  tags:
+    - validate

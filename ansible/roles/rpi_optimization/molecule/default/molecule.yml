@@ -1,0 +1,72 @@
+---
+# Molecule test suite for rpi_optimization role
+# Driver: Docker — runs fully offline, no Raspberry Pi required.
+# Image: debian:bookworm-slim matches the RPi OS base (Debian 12).
+
+driver:
+  name: docker
+
+platforms:
+  - name: rpi-test
+    image: debian:bookworm-slim
+    # Privileged needed for sysctl writes inside the container
+    privileged: true
+    pre_build_image: true
+    # Simulate RPi-like hostname
+    hostname: rpi-test
+    # Mount /proc/sys as writable so sysctl tasks don't fail
+    volumes:
+      - /proc/sys:/host_proc_sys:rw
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          rpi-test:
+            # Simulate RPi facts used by the role
+            architecture: arm64
+            memory_gb: 1
+    group_vars:
+      all:
+        # Override swap path to a writable temp location in the container
+        swap:
+          enabled: true
+          file_path: /tmp/testswapfile
+          size_mb: 64      # tiny — we just want coverage, not 2GB in CI
+          swappiness: 10
+          vfs_cache_pressure: 50
+          use_fallocate: true
+        required_disk_space_gb: 2
+        memory:
+          transparent_hugepage: madvise
+          overcommit_memory: 1
+          min_free_kbytes: 16384
+          dirty_ratio: 10
+          dirty_background_ratio: 5
+        kernel:
+          max_map_count: 262144
+          max_user_watches: 524288
+          file_max: 2097152
+          netfilter_connection_tracking_max: 131072
+        log_rotation:
+          enabled: true
+          max_size: 50M
+          max_files: 3
+          compress: true
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

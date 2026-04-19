@@ -9,23 +9,63 @@
   changed_when: create_ns.rc == 0
   failed_when: create_ns.rc != 0 and 'already exists' not in create_ns.stderr
 
+- name: Check if argocd-redis secret already exists
+  ansible.builtin.command: kubectl get secret argocd-redis -n {{ argocd_namespace }}
+  environment: "{{ kubeconfig_env }}"
+  register: redis_secret_exists
+  changed_when: false
+  failed_when: false
+
+- name: Create argocd-redis secret (only if it does not exist)
+  # IMPORTANT: Only create once — never rotate on subsequent runs.
+  # All ArgoCD components read this password at pod startup from the secret.
+  # Rotating it without restarting ALL components simultaneously causes
+  # WRONGPASS errors that break the repo-server → Redis connection.
+  ansible.builtin.shell: |
+    kubectl create secret generic argocd-redis \
+    -n {{ argocd_namespace }} \
+    --from-literal=auth={{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') | b64encode }}
+  environment: "{{ kubeconfig_env }}"
+  register: redis_secret
+  changed_when: true
+  when: redis_secret_exists.rc != 0
+
 - name: Check if ArgoCD is already installed
   ansible.builtin.command: kubectl get deployment argocd-server -n {{ argocd_namespace }}
   environment: "{{ kubeconfig_env }}"
   register: argocd_existing
   changed_when: false
   failed_when: false
+  tags:
+    - validate
 
 - name: Display ArgoCD status
   ansible.builtin.debug:
     msg: "{{ 'ArgoCD already installed — skipping download/apply' if argocd_existing.rc == 0 else 'Installing ArgoCD ' + argocd_version + '...' }}"
+  tags:
+    - validate
 
-- name: Download ArgoCD manifest
+- name: Check for locally cached ArgoCD manifest
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/argocd-{{ argocd_version }}-install.yaml"
+  register: argocd_manifest_cache
+  delegate_to: localhost
+  become: false
+  when: argocd_existing.rc != 0
+
+- name: Use cached ArgoCD manifest (offline-safe)
+  ansible.builtin.copy:
+    src: "argocd-{{ argocd_version }}-install.yaml"
+    dest: /tmp/argocd-install.yaml
+    mode: '0644'
+  when: argocd_existing.rc != 0 and argocd_manifest_cache.stat.exists
+
+- name: Download ArgoCD manifest (no local cache found)
   ansible.builtin.get_url:
     url: "{{ argocd_manifest_url }}"
     dest: /tmp/argocd-install.yaml
     mode: '0644'
-  when: argocd_existing.rc != 0
+  when: argocd_existing.rc != 0 and not argocd_manifest_cache.stat.exists
 
 - name: Apply ArgoCD manifest
   ansible.builtin.command: kubectl apply -n {{ argocd_namespace }} -f /tmp/argocd-install.yaml
@@ -80,10 +120,14 @@
   environment: "{{ kubeconfig_env }}"
   register: argocd_pods
   changed_when: false
+  tags:
+    - validate
 
 - name: Display ArgoCD pods
   ansible.builtin.debug:
     msg: "{{ argocd_pods.stdout_lines }}"
+  tags:
+    - validate
 
 - name: Display installation summary
   ansible.builtin.debug:
@@ -93,3 +137,5 @@
       ✓ Server: Ready
       ✓ Repo Server: Ready
       ✓ Application Controller: Ready
+  tags:
+    - validate

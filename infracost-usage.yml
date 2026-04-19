@@ -1,0 +1,19 @@
+version: 0.1
+resource_usage:
+  aws_s3_bucket.ssm_transfer:
+    standard:
+      storage_gb: 10
+      monthly_put_copy_post_list_requests: 1000
+      monthly_get_select_and_all_other_requests: 5000
+
+  module.scheduler[0].aws_lambda_function.scheduler:
+    monthly_requests: 10000
+    request_duration_ms: 250
+
+  aws_instance.shadow_server[0]:
+    operating_system: linux
+    monthly_hrs: 330
+
+  aws_instance.shadow_agent[0]:
+    operating_system: linux
+    monthly_hrs: 330

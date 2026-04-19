@@ -1,6 +1,14 @@
 ---
 # Configure SOPS (Secrets OPerationS) for ArgoCD
 # Uses kubectl directly — no Python kubernetes library required on the remote host.
+#
+# Design:
+#   - Secret 'sops-age-key' holds the Age private key (matches argocd-repo-server-patch.yaml)
+#   - ConfigMap 'cmp-plugin' (from k8s/gitops/sops/sops-plugin-cm.yaml) defines the CMP
+#   - argocd-repo-server patched via k8s/gitops/sops/argocd-repo-server-patch.yaml
+#     which adds a 'cmp-sops' sidecar using quay.io/argoproj/argocd (has kustomize built-in)
+#
+# Source of truth: k8s/gitops/sops/ — Ansible must not diverge from those files.
 
 - name: Display SOPS configuration banner
   ansible.builtin.debug:
@@ -10,137 +18,73 @@
       =========================================
       Age public key: {{ sops_age_public_key }}
       =========================================
+  tags:
+    - validate
 
-- name: Create SOPS age secret (kubectl apply from stdin)
+- name: Create SOPS age-key secret (idempotent — only create if absent)
   ansible.builtin.shell: |
-    kubectl apply -f - <<'EOF'
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: sops-age
-      namespace: {{ argocd_namespace }}
-    type: Opaque
-    stringData:
-      keys.txt: |
-    {{ sops_age_private_key | indent(4, True) }}
-    EOF
+    set -e
+    if kubectl get secret sops-age-key -n {{ argocd_namespace }} >/dev/null 2>&1; then
+      echo "sops-age-key already exists — skipping"
+      exit 0
+    fi
+    kubectl create secret generic sops-age-key \
+      -n {{ argocd_namespace }} \
+      --from-literal=keys.txt="{{ sops_age_private_key }}"
   environment: "{{ kubeconfig_env }}"
-  register: sops_secret_apply
-  changed_when: "'created' in sops_secret_apply.stdout or 'configured' in sops_secret_apply.stdout"
+  register: sops_secret_result
+  changed_when: "'already exists' not in sops_secret_result.stdout"
   no_log: true
+  when: not ansible_check_mode
 
-- name: Write ArgoCD SOPS ConfigManagementPlugin to temp file
+- name: Ensure remote temp directory for ArgoCD SOPS exists
+  ansible.builtin.file:
+    path: /tmp/argocd-sops
+    state: directory
+    mode: '0755'
+  when: not ansible_check_mode
+
+- name: Copy SOPS manifests to target node
   ansible.builtin.copy:
-    dest: /tmp/argocd-cmp-plugin.yaml
+    src: "{{ role_path }}/../../../k8s/gitops/sops/{{ item }}"
+    dest: "/tmp/argocd-sops/{{ item }}"
     mode: '0644'
-    content: |
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: argocd-cmp-plugin
-        namespace: {{ argocd_namespace }}
-      data:
-        plugin.yaml: |
-          apiVersion: argoproj.io/v1alpha1
-          kind: ConfigManagementPlugin
-          metadata:
-            name: sops-kustomize
-          spec:
-            version: v1.0
-            init:
-              command: [sh, -c]
-              args:
-                - echo "Initializing SOPS Kustomize plugin..."
-            generate:
-              command: [sh, -c]
-              args:
-                - |
-                  if [ -f kustomization.yaml ] || [ -f kustomization.yml ]; then
-                    kustomize build . | sops --decrypt /dev/stdin 2>/dev/null || kustomize build .
-                  else
-                    sops --decrypt /dev/stdin 2>/dev/null || cat
-                  fi
-            discover:
-              find:
-                command: [sh, -c]
-                args:
-                  - find . -name '*.sops.yaml' -o -name 'kustomization.yaml' -o -name '.sops.yaml'
+  loop:
+    - sops-plugin-cm.yaml
+    - argocd-repo-server-patch.yaml
+  when: not ansible_check_mode
 
-- name: Apply ArgoCD SOPS ConfigManagementPlugin
-  ansible.builtin.command: kubectl apply -f /tmp/argocd-cmp-plugin.yaml
+- name: Apply ArgoCD SOPS ConfigManagementPlugin configmap
+  ansible.builtin.command: >
+    kubectl apply -f /tmp/argocd-sops/sops-plugin-cm.yaml
   environment: "{{ kubeconfig_env }}"
   register: cmp_apply
   changed_when: "'created' in cmp_apply.stdout or 'configured' in cmp_apply.stdout"
+  when: not ansible_check_mode
 
-- name: Write argocd-repo-server SOPS patch (strategic merge patch)
-  ansible.builtin.copy:
-    dest: /tmp/argocd-repo-server-sops-patch.json
-    mode: '0644'
-    content: |
-      {
-        "spec": {
-          "template": {
-            "spec": {
-              "volumes": [
-                {"name": "sops-age", "secret": {"secretName": "sops-age"}},
-                {"name": "cmp-plugin", "configMap": {"name": "argocd-cmp-plugin"}},
-                {"name": "cmp-tmp", "emptyDir": {}}
-              ],
-              "initContainers": [
-                {
-                  "name": "download-tools",
-                  "image": "alpine:3.19",
-                  "command": ["sh", "-c"],
-                  "args": ["cp /usr/local/bin/argocd /var/run/argocd/argocd-cmp-server 2>/dev/null || true"],
-                  "volumeMounts": [{"name": "var-files", "mountPath": "/var/run/argocd"}]
-                }
-              ],
-              "containers": [
-                {
-                  "name": "sops-plugin",
-                  "image": "ghcr.io/getsops/sops:v3.9.1",
-                  "command": ["/var/run/argocd/argocd-cmp-server"],
-                  "env": [{"name": "SOPS_AGE_KEY_FILE", "value": "/app/config/sops/age/keys.txt"}],
-                  "volumeMounts": [
-                    {"name": "var-files", "mountPath": "/var/run/argocd"},
-                    {"name": "plugins", "mountPath": "/home/argocd/cmp-server/plugins"},
-                    {"name": "cmp-tmp", "mountPath": "/tmp"},
-                    {"name": "sops-age", "mountPath": "/app/config/sops/age/"},
-                    {"name": "cmp-plugin", "mountPath": "/home/argocd/cmp-server/config/plugin.yaml", "subPath": "plugin.yaml"}
-                  ],
-                  "securityContext": {"runAsNonRoot": true, "runAsUser": 999}
-                }
-              ]
-            }
-          }
-        }
-      }
-
-- name: Check if SOPS sidecar is already patched
+- name: Check current argocd-repo-server sidecar containers
   ansible.builtin.command: >
     kubectl get deployment argocd-repo-server -n {{ argocd_namespace }}
     -o jsonpath='{.spec.template.spec.containers[*].name}'
   environment: "{{ kubeconfig_env }}"
   register: repo_server_containers
   changed_when: false
+  when: not ansible_check_mode
 
-- name: Patch argocd-repo-server with SOPS sidecar
+- name: Apply strategic merge patch to argocd-repo-server (adds cmp-sops sidecar)
   ansible.builtin.command: >
     kubectl patch deployment argocd-repo-server
     -n {{ argocd_namespace }}
     --type=strategic
-    --patch-file /tmp/argocd-repo-server-sops-patch.json
+    --patch-file /tmp/argocd-sops/argocd-repo-server-patch.yaml
   environment: "{{ kubeconfig_env }}"
   register: repo_server_patch
   changed_when: "'patched' in repo_server_patch.stdout"
-  when: "'sops-plugin' not in repo_server_containers.stdout"
+  when:
+    - not ansible_check_mode
+    - "'cmp-sops' not in repo_server_containers.stdout"
 
-- name: Wait for argocd-repo-server to restart
-  ansible.builtin.pause:
-    seconds: 15
-  when: repo_server_patch is changed
-
-- name: Wait for argocd-repo-server to be ready (after SOPS patch)
+- name: Wait for argocd-repo-server to restart with cmp-sops sidecar
   ansible.builtin.command: >
     kubectl rollout status deployment/argocd-repo-server
     -n {{ argocd_namespace }}
@@ -148,23 +92,29 @@
   environment: "{{ kubeconfig_env }}"
   register: argocd_repo_rollout
   changed_when: false
+  when:
+    - not ansible_check_mode
+    - repo_server_patch is changed
 
-- name: Verify SOPS plugin container is present
-  ansible.builtin.command: |
-    kubectl logs -n {{ argocd_namespace }} deployment/argocd-repo-server -c sops-plugin --tail=20
+- name: Verify cmp-sops sidecar is present and has kustomize
+  ansible.builtin.command: >
+    kubectl exec -n {{ argocd_namespace }} deployment/argocd-repo-server
+    -c cmp-sops -- which kustomize
   environment: "{{ kubeconfig_env }}"
-  register: sops_plugin_logs
+  register: kustomize_check
   changed_when: false
-  failed_when: false
+  failed_when: kustomize_check.rc != 0
+  when: not ansible_check_mode
 
 - name: Display SOPS configuration summary
   ansible.builtin.debug:
     msg: |
-      ✓ SOPS age secret created
-      ✓ ConfigManagementPlugin configured
-      ✓ argocd-repo-server patched with SOPS sidecar
-      ✓ Plugin ready to decrypt secrets
+      ✓ SOPS age-key secret created (or already existed)
+      ✓ ConfigManagementPlugin 'cmp-plugin' applied
+      ✓ argocd-repo-server patched with cmp-sops sidecar (quay.io/argoproj/argocd)
+      ✓ kustomize available in sidecar: {{ kustomize_check.stdout | default('(check mode)') }}
 
       SOPS will automatically decrypt files matching:
-        - *.sops.yaml
-        - Files in directories with .sops.yaml
+        - Directories containing .sops.yaml marker files
+  tags:
+    - validate

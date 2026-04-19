@@ -1,0 +1,62 @@
+---
+# Prepare: install Python and create kubectl stub for emergency_recovery tests.
+#
+# Stubs created here:
+#   /usr/local/bin/kubectl  — returns healthy cluster state for all kubectl queries
+#   /etc/rancher/k3s/k3s.yaml — kubeconfig stub so kubeconfig_env is set correctly
+
+- name: Prepare emergency_recovery test environment
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Install Python3 (required for Ansible modules)
+      ansible.builtin.raw: apt-get update -qq && apt-get install -y -qq python3
+      changed_when: false
+
+    - name: Create required directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /usr/local/bin
+        - /etc/rancher/k3s
+
+    - name: Create kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stub: returns healthy cluster state for all queries used by emergency_recovery.
+          args="$*"
+          if [[ "$args" == *"get nodes"* ]]; then
+            echo "NAME                 STATUS   ROLES           AGE   VERSION"
+            echo "k3s-emergency-test   Ready    control-plane   1m    v1.34.3+k3s1"
+          elif [[ "$args" == *"get pods"* && "$args" == *"-o name"* ]]; then
+            echo "pod/ts-***-ingress-0"
+            echo "pod/ts-***-ingress-0"
+          elif [[ "$args" == *"get pods"* ]]; then
+            echo "NAME                      READY   STATUS    RESTARTS   AGE"
+            echo "ts-***-ingress-0       1/1     Running   0          1m"
+            echo "ts-***-ingress-0     1/1     Running   0          1m"
+          elif [[ "$args" == *"delete statefulset"* ]]; then
+            echo "statefulset.apps/$(echo "$args" | grep -oP 'ts-\S+'  | head -1) deleted"
+          elif [[ "$args" == *"wait --for=condition=Ready"* ]]; then
+            echo "pod/ts-***-ingress-0 condition met"
+            echo "pod/ts-***-ingress-0 condition met"
+          fi
+          exit 0
+
+    - name: Pre-create kubeconfig stub (ensures kubeconfig_env is set)
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/k3s.yaml
+        mode: '0600'
+        content: |
+          apiVersion: v1
+          kind: Config
+          clusters: []
+          users: []
+          contexts: []

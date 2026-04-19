@@ -2,11 +2,13 @@
 # Playbook to remove offline Tailscale devices for AWS k3s nodes
 - name: Clean up stale Tailscale devices
   hosts: localhost
-  gather_facts: no
+  become: false
+  gather_facts: false
   connection: local
 
   vars:
     offline_threshold_minutes: 10
+    current_time_iso: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
 
   tasks:
     - name: "Display playbook information"
@@ -32,7 +34,7 @@
 
     - name: "Filter for offline k3s devices"
       ansible.builtin.set_fact:
-        devices_to_delete: "{{ tailscale_devices_response.json.devices | selectattr('hostname', 'match', '.*k3s-(server|agent).*') | selectattr('lastSeen', 'defined') | selectattr('lastSeen', '<', (ansible_date_time.iso8601 | to_datetime) - (offline_threshold_minutes * 60)) | list }}"
+        devices_to_delete: "{{ tailscale_devices_response.json.devices | selectattr('hostname', 'match', '.*k3s-(server|agent).*') | selectattr('lastSeen', 'defined') | selectattr('lastSeen', '<', (current_time_iso | to_datetime) - (offline_threshold_minutes * 60)) | list }}"
 
     - name: "Display devices to be deleted"
       ansible.builtin.debug:

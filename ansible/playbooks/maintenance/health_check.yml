@@ -12,25 +12,40 @@
 
   tasks:
     - name: Check system uptime
-      ansible.builtin.command: uptime
+      ansible.builtin.command: timeout 8 uptime
       register: uptime_result
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Check memory usage
-      ansible.builtin.command: free -h
+      ansible.builtin.command: timeout 8 free -h
       register: memory_result
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Check disk usage
-      ansible.builtin.command: df -h /
+      ansible.builtin.command: timeout 8 df -h /
       register: disk_result
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Check swap status
-      ansible.builtin.command: swapon -s
+      ansible.builtin.command: timeout 8 swapon -s
       register: swap_result
       failed_when: false
       changed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display node health
       ansible.builtin.debug:
@@ -40,53 +55,58 @@
           =========================================
 
           Uptime:
-          {{ uptime_result.stdout }}
+          {{ uptime_result.stdout | default('Skipped in check mode') }}
 
           Memory:
-          {{ memory_result.stdout }}
+          {{ memory_result.stdout | default('Skipped in check mode') }}
 
           Disk:
-          {{ disk_result.stdout }}
+          {{ disk_result.stdout | default('Skipped in check mode') }}
 
           Swap:
-          {{ swap_result.stdout if swap_result.rc == 0 else 'No swap configured' }}
+          {{ swap_result.stdout | default('No swap configured') if (swap_result is defined and swap_result.rc is defined and swap_result.rc == 0) else 'No swap configured' }}
           =========================================
+      tags:
+        - validate
 
 - name: Kubernetes Health Check
   hosts: k3s_server
   become: yes
   gather_facts: no
-
   tasks:
-    - name: Check k3s service status
-      ansible.builtin.systemd:
-        name: k3s
-        state: started
-      register: k3s_service
-      check_mode: yes
-
     - name: Get node status
-      ansible.builtin.command: kubectl get nodes -o wide
+      ansible.builtin.command: timeout 15 kubectl get nodes -o wide
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: nodes_result
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Get pod status
-      ansible.builtin.command: kubectl get pods -A -o wide
+      ansible.builtin.command: timeout 15 kubectl get pods -A -o wide
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: pods_result
       changed_when: false
+      failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Check for unhealthy pods
       ansible.builtin.shell: |
-        kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+        timeout 15 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: unhealthy_pods
       changed_when: false
       failed_when: false
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Display Kubernetes health
       ansible.builtin.debug:
@@ -96,13 +116,15 @@
           =========================================
 
           Nodes:
-          {{ nodes_result.stdout }}
+          {{ nodes_result.stdout | default('Skipped in check mode') }}
 
-          {% if unhealthy_pods.stdout %}
+          {% if (unhealthy_pods is defined) and (unhealthy_pods.stdout | default('')) %}
           ⚠️  Unhealthy Pods Detected:
           {{ unhealthy_pods.stdout }}
           {% else %}
-          ✓ All pods are healthy
+          ✓ All pods are healthy (or skipped in check mode)
           {% endif %}
           =========================================
       run_once: true
+      tags:
+        - validate

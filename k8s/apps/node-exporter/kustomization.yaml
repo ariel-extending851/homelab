@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: node-exporter
 
 resources:
-  - namespace.yaml
-  - daemonset.yaml
-  - service.yaml
+- namespace.yaml
+- daemonset.yaml
+- service.yaml
+- pdb.yaml

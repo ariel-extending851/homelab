@@ -1,0 +1,92 @@
+---
+# Prepare: set up the environment needed for configure_sops.yml to run.
+# Creates a fake Age key and a kubectl stub that emulates cluster responses
+# so the tasks execute their real logic (copy, template, shell) without a live cluster.
+
+- name: Prepare sops test environment
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # debian:bookworm-slim omits Python. Install it first via raw (no Python needed)
+    # so all subsequent Ansible modules work. The default scenario re-uses a cached
+    # container that already has Python; this scenario always starts fresh.
+    - name: Install Python3 (required for Ansible modules)
+      ansible.builtin.raw: apt-get update -qq && apt-get install -y -qq python3
+      changed_when: false
+
+    - name: Create /etc/rancher/k3s directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Create fake k3s kubeconfig
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: touch
+        mode: '0600'
+      changed_when: false
+
+    - name: Create fake Age private key file
+      ansible.builtin.copy:
+        dest: /tmp/fake-age-key.txt
+        mode: '0600'
+        # Structurally valid Age key format — not a real key, never used for decryption
+        content: |
+          # created: 2026-04-18T00:00:00Z
+          # public key: age1testpublickey000000000000000000000000000000000000000
+          AGE-SECRET-KEY-1TESTFAKEPRIVATEKEY0000000000000000000000000000000
+
+    - name: Create /tmp/argocd-sops staging directory
+      ansible.builtin.file:
+        path: /tmp/argocd-sops
+        state: directory
+        mode: '0755'
+
+    - name: Install kubectl stub (handles all subcommands used by configure_sops.yml)
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        # Each case mirrors an actual kubectl call in configure_sops.yml and returns
+        # a response that drives the task to the "happy path" branch.
+        content: |
+          #!/bin/bash
+          ARGS="$*"
+          case "$ARGS" in
+            get\ secret\ sops-age-key*)
+              # Secret absent → shell task proceeds to create it
+              exit 1
+              ;;
+            create\ secret\ generic\ sops-age-key*)
+              echo "secret/sops-age-key created"
+              exit 0
+              ;;
+            apply\ -f*)
+              # Trigger changed_when: "'created' in stdout"
+              echo "configmap/cmp-plugin created"
+              exit 0
+              ;;
+            get\ deployment\ argocd-repo-server*|get\ deploy\ argocd-repo-server*)
+              # Return empty container list → patch task will run (cmp-sops absent)
+              echo ""
+              exit 0
+              ;;
+            patch\ deployment*)
+              echo "deployment.apps/argocd-repo-server patched"
+              exit 0
+              ;;
+            rollout\ status*)
+              echo "deployment \"argocd-repo-server\" successfully rolled out"
+              exit 0
+              ;;
+            exec*)
+              # Simulate kustomize present inside the cmp-sops sidecar
+              echo "/usr/local/bin/kustomize"
+              exit 0
+              ;;
+            *)
+              exit 0
+              ;;
+          esac

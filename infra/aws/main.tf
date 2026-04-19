@@ -15,11 +15,11 @@ terraform {
   required_version = ">= 1.5.0"
 
   backend "s3" {
-    bucket         = "homelab-terraform-state-kkuhocyv"
-    key            = "homelab/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "homelab-terraform-state-lock"
-    encrypt        = true
+    bucket       = "homelab-terraform-state-kkuhocyv"
+    key          = "homelab/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true # replaces deprecated dynamodb_table (Terraform >= 1.10)
+    encrypt      = true
   }
 
   required_providers {
@@ -30,6 +30,10 @@ terraform {
     sops = {
       source  = "carlpett/sops"
       version = "~> 0.7.0"
+    }
+    tailscale = {
+      source  = "tailscale/tailscale"
+      version = "~> 0.13"
     }
   }
 }
@@ -107,7 +111,8 @@ module "k3s_cluster" {
 # EC2 instances have read/write access to this bucket for Ansible SSM connections.
 # Using the Terraform state bucket would expose decrypted secrets to compromised nodes.
 resource "aws_s3_bucket" "ssm_transfer" {
-  bucket = var.ssm_s3_bucket
+  bucket        = var.ssm_s3_bucket
+  force_destroy = true
 
   tags = {
     Name        = "homelab-ssm-transfer"
@@ -153,6 +158,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "ssm_transfer" {
   rule {
     id     = "delete-old-ssm-sessions"
     status = "Enabled"
+
+    # Apply to the whole bucket (required by provider: filter or prefix)
+    filter {}
 
     expiration {
       days = 7

@@ -66,3 +66,7 @@ k3s_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
 
 # Prefix convention (from docs/conventions.md)
 k3s_cluster_name: "hl-homelab"
+
+# Node naming - use a stable identifier instead of ansible_hostname
+# which can vary based on DNS resolution
+k3s_node_name: "{{ inventory_hostname | replace('_', '-') | lower }}"

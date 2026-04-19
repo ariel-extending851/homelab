@@ -1,0 +1,39 @@
+---
+# Molecule test suite for tailscale role.
+# Focus: validate RPi4-only subnet-router/exit-node branch and sysctl effects.
+# We do not test authenticated Tailscale daemon behavior in Docker.
+
+driver:
+  name: docker
+
+platforms:
+  - name: rasp-pi-04
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    privileged: true
+    pre_build_image: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          rasp-pi-04:
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

@@ -1,0 +1,146 @@
+---
+# ansible/playbooks/maintenance/cleanup_pi_server.yml
+# Purpose: Completely remove a k3s *server* (control-plane) installation from
+#          Raspberry Pi nodes so they can be re-joined to a new cluster as
+#          plain agents.
+#
+# Idempotent: detects whether the k3s server unit is present and skips every
+#             destructive step when the node is already clean.
+#
+# Usage:
+#   # Run against all Raspberry Pi nodes:
+#   ansible-playbook -i inventory/production.yml \
+#     playbooks/maintenance/cleanup_pi_server.yml
+#
+#   # Limit to a single host:
+#   ansible-playbook -i inventory/production.yml \
+#     playbooks/maintenance/cleanup_pi_server.yml --limit rasp-pi-03
+#
+#   # Dry-run (no changes):
+#   ansible-playbook -i inventory/production.yml \
+#     playbooks/maintenance/cleanup_pi_server.yml --check
+#
+# What it does (only when k3s server unit is present):
+#   1. Stops the k3s server service
+#   2. Runs /usr/local/bin/k3s-uninstall.sh  (removes binary, unit files,
+#      containerd data, iptables rules, CNI interfaces)
+#   3. Purges /var/lib/rancher/k3s  (etcd snapshots, node-token, certs)
+#   4. Purges /etc/rancher/k3s      (server config, kubeconfig)
+#   5. Reloads systemd daemon
+#   6. Asserts the server unit is gone
+
+- name: Pre-migration cleanup — remove k3s server role from Raspberry Pi nodes
+  hosts: raspberry_pi
+  become: true
+  gather_facts: false
+  tags: ['cleanup', 'k3s', 'migration', 'pre-migration']
+
+  vars:
+    k3s_rancher_data_dir: /var/lib/rancher/k3s
+    k3s_config_dir: /etc/rancher/k3s
+
+  tasks:
+    # ── Detection ────────────────────────────────────────────────────────
+
+    - name: Detect k3s server systemd unit
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_server_unit
+
+    - name: Detect k3s agent systemd unit
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: k3s_agent_unit
+
+    - name: Display node state before cleanup
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          k3s Server Cleanup — {{ inventory_hostname }}
+          =========================================
+          k3s server unit present : {{ k3s_server_unit.stat.exists }}
+          k3s agent unit present  : {{ k3s_agent_unit.stat.exists }}
+          Action : {{ 'Full server uninstall required' if k3s_server_unit.stat.exists else 'Node is already clean — nothing to do' }}
+          =========================================
+
+    # ── Uninstall (only when k3s.service is present) ─────────────────────
+
+    - name: Stop k3s server service (graceful)
+      ansible.builtin.systemd:
+        name: k3s
+        state: stopped
+      when: k3s_server_unit.stat.exists
+      failed_when: false   # tolerate already-stopped / failed state
+
+    - name: Run k3s server uninstall script
+      # The official uninstall script removes: binary, service units, containerd
+      # data under /var/lib/rancher, iptables rules, and CNI network interfaces.
+      # It does NOT remove /etc/rancher/k3s — we do that separately below.
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+      when:
+        - k3s_server_unit.stat.exists
+        - not ansible_check_mode
+      changed_when: true
+      register: k3s_uninstall_result
+
+    - name: Purge residual k3s rancher data directory
+      # Belt-and-suspenders: k3s-uninstall.sh may leave etcd snapshots and
+      # stale certs behind.  Remove the entire tree to guarantee a clean slate.
+      ansible.builtin.file:
+        path: "{{ k3s_rancher_data_dir }}"
+        state: absent
+      when: k3s_server_unit.stat.exists
+
+    - name: Purge k3s config directory
+      ansible.builtin.file:
+        path: "{{ k3s_config_dir }}"
+        state: absent
+      when: k3s_server_unit.stat.exists
+
+    - name: Reload systemd daemon after uninstall
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: k3s_server_unit.stat.exists
+
+    # ── Post-uninstall validation ─────────────────────────────────────────
+
+    - name: Re-check k3s server unit after uninstall
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_server_unit_post
+      when: k3s_server_unit.stat.exists
+
+    - name: Assert server unit was fully removed
+      ansible.builtin.assert:
+        that:
+          - not k3s_server_unit_post.stat.exists
+        fail_msg: >
+          k3s server unit still present at /etc/systemd/system/k3s.service
+          after running k3s-uninstall.sh.  Manual intervention required.
+        success_msg: "✓ k3s server unit removed successfully"
+      when:
+        - k3s_server_unit.stat.exists
+        - not ansible_check_mode
+
+    # ── Summary ──────────────────────────────────────────────────────────
+
+    - name: Display cleanup summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          Cleanup Summary — {{ inventory_hostname }}
+          =========================================
+          {% if k3s_server_unit.stat.exists %}
+          ✓ k3s server service stopped
+          ✓ k3s-uninstall.sh executed
+          ✓ {{ k3s_rancher_data_dir }} purged
+          ✓ {{ k3s_config_dir }} purged
+          ✓ systemd daemon reloaded
+
+          Node is now clean and ready to join
+          the cluster as a k3s agent.
+          {% else %}
+          ✓ No k3s server installation detected.
+          No cleanup was required.
+          {% endif %}
+          =========================================

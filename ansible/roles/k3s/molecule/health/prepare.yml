@@ -1,0 +1,50 @@
+---
+# Prepare: install system utilities and a kubectl stub so that
+# health_check.yml can execute its commands without a real cluster.
+
+- name: Prepare health check test environment
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # debian:bookworm-slim omits Python. Install first via raw so all
+    # subsequent Ansible modules work. Also install procps (free -h) and
+    # util-linux (swapon -s) which health_check.yml requires.
+    - name: Install Python3 and system utilities
+      ansible.builtin.raw: >
+        apt-get update -qq &&
+        apt-get install -y -qq python3 procps util-linux
+      changed_when: false
+
+    - name: Create /etc/rancher/k3s directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Create empty kubeconfig (satisfies KUBECONFIG env var)
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: touch
+        mode: '0600'
+      changed_when: false
+
+    - name: Install kubectl stub
+      ansible.builtin.copy:
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Returns realistic output for each kubectl subcommand used by health_check.yml.
+          if [[ "$*" == "get nodes -o wide" ]]; then
+            printf "NAME              STATUS   ROLES           AGE   VERSION\n"
+            printf "k3s-health-node   Ready    control-plane   1m    v1.28.0\n"
+          elif [[ "$*" == get\ pods* ]] && [[ "$*" == *field-selector* ]]; then
+            # Empty output signals all pods are healthy (none match the unhealthy filter).
+            echo ""
+          elif [[ "$*" == get\ pods* ]]; then
+            printf "NAMESPACE     NAME                       READY   STATUS    RESTARTS   AGE\n"
+            printf "kube-system   coredns-5d78c9869d-abcde   1/1     Running   0          1m\n"
+          fi
+          exit 0

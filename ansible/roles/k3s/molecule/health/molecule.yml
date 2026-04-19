@@ -1,0 +1,55 @@
+---
+# Molecule scenario: health
+# Tests maintenance/health_check.yml playbook in a Docker container.
+#
+# Strategy: run without check_mode so the real system commands (uptime, free,
+# df, swapon) execute. A kubectl stub handles all cluster calls and returns
+# realistic output so assertions in verify.yml can pass.
+
+driver:
+  name: docker
+
+platforms:
+  - name: k3s-health-node
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: k3s-health-node
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          k3s-health-node:
+      k3s_server:
+        hosts:
+          k3s-health-node:
+    group_vars:
+      all:
+        # Docker containers run as root — sudo-based escalation is unnecessary
+        # and fails in debian:bookworm-slim which has no sudo package installed.
+        ansible_become: false
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible

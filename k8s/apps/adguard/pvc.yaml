@@ -8,7 +8,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: local-storage-adguard
+  storageClassName: local-path
   resources:
     requests:
       storage: 5Gi

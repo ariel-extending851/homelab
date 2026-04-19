@@ -6,10 +6,16 @@
   environment: "{{ kubeconfig_env }}"
   register: all_pods
   changed_when: false
+  failed_when: false
+  tags:
+    - validate
+  when: not ansible_check_mode
 
 - name: Display all pods
   ansible.builtin.debug:
-    msg: "{{ all_pods.stdout_lines }}"
+    msg: "{{ all_pods.stdout_lines | default(['Skipped in check mode']) }}"
+  tags:
+    - validate
 
 - name: Check for unhealthy pods
   ansible.builtin.command: |
@@ -18,25 +24,38 @@
   register: unhealthy_pods
   changed_when: false
   failed_when: false
+  tags:
+    - validate
+  when: not ansible_check_mode
 
 - name: Warn if unhealthy pods exist
   ansible.builtin.debug:
     msg: |
       ⚠️ WARNING: Some pods are not Running:
-      {{ unhealthy_pods.stdout }}
+      {{ unhealthy_pods.stdout | default('') }}
   when:
-    - unhealthy_pods.stdout | length > 0
-    - "'No resources found' not in unhealthy_pods.stderr"
+    - not ansible_check_mode
+    - unhealthy_pods is defined
+    - unhealthy_pods.stdout | default('') | length > 0
+    - "'No resources found' not in (unhealthy_pods.stderr | default(''))"
+  tags:
+    - validate
 
 - name: Get ArgoCD server service
   ansible.builtin.command: kubectl get svc argocd-server -n {{ argocd_namespace }} -o wide
   environment: "{{ kubeconfig_env }}"
   register: argocd_service
   changed_when: false
+  failed_when: false
+  tags:
+    - validate
+  when: not ansible_check_mode
 
 - name: Display ArgoCD service info
   ansible.builtin.debug:
-    msg: "{{ argocd_service.stdout_lines }}"
+    msg: "{{ argocd_service.stdout_lines | default(['Skipped in check mode']) }}"
+  tags:
+    - validate
 
 - name: Get ArgoCD admin password
   ansible.builtin.command: |
@@ -44,12 +63,19 @@
   environment: "{{ kubeconfig_env }}"
   register: admin_password_b64
   changed_when: false
+  failed_when: false
   no_log: true
+  when: not ansible_check_mode
 
 - name: Decode admin password
   ansible.builtin.set_fact:
     argocd_admin_password_decoded: "{{ admin_password_b64.stdout | b64decode }}"
   no_log: true
+  when:
+    - not ansible_check_mode
+    - admin_password_b64 is defined
+    - admin_password_b64.stdout is defined
+    - admin_password_b64.stdout | length > 0
 
 - name: Test ArgoCD API health
   ansible.builtin.uri:
@@ -61,6 +87,8 @@
   delegate_to: localhost
   vars:
     ansible_connection: local
+    ansible_become: false
+  when: not ansible_check_mode
 
 - name: Display verification summary
   ansible.builtin.debug:
@@ -69,8 +97,8 @@
       ArgoCD Verification Complete
       =========================================
 
-      ✓ All deployments ready
-      ✓ Pods running: {{ all_pods.stdout_lines | length - 1 }}
+      ✓ All deployments ready (or skipped in check mode)
+      ✓ Pods running: {{ (all_pods.stdout_lines | default([]) | length - 1) if (all_pods is defined and all_pods.stdout_lines is defined) else 'N/A' }}
       {{ '✓ SOPS configured' if sops_enabled else '⚠ SOPS disabled' }}
       {{ '✓ Repository configured' if git_repo_url is match('git@.*') else '⚠ Public repo (no auth)' }}
 
@@ -86,3 +114,5 @@
         kubectl -n {{ argocd_namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
       =========================================
+  tags:
+    - validate

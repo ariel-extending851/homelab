@@ -1,0 +1,98 @@
+---
+# Verify that sysctl parameters were applied at the kernel level,
+# not just written to config files. These assertions read live runtime
+# values via `sysctl <key>` to confirm the kernel accepted the settings.
+
+- name: Verify runtime sysctl values
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Read vm.swappiness runtime value
+      ansible.builtin.command: sysctl -n vm.swappiness
+      register: swappiness_val
+      changed_when: false
+
+    - name: Assert vm.swappiness matches configured value (15)
+      ansible.builtin.assert:
+        that: swappiness_val.stdout | int == 15
+        fail_msg: >
+          vm.swappiness should be 15, got {{ swappiness_val.stdout }}.
+          The sysctl module may not have applied the setting at runtime.
+
+    - name: Read vm.vfs_cache_pressure runtime value
+      ansible.builtin.command: sysctl -n vm.vfs_cache_pressure
+      register: cache_pressure_val
+      changed_when: false
+
+    - name: Assert vm.vfs_cache_pressure matches configured value (60)
+      ansible.builtin.assert:
+        that: cache_pressure_val.stdout | int == 60
+        fail_msg: >
+          vm.vfs_cache_pressure should be 60, got {{ cache_pressure_val.stdout }}.
+
+    - name: Read vm.overcommit_memory runtime value
+      ansible.builtin.command: sysctl -n vm.overcommit_memory
+      register: overcommit_val
+      changed_when: false
+
+    - name: Assert vm.overcommit_memory matches configured value (1)
+      ansible.builtin.assert:
+        that: overcommit_val.stdout | int == 1
+        fail_msg: >
+          vm.overcommit_memory should be 1, got {{ overcommit_val.stdout }}.
+
+    - name: Read vm.max_map_count runtime value
+      ansible.builtin.command: sysctl -n vm.max_map_count
+      register: max_map_val
+      changed_when: false
+
+    - name: Assert vm.max_map_count matches configured value (262144)
+      ansible.builtin.assert:
+        that: max_map_val.stdout | int == 262144
+        fail_msg: >
+          vm.max_map_count should be 262144, got {{ max_map_val.stdout }}.
+
+    - name: Assert sysctl config file for memory params was written
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-rpi-optimization.conf
+      register: sysctl_mem_file
+      failed_when: not sysctl_mem_file.stat.exists
+
+    - name: Assert sysctl config file for k8s params was written
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-k8s-optimization.conf
+      register: sysctl_k8s_file
+      failed_when: not sysctl_k8s_file.stat.exists
+
+    - name: Assert logrotate config for containerd was written
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/containerd
+      register: logrotate_containerd
+      failed_when: not logrotate_containerd.stat.exists
+
+    - name: Assert logrotate config for k3s was written
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/k3s
+      register: logrotate_k3s
+      failed_when: not logrotate_k3s.stat.exists
+
+    - name: Display runtime verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          rpi_optimization sysctl scenario — PASSED
+          =========================================
+          Runtime kernel values (verified via sysctl):
+            vm.swappiness        = {{ swappiness_val.stdout }}  (expected 15)
+            vm.vfs_cache_pressure = {{ cache_pressure_val.stdout }}  (expected 60)
+            vm.overcommit_memory  = {{ overcommit_val.stdout }}  (expected 1)
+            vm.max_map_count      = {{ max_map_val.stdout }}  (expected 262144)
+
+          Config files:
+            ✓ /etc/sysctl.d/99-rpi-optimization.conf
+            ✓ /etc/sysctl.d/99-k8s-optimization.conf
+            ✓ /etc/logrotate.d/containerd
+            ✓ /etc/logrotate.d/k3s
+          =========================================

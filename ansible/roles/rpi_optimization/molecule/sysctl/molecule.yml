@@ -1,0 +1,83 @@
+---
+# Molecule scenario: sysctl
+# Tests that kernel parameters are actually applied at runtime (not just written
+# to config files). Runs without check_mode in a privileged container so sysctl
+# writes reach the real kernel namespace.
+#
+# Complementary to the default scenario: default verifies config FILES exist;
+# this scenario verifies the RUNTIME values reported by `sysctl` match the role.
+
+driver:
+  name: docker
+
+platforms:
+  - name: rpi-sysctl-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    privileged: true
+    hostname: rpi-sysctl-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          rpi-sysctl-test:
+            # Simulate RPi facts used by the role
+            architecture: arm64
+            memory_gb: 4
+    group_vars:
+      all:
+        # Docker containers run as root — sudo-based escalation is unnecessary.
+        ansible_become: false
+        # Skip swapon (unsupported on overlayfs) and all swap file creation.
+        molecule_testing: true
+        swap:
+          enabled: false
+          file_path: /tmp/sysctl-test-swapfile
+          size_mb: 0
+          swappiness: 15
+          vfs_cache_pressure: 60
+          use_fallocate: false
+        required_disk_space_gb: 0
+        memory:
+          overcommit_memory: 1
+          min_free_kbytes: 4096
+          dirty_ratio: 10
+          dirty_background_ratio: 5
+        kernel:
+          max_map_count: 262144
+          max_user_watches: 131072
+          file_max: 524288
+          netfilter_connection_tracking_max: 131072
+        log_rotation:
+          enabled: true
+          max_size: 50M
+          max_files: 3
+          compress: true
+
+scenario:
+  # idempotence removed: nf_conntrack_max may not be available in all container
+  # kernels and is set to ignore_errors, which can cause false idempotence failures.
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible

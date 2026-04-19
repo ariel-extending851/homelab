@@ -1,0 +1,13 @@
+---
+# Prepare: bootstrap the container before converge runs.
+
+- name: Prepare sysctl test environment
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Install Python3, procps, and util-linux
+      ansible.builtin.raw: >
+        apt-get update -qq &&
+        apt-get install -y -qq python3 procps util-linux
+      changed_when: false

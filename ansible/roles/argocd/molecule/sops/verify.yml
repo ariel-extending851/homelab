@@ -1,0 +1,130 @@
+---
+# Verify: assert that configure_sops.yml correctly copied the SOPS manifests
+# and that their content matches the expected structure from k8s/gitops/sops/.
+# These checks catch regressions in the CMP plugin definition and the
+# argocd-repo-server patch without requiring a live Kubernetes cluster.
+
+- name: Verify sops configuration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Assert SOPS staging directory was created
+      ansible.builtin.stat:
+        path: /tmp/argocd-sops
+      register: sops_dir
+      failed_when: not sops_dir.stat.exists
+
+    - name: Assert sops-plugin-cm.yaml was copied
+      ansible.builtin.stat:
+        path: /tmp/argocd-sops/sops-plugin-cm.yaml
+      register: plugin_cm
+      failed_when: not plugin_cm.stat.exists
+
+    - name: Assert argocd-repo-server-patch.yaml was copied
+      ansible.builtin.stat:
+        path: /tmp/argocd-sops/argocd-repo-server-patch.yaml
+      register: repo_patch
+      failed_when: not repo_patch.stat.exists
+
+    - name: Read sops-plugin-cm.yaml
+      ansible.builtin.slurp:
+        src: /tmp/argocd-sops/sops-plugin-cm.yaml
+      register: plugin_cm_raw
+
+    - name: Parse sops-plugin-cm.yaml
+      ansible.builtin.set_fact:
+        plugin_cm_content: "{{ plugin_cm_raw.content | b64decode | from_yaml }}"
+
+    - name: Assert ConfigMap has expected name and namespace
+      ansible.builtin.assert:
+        that:
+          - plugin_cm_content.kind == 'ConfigMap'
+          - plugin_cm_content.metadata.name == 'cmp-plugin'
+          - plugin_cm_content.metadata.namespace == 'argocd'
+        fail_msg: "sops-plugin-cm.yaml is missing required ConfigMap metadata"
+
+    - name: Assert CMP plugin.yaml key is present
+      ansible.builtin.assert:
+        that:
+          - plugin_cm_content.data['plugin.yaml'] is defined
+        fail_msg: "ConfigMap is missing the 'plugin.yaml' data key"
+
+    - name: Assert plugin.yaml references the correct plugin name and env var
+      ansible.builtin.assert:
+        that:
+          - "'sops-kustomize' in plugin_cm_content.data['plugin.yaml']"
+          - "'SOPS_AGE_KEY_FILE' in plugin_cm_content.data['plugin.yaml']"
+          - "'sops' in plugin_cm_content.data['plugin.yaml']"
+        fail_msg: "plugin.yaml is missing sops-kustomize name or SOPS_AGE_KEY_FILE env var"
+
+    - name: Read argocd-repo-server-patch.yaml
+      ansible.builtin.slurp:
+        src: /tmp/argocd-sops/argocd-repo-server-patch.yaml
+      register: repo_patch_raw
+
+    - name: Parse argocd-repo-server-patch.yaml
+      ansible.builtin.set_fact:
+        repo_patch_content: "{{ repo_patch_raw.content | b64decode | from_yaml }}"
+
+    - name: Assert patch targets argocd-repo-server deployment
+      ansible.builtin.assert:
+        that:
+          - repo_patch_content.kind == 'Deployment'
+          - repo_patch_content.metadata.name == 'argocd-repo-server'
+          - repo_patch_content.metadata.namespace == 'argocd'
+        fail_msg: "argocd-repo-server-patch.yaml targets wrong resource"
+
+    - name: Collect initContainer names from patch
+      ansible.builtin.set_fact:
+        init_container_names: >-
+          {{ repo_patch_content.spec.template.spec.initContainers
+             | map(attribute='name') | list }}
+
+    - name: Assert install-sops initContainer is present
+      ansible.builtin.assert:
+        that:
+          - "'install-sops' in init_container_names"
+        fail_msg: "argocd-repo-server-patch.yaml is missing the 'install-sops' initContainer"
+
+    - name: Collect container names from patch
+      ansible.builtin.set_fact:
+        container_names: >-
+          {{ repo_patch_content.spec.template.spec.containers
+             | map(attribute='name') | list }}
+
+    - name: Assert cmp-sops sidecar container is present
+      ansible.builtin.assert:
+        that:
+          - "'cmp-sops' in container_names"
+        fail_msg: "argocd-repo-server-patch.yaml is missing the 'cmp-sops' sidecar container"
+
+    - name: Collect volume names from patch
+      ansible.builtin.set_fact:
+        volume_names: >-
+          {{ repo_patch_content.spec.template.spec.volumes
+             | map(attribute='name') | list }}
+
+    - name: Assert sops-age-key volume is present
+      ansible.builtin.assert:
+        that:
+          - "'sops-age-key' in volume_names"
+        fail_msg: "argocd-repo-server-patch.yaml is missing the 'sops-age-key' volume"
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          argocd sops — Molecule Verify PASSED
+          =========================================
+          ✓ /tmp/argocd-sops/ directory created
+          ✓ sops-plugin-cm.yaml copied from k8s/gitops/sops/
+          ✓ argocd-repo-server-patch.yaml copied from k8s/gitops/sops/
+          ✓ ConfigMap name: cmp-plugin (namespace: argocd)
+          ✓ plugin.yaml contains: sops-kustomize, SOPS_AGE_KEY_FILE
+          ✓ Patch targets: argocd-repo-server Deployment
+          ✓ initContainer present: install-sops
+          ✓ Sidecar container present: cmp-sops
+          ✓ Volume present: sops-age-key
+          =========================================

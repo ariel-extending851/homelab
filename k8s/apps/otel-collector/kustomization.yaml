@@ -4,8 +4,9 @@ kind: Kustomization
 namespace: otel-collector
 
 resources:
-  - namespace.yaml
-  - rbac.yaml
-  - configmap.yaml
-  - daemonset.yaml
-  - service.yaml
+- namespace.yaml
+- rbac.yaml
+- configmap.yaml
+- daemonset.yaml
+- service.yaml
+- pdb.yaml

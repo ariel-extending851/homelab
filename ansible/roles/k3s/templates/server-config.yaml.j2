@@ -43,5 +43,5 @@ secrets-encryption: true
 protect-kernel-defaults: true
 {% endif %}
 
-# Node name (use hostname)
-node-name: {{ ansible_hostname }}
+# Node name (use stable inventory_hostname)
+node-name: {{ k3s_node_name }}

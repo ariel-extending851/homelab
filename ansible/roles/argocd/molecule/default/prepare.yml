@@ -1,0 +1,14 @@
+---
+# Prepare: bootstrap python3 + sudo in the slim image before Ansible facts gather.
+# debian:bookworm-slim ships neither — they are required for become: true and
+# gather_facts: true to work.
+
+- name: Prepare
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Bootstrap python3 and sudo (raw — no python needed)
+      ansible.builtin.raw: |
+        apt-get update -qq && apt-get install -y --no-install-recommends python3 sudo 2>&1 | tail -5
+      changed_when: false

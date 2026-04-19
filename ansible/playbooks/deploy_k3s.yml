@@ -8,16 +8,22 @@
   vars:
     k3s_control_node: true
   roles:
-    - k3s
+    - role: k3s
+      when: not ansible_check_mode
   tags:
     - server
     - k3s
+    - validate
 
 - name: Deploy k3s Agent (Worker Node)
   hosts: k3s_agent
   become: yes
   vars:
     k3s_control_node: false
+  tags:
+    - agent
+    - k3s
+    - validate
   pre_tasks:
     - name: Retrieve k3s token from server
       ansible.builtin.slurp:
@@ -26,20 +32,28 @@
       delegate_to: "{{ groups['k3s_server'][0] }}"
       become: yes
       no_log: true
+      when: not ansible_check_mode
+      tags:
+        - validate
 
     - name: Set k3s token fact
       ansible.builtin.set_fact:
         k3s_node_token: "{{ k3s_token_result.content | b64decode | trim }}"
       no_log: true
+      when: not ansible_check_mode
+      tags:
+        - validate
 
     - name: Set k3s server URL fact
       ansible.builtin.set_fact:
-        k3s_server_url: "https://{{ hostvars[groups['k3s_server'][0]]['private_ip'] }}:6443"
+        # Use node_ip (Tailscale IP in production) or fall back to private_ip (AWS).
+        k3s_server_url: "https://{{ hostvars[groups['k3s_server'][0]]['node_ip'] | default(hostvars[groups['k3s_server'][0]]['private_ip']) }}:6443"
+      when: not ansible_check_mode
+      tags:
+        - validate
   roles:
-    - k3s
-  tags:
-    - agent
-    - k3s
+    - role: k3s
+      when: not ansible_check_mode
 
 - name: Verify Cluster
   hosts: k3s_server
@@ -53,10 +67,14 @@
       retries: 12
       delay: 10
       changed_when: false
+      when: not ansible_check_mode
 
     - name: Display cluster nodes
       ansible.builtin.debug:
         msg: "{{ nodes_result.stdout_lines }}"
+      tags:
+        - validate
+      when: not ansible_check_mode
 
     - name: Get kubeconfig command
       ansible.builtin.debug:
@@ -77,3 +95,6 @@
              kubectl --kubeconfig ~/.kube/config-homelab get nodes
 
           =========================================
+      tags:
+        - validate
+      when: not ansible_check_mode

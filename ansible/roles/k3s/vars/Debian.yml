@@ -1,0 +1,3 @@
+---
+# ansible/roles/k3s/vars/Debian.yml
+# OS-specific variables for Debian family

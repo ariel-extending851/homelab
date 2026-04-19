@@ -1,0 +1,7 @@
+---
+# Run the full health_check.yml playbook against the molecule container.
+# All tasks execute without check_mode: the system commands are real,
+# and kubectl calls are handled by the stub installed in prepare.yml.
+
+- name: Import health check playbook
+  ansible.builtin.import_playbook: ../../../../playbooks/maintenance/health_check.yml

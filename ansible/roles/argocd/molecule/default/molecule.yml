@@ -1,0 +1,80 @@
+---
+# Molecule test suite for the argocd role.
+# Driver: Docker — runs fully offline, no Raspberry Pi or k3s cluster required.
+#
+# Strategy: run the role with check_mode=true so all kubectl/shell tasks
+# are skipped by their "when: not ansible_check_mode" guards.
+# This validates:
+#   - All vars/defaults render without errors
+#   - Banner and summary debug tasks execute correctly
+#   - No undefined variable errors from skipped tasks (default() guards)
+#   - ansible-lint passes on all task files
+
+driver:
+  name: docker
+
+platforms:
+  - name: argocd-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: argocd-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          argocd-test:
+    group_vars:
+      all:
+        # Minimal vars to satisfy the role without a real cluster
+        argocd_version: v2.13.2
+        argocd_namespace: argocd
+        argocd_install_method: manifest
+        argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.2/manifests/install.yaml"
+        sops_enabled: false        # Disable SOPS — avoids key file lookups
+        sops_age_public_key: "age1testkey"
+        sops_age_private_key_path: /tmp/fake-age-key.txt
+        git_repo_url: "https://github.com/example/homelab.git"   # HTTPS — skips SSH key checks
+        git_repo_branch: main
+        git_repo_path: k8s/apps
+        git_ssh_private_key_path: /tmp/fake-deploy-key
+        argocd_admin_password: ""
+        argocd_server_replicas: 1
+        argocd_repo_server_replicas: 1
+        argocd_application_controller_replicas: 1
+        argocd_resource_limits:
+          server:
+            memory: 512Mi
+            cpu: 500m
+          repo_server:
+            memory: 512Mi
+            cpu: 500m
+          application_controller:
+            memory: 1Gi
+            cpu: 1000m
+        argocd_install_wait_timeout: 600
+        argocd_ready_wait_timeout: 300
+        apps_root_enabled: true
+        apps_root_name: homelab-apps-root
+        apps_root_manifest_path: k8s/gitops/apps-root.yaml
+        argocd_prune_on_deletion: true
+        # kubeconfig_env must be defined for env: references in tasks
+        kubeconfig_env:
+          KUBECONFIG: /dev/null
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

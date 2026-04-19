@@ -17,12 +17,13 @@ dnf update -y
 # Install required packages (use curl-minimal already present on AL2023)
 echo "[2/7] Installing required packages..."
 dnf install -y \
-    wget \
-    git \
-    jq \
-    htop \
-    iptables \
-    container-selinux
+  wget \
+  git \
+  jq \
+  htop \
+  iptables \
+  amazon-ssm-agent \
+  container-selinux
 
 # Disable swap (required for k3s)
 echo "[3/7] Disabling swap..."
@@ -56,6 +57,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
 
 echo "[6/7] Starting Tailscale and joining tailnet..."
 systemctl enable --now tailscaled
+systemctl enable --now amazon-ssm-agent
 
 # Join the tailnet with the auth key
 # --advertise-tags: tag nodes for ACL policies
@@ -97,17 +99,17 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" \
   K3S_TOKEN="${k3s_token}" \
   INSTALL_K3S_EXEC="server" \
   sh -s - \
-    --flannel-iface=tailscale0 \
-    --node-ip="$TAILSCALE_IP" \
-    --advertise-address="$TAILSCALE_IP" \
-    --tls-san="$TAILSCALE_IP" \
-    --disable traefik \
-    --disable servicelb \
-    --write-kubeconfig-mode 0600 \
-    --node-name "k3s-server-${node_index}" \
-    --node-label "node.kubernetes.io/instance-type=t3.small" \
-    --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)" \
-    --node-label "kubernetes.io/arch=amd64"
+  --flannel-iface=tailscale0 \
+  --node-ip="$TAILSCALE_IP" \
+  --advertise-address="$TAILSCALE_IP" \
+  --tls-san="$TAILSCALE_IP" \
+  --disable traefik \
+  --disable servicelb \
+  --write-kubeconfig-mode 0600 \
+  --node-name "k3s-server-${node_index}" \
+  --node-label "node.kubernetes.io/instance-type=t3.small" \
+  --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)" \
+  --node-label "kubernetes.io/arch=amd64"
 
 # Wait for k3s to be ready
 echo "Waiting for k3s server to be ready..."
@@ -150,12 +152,12 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" \
   K3S_URL="https://$SERVER_IP:6443" \
   INSTALL_K3S_EXEC="agent" \
   sh -s - \
-    --flannel-iface=tailscale0 \
-    --node-ip="$TAILSCALE_IP" \
-    --node-name "k3s-agent-${node_index}" \
-    --node-label "node.kubernetes.io/instance-type=t3.small" \
-    --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)" \
-    --node-label "kubernetes.io/arch=amd64"
+  --flannel-iface=tailscale0 \
+  --node-ip="$TAILSCALE_IP" \
+  --node-name "k3s-agent-${node_index}" \
+  --node-label "node.kubernetes.io/instance-type=t3.small" \
+  --node-label "topology.kubernetes.io/zone=$(ec2-metadata --availability-zone | cut -d' ' -f2)" \
+  --node-label "kubernetes.io/arch=amd64"
 
 echo "k3s agent installation complete!"
 echo "Tailscale IP: $TAILSCALE_IP"

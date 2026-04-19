@@ -1,0 +1,33 @@
+{
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["*:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:terraform-cloudvms"],
+      "dst": ["tag:terraform-cloudvms:*"]
+    }
+  ],
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["tag:rpi"],
+      "users": ["autogroup:nonroot", "root"]
+    },
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["tag:terraform-cloudvms"],
+      "users": ["autogroup:nonroot", "root"]
+    }
+  ],
+  "tagOwners": {
+    "tag:rpi": ["autogroup:member"],
+    "tag:terraform-cloudvms": ["autogroup:member"],
+    "tag:k8s-operator": ["autogroup:member"]
+  }
+}

@@ -12,34 +12,47 @@
       Architecture: {{ architecture }}
       Memory: {{ memory_gb }}GB
       =========================================
+  tags:
+    - validate
 
 - name: Check current memory status
   ansible.builtin.command: free -h
   register: memory_status
   changed_when: false
+  tags:
+    - validate
 
 - name: Display current memory
   ansible.builtin.debug:
     msg: "{{ memory_status.stdout_lines }}"
+  tags:
+    - validate
 
 - name: Check current swap status
   ansible.builtin.command: swapon -s
   register: swap_status
   failed_when: false
   changed_when: false
+  tags:
+    - validate
 
 - name: Display current swap
   ansible.builtin.debug:
     msg: "{{ swap_status.stdout_lines if swap_status.stdout else 'No swap currently active' }}"
+  tags:
+    - validate
 
-- name: Check available disk space
-  ansible.builtin.shell: df / | tail -1 | awk '{print $4}'
-  register: disk_space_kb
-  changed_when: false
+- name: Find root filesystem facts
+  ansible.builtin.set_fact:
+    root_mount: "{{ (ansible_mounts | selectattr('mount', 'equalto', '/') | list | first) | default({'size_available': 0}) }}"
+  tags:
+    - validate
 
 - name: Calculate available disk space in GB
   ansible.builtin.set_fact:
-    available_disk_gb: "{{ (disk_space_kb.stdout | int / 1024 / 1024) | int }}"
+    available_disk_gb: "{{ (root_mount.size_available / 1024 / 1024 / 1024) | round(2) }}"
+  tags:
+    - validate
 
 - name: Display disk space check
   ansible.builtin.debug:
@@ -47,6 +60,8 @@
       Disk space check:
         Available: {{ available_disk_gb }}GB
         Required:  {{ required_disk_space_gb }}GB
+  tags:
+    - validate
 
 - name: Fail if insufficient disk space
   ansible.builtin.fail:
@@ -57,12 +72,16 @@
       Options:
       1. Free up disk space
       2. Reduce swap size (set swap.size_mb to 1024 for 1GB)
-  when: (available_disk_gb | int) < required_disk_space_gb
+  when: (available_disk_gb | float) < (required_disk_space_gb | float)
+  tags:
+    - validate
 
 - name: Check if swap file already exists
   ansible.builtin.stat:
     path: "{{ swap.file_path }}"
   register: swap_file
+  tags:
+    - validate
 
 - name: Create swap file with fallocate (fast method)
   ansible.builtin.command: fallocate -l {{ swap.size_mb }}M {{ swap.file_path }}
@@ -78,7 +97,7 @@
   when:
     - not swap_file.stat.exists
     - swap.enabled | bool
-    - (fallocate_result is defined and fallocate_result.rc != 0) or not (swap.use_fallocate | bool)
+    - not (swap.use_fallocate | bool) or (fallocate_result is defined and fallocate_result.rc | default(0) != 0)
   register: dd_result
 
 - name: Set swap file permissions
@@ -101,25 +120,29 @@
 - name: Display swap creation result
   ansible.builtin.debug:
     msg: "✓ Swap file created successfully"
-  when: mkswap_result is changed
+  when: mkswap_result is defined and mkswap_result is changed
 
 - name: Check if swap is already enabled
   ansible.builtin.shell: swapon -s | grep -q {{ swap.file_path }}
   register: swap_active
   failed_when: false
   changed_when: false
+  tags:
+    - validate
 
 - name: Enable swap
   ansible.builtin.command: swapon {{ swap.file_path }}
   when:
     - swap.enabled | bool
     - swap_active.rc != 0
+    # swapon is unsupported on overlayfs (Docker). Skip in Molecule/CI.
+    - not (molecule_testing | default(false) | bool)
   register: swapon_result
 
 - name: Display swap enable result
   ansible.builtin.debug:
     msg: "✓ Swap enabled"
-  when: swapon_result is changed
+  when: swapon_result is defined and swapon_result is changed
 
 - name: Check if swap is in fstab
   ansible.builtin.lineinfile:
@@ -129,6 +152,8 @@
   check_mode: yes
   register: fstab_check
   changed_when: false
+  tags:
+    - validate
 
 - name: Add swap to fstab for persistence
   ansible.builtin.lineinfile:
@@ -138,7 +163,7 @@
   when: fstab_check is not changed
 
 - name: Configure kernel memory parameters
-  ansible.builtin.sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present
@@ -155,7 +180,7 @@
     label: "{{ item.key }}"
 
 - name: Configure kernel parameters for containers
-  ansible.builtin.sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present
@@ -165,9 +190,19 @@
     - { key: 'vm.max_map_count', value: '{{ kernel.max_map_count }}' }
     - { key: 'fs.inotify.max_user_watches', value: '{{ kernel.max_user_watches }}' }
     - { key: 'fs.file-max', value: '{{ kernel.file_max }}' }
-    - { key: 'net.netfilter.nf_conntrack_max', value: '{{ kernel.netfilter_connection_tracking_max }}' }
   loop_control:
     label: "{{ item.key }}"
+
+# net.netfilter.nf_conntrack_max requires the nf_conntrack kernel module.
+# In Docker containers the module may not be loaded; ignore failure in Molecule/CI.
+- name: Configure nf_conntrack_max (requires nf_conntrack module)
+  ansible.posix.sysctl:
+    name: net.netfilter.nf_conntrack_max
+    value: "{{ kernel.netfilter_connection_tracking_max }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-k8s-optimization.conf
+  ignore_errors: "{{ molecule_testing | default(false) | bool }}"
 
 - name: Configure log rotation for containerd
   ansible.builtin.template:
@@ -187,16 +222,22 @@
   ansible.builtin.command: free -h
   register: final_memory
   changed_when: false
+  tags:
+    - validate
 
 - name: Display final swap status
   ansible.builtin.command: swapon -s
   register: final_swap
   changed_when: false
+  tags:
+    - validate
 
 - name: Display kernel parameters
   ansible.builtin.command: sysctl vm.swappiness vm.vfs_cache_pressure vm.overcommit_memory
   register: kernel_params
   changed_when: false
+  tags:
+    - validate
 
 - name: Display optimization summary
   ansible.builtin.debug:
@@ -230,3 +271,5 @@
       Monitor improvement with:
         watch -n 5 'free -h && uptime'
       =========================================
+  tags:
+    - validate

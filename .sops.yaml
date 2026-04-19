@@ -16,9 +16,14 @@
 #   - ArgoCD must have access to the Age private key
 
 creation_rules:
+  # Encrypt Ansible router credentials in group_vars
+  - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
+    encrypted_regex: ^(wifi_password|wifi_guest_password)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
   # Encrypt all Kubernetes Secret manifests
   - path_regex: .*secret.*\.yaml$
-    encrypted_regex: ^(data|stringData)$
+    encrypted_regex: ^(data|stringData|ssh_public_key|k3s_token|tailscale_auth_key|tailscale_api_key)$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
 
   # Encrypt all files in k8s/apps/*/secrets/ directories
@@ -30,5 +35,8 @@ creation_rules:
   - path_regex: .*\.enc\.yaml$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
 
-  - path_regex: .*\.sops\.yaml$
+  # Encrypt all .sops.yaml files — pattern covers common secret field names
+  # including tokens, keys, passwords, API keys, and Tailscale credentials
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(k3s_token|tailscale_auth_key|tailscale_api_key|.*[Tt]oken|.*[Ss]ecret|.*[Pp]assword|.*[Kk]ey|.*[Aa][Pp][Ii]_?[Kk]ey|.*[Cc]redential.*)$
     age: "age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja"

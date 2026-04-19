@@ -34,6 +34,8 @@ spec:
       - CreateNamespace=true # Auto-create namespaces if missing
       - PrunePropagationPolicy=foreground # Ensure proper cleanup order
       - PruneLast=true # Prune after sync (safer)
+      - ApplyOutOfSyncOnly=true # Apply only resources that are actually out of sync
+      - ServerSideApply=true # Precise conflict detection; prevents overwriting controller-managed fields
 
     retry:
       limit: 5
@@ -42,14 +44,17 @@ spec:
         factor: 2
         maxDuration: 3m
 
-  # Ignore differences in resource requests/limits (allow cluster autoscaling)
   ignoreDifferences:
     - group: apps
       kind: Deployment
       jsonPointers:
         - /spec/replicas # Ignore HPA-managed replicas
 
+    # All Secrets are managed exclusively via SOPS + ArgoCD CMP (no external-secrets,
+    # cert-manager or other operators). ArgoCD decrypts at sync time, so /data in the
+    # cluster will differ from the encrypted Git representation — ignoring drift here
+    # is intentional and safe.
     - group: ""
       kind: Secret
       jsonPointers:
-        - /data # Ignore secret data changes (managed externally)
+        - /data

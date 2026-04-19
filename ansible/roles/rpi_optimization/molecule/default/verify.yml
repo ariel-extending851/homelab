@@ -1,0 +1,100 @@
+---
+# Verify: assert the role produced the expected state on the container.
+
+- name: Verify rpi_optimization
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Assert swap file was created
+      ansible.builtin.stat:
+        path: /tmp/testswapfile
+      register: swap_file_stat
+      failed_when: not swap_file_stat.stat.exists
+
+    - name: Assert swap file has correct permissions (0600)
+      ansible.builtin.assert:
+        that:
+          - swap_file_stat.stat.mode == '0600'
+        fail_msg: "Swap file permissions should be 0600, got {{ swap_file_stat.stat.mode }}"
+
+    - name: Assert sysctl config for memory was written
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-rpi-optimization.conf
+      register: sysctl_mem
+      failed_when: not sysctl_mem.stat.exists
+
+    - name: Assert vm.swappiness is present in sysctl config
+      ansible.builtin.command: grep -q "vm.swappiness" /etc/sysctl.d/99-rpi-optimization.conf
+      changed_when: false
+      failed_when: false
+      register: swappiness_check
+
+    - name: Assert swappiness line exists
+      ansible.builtin.assert:
+        that:
+          - swappiness_check.rc == 0
+        fail_msg: "vm.swappiness not found in /etc/sysctl.d/99-rpi-optimization.conf"
+
+    - name: Assert sysctl config for k8s was written
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-k8s-optimization.conf
+      register: sysctl_k8s
+      failed_when: not sysctl_k8s.stat.exists
+
+    - name: Assert vm.max_map_count is present in k8s sysctl config
+      ansible.builtin.command: grep -q "vm.max_map_count" /etc/sysctl.d/99-k8s-optimization.conf
+      changed_when: false
+      register: max_map_check
+      failed_when: max_map_check.rc != 0
+
+    - name: Assert logrotate config for containerd was written
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/containerd
+      register: logrotate_containerd
+      failed_when: not logrotate_containerd.stat.exists
+
+    - name: Assert logrotate config for k3s was written
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/k3s
+      register: logrotate_k3s
+      failed_when: not logrotate_k3s.stat.exists
+
+    - name: Stat swap file to check size (proves mkswap completed)
+      # mkswap writes a page-sized header; the file must be at least 64 MB.
+      # 'file' binary is absent in debian:bookworm-slim — use stat instead.
+      # swapon itself is blocked on overlayfs (Docker) at the kernel level.
+      ansible.builtin.stat:
+        path: /tmp/testswapfile
+        get_checksum: false
+      register: swap_file_size
+
+    - name: Assert swap file is at least 64 MB (mkswap initialised it)
+      ansible.builtin.assert:
+        that:
+          - swap_file_size.stat.size >= 67108864   # 64 * 1024 * 1024
+        fail_msg: >
+          Swap file is only {{ swap_file_size.stat.size }} bytes —
+          expected at least 67108864 (64 MB). mkswap may not have run.
+
+    - name: Assert fstab contains swap entry
+      ansible.builtin.command: grep -q "/tmp/testswapfile" /etc/fstab
+      changed_when: false
+      register: fstab_check
+      failed_when: fstab_check.rc != 0
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          rpi_optimization — Molecule Verify PASSED
+          =========================================
+          ✓ Swap file created at /tmp/testswapfile (0600)
+          ✓ Swap file size >= 64 MB (mkswap initialised it)
+          ✓ /etc/sysctl.d/99-rpi-optimization.conf written
+          ✓ /etc/sysctl.d/99-k8s-optimization.conf written
+          ✓ /etc/logrotate.d/containerd written
+          ✓ /etc/logrotate.d/k3s written
+          ✓ fstab entry present
+          =========================================
