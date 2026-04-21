@@ -1,0 +1,19 @@
+---
+# Converge: apply the role to test container
+
+- name: Converge — apply [ROLE_NAME] role
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    # Create required directories here (if role creates them)
+    # Example:
+    # - name: Create /etc/myapp directory
+    #   ansible.builtin.file:
+    #     path: /etc/myapp
+    #     state: directory
+    #     mode: '0755'
+
+  roles:
+    - role: [ROLE_NAME]

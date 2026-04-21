@@ -1,0 +1,23 @@
+---
+# Role metadata and dependencies
+
+galaxy_info:
+  role_name: [ROLE_NAME]
+  author: homelab
+  description: "[ROLE_NAME] role - add your description here"
+  company: homelab
+  license: MIT
+  min_ansible_version: "2.12"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+
+  galaxy_tags:
+    - homelab
+
+dependencies: []

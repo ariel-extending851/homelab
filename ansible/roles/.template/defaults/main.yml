@@ -1,0 +1,6 @@
+---
+# Default variables for [ROLE_NAME] role
+# Override these in playbooks or group_vars as needed
+
+# Example variable (customize for your role)
+example_variable: "default_value"

@@ -1,0 +1,17 @@
+# URLs excluded from lychee link checking
+# Reasons: internal/localhost hostnames, stale versioned docs, auth-required pages
+
+# LocalStack (only reachable when running locally)
+http://localhost:4566
+
+# Internal Tailscale hostnames (not reachable from CI)
+https://searxng
+
+# GitHub settings pages (require authentication)
+https://github.com/ariel-extending851/homelab/settings
+
+# Stale versioned documentation URLs
+https://longhorn.io/docs/1.6.0/
+https://grafana.com/docs/loki/latest/logql/performance/
+https://www.terraform.io/docs/testing/
+https://molecule.readthedocs.io/en/latest/configuration/

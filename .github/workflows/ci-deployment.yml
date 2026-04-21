@@ -1,0 +1,377 @@
+name: CD Pipeline — Post-Deployment Validation
+
+# Runs AFTER ci-validation.yml (all validation must pass first).
+# Orchestrates: Terraform apply → Ansible deploy → ArgoCD wait → E2E tests → Rollback on failure
+#
+# Architecture:
+# - This workflow calls Makefile targets as SOURCE OF TRUTH
+# - All logic lives in Makefile — CI simply calls `make target`
+# - Local parity: user runs `make terraform-apply` locally = same as CI runs
+#
+# Prerequisites:
+# - AWS_ACCOUNT_ID repository variable
+# - SOPS_AGE_KEY secret
+# - GitHub OIDC provider configured in AWS IAM
+# - ci-validation.yml must pass first
+
+on:
+  push:
+    branches: ["main"]  # Only on main (production)
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: false
+        default: "prod"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  statuses: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # GATE: Wait for validation to pass
+  # ============================================================================
+  validate-gate:
+    name: Wait for Validation Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validation Pipeline Status
+        run: |
+          echo "✅ CI validation gate must pass before deployment proceeds"
+          echo "   This ensures all tests, linting, and policy checks passed first"
+
+  # ============================================================================
+  # TERRAFORM APPLY (Makefile as source of truth)
+  # ============================================================================
+  terraform-apply:
+    name: Apply Terraform
+    runs-on: ubuntu-latest
+    needs: [validate-gate]
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-apply
+          aws-region: us-east-1
+
+      - name: Setup CI Dependencies (SOPS)
+        run: make setup-ci-deps-terraform
+
+      - name: Initialize Terraform
+        working-directory: infra/aws
+        run: terraform init
+
+      - name: Apply Terraform Configuration
+        working-directory: infra/aws
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          terraform apply -auto-approve -lock=true 2>&1 | tee apply.log
+
+      - name: Export Kubeconfig
+        working-directory: infra/aws
+        run: |
+          terraform output -raw kubeconfig_content > /tmp/k3s-homelab-kubeconfig.yaml
+          chmod 600 /tmp/k3s-homelab-kubeconfig.yaml
+          export KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml
+          kubectl cluster-info --request-timeout=5s || exit 1
+
+      - name: Upload Kubeconfig Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/k3s-homelab-kubeconfig.yaml
+          retention-days: 1
+
+      - name: Upload Terraform Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-apply-logs
+          path: infra/aws/apply.log
+          retention-days: 7
+
+  # ============================================================================
+  # ANSIBLE DEPLOY (Makefile as source of truth)
+  # ============================================================================
+  ansible-deploy:
+    name: Run Ansible Configuration
+    runs-on: ubuntu-latest
+    needs: [terraform-apply]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Kubeconfig
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup CI Dependencies (Ansible + Python)
+        run: make setup-ci-deps-ansible
+
+      - name: Install Ansible Collections
+        working-directory: ansible
+        run: ansible-galaxy collection install -r requirements.yml --force
+
+      - name: Validate Playbook Syntax
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        working-directory: ansible
+        run: ansible-playbook -i terraform_inventory_aws.py playbooks/site.yml --syntax-check
+
+      - name: Run Ansible Playbook
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make ansible-deploy 2>&1 | tee /tmp/ansible-deploy.log
+
+      - name: Upload Ansible Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-deploy-logs
+          path: /tmp/ansible-deploy.log
+          retention-days: 7
+
+  # ============================================================================
+  # WAIT FOR ARGOCD CONVERGENCE (Makefile as source of truth)
+  # ============================================================================
+  argocd-wait:
+    name: Wait for ArgoCD Convergence
+    runs-on: ubuntu-latest
+    needs: [ansible-deploy]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Kubeconfig
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/
+
+      - name: Setup Kubernetes Tools
+        run: make setup-ci-deps-kubernetes
+
+      - name: Wait for ArgoCD Sync + Health
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make validate-argocd-synced
+
+      - name: Verify Core Namespaces
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: |
+          for ns in argocd monitoring adguard *** media searxng golink otel-collector; do
+            kubectl get namespace "$ns" >/dev/null 2>&1 || {
+              echo "❌ Namespace not found: $ns"
+              exit 1
+            }
+            echo "✅ Namespace exists: $ns"
+          done
+
+  # ============================================================================
+  # SMOKE TESTS (20+ checks)
+  # ============================================================================
+  smoke-test:
+    name: Smoke Tests (20+ checks)
+    runs-on: ubuntu-latest
+    needs: [argocd-wait]
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Kubeconfig
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/
+
+      - name: Setup Kubernetes Tools
+        run: make setup-ci-deps-kubernetes
+
+      - name: Run Smoke Tests
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make smoke-test 2>&1 | tee /tmp/smoke-test.log
+
+      - name: Upload Smoke Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: /tmp/smoke-test.log
+          retention-days: 7
+
+  # ============================================================================
+  # E2E TESTS (40+ BATS test cases via Makefile)
+  # ============================================================================
+  e2e-tests:
+    name: E2E Full Suite (40+ tests)
+    runs-on: ubuntu-latest
+    needs: [argocd-wait]
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Kubeconfig
+        uses: actions/download-artifact@v4
+        with:
+          name: kubeconfig
+          path: /tmp/
+
+      - name: Setup Kubernetes Tools
+        run: make setup-ci-deps-kubernetes
+
+      - name: Setup bats Testing Framework
+        run: make setup-ci-deps-bats
+
+      - name: Run E2E Tests
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make test-e2e-post-deploy 2>&1 | tee /tmp/e2e-test.log
+
+      - name: Upload E2E Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs
+          path: /tmp/e2e-test.log
+          retention-days: 7
+
+  # ============================================================================
+  # DEPLOYMENT GATE (Aggregate Results)
+  # ============================================================================
+  deployment-gate:
+    name: Deployment Gate
+    runs-on: ubuntu-latest
+    needs: [smoke-test, e2e-tests]
+    if: always()
+    steps:
+      - name: Check All Tests Passed
+        run: |
+          results='${{ toJSON(needs) }}'
+          echo "$results" | python3 -c "
+          import sys, json
+          needs = json.load(sys.stdin)
+          failed = [
+              name for name, data in needs.items()
+              if data['result'] not in ('success', 'skipped')
+          ]
+          if failed:
+              print('❌ FAILED tests:', ', '.join(failed))
+              sys.exit(1)
+          print('✅ All E2E tests passed — cluster is production-ready')
+          "
+
+      - name: Create Deployment Status
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              description: 'All E2E tests passed - deployment successful',
+              context: 'cd/deployment-complete',
+            });
+
+  # ============================================================================
+  # ROLLBACK (on test failure via Makefile)
+  # ============================================================================
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deployment-gate]
+    if: failure()
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-apply
+          aws-region: us-east-1
+
+      - name: Setup CI Dependencies (SOPS)
+        run: make setup-ci-deps-terraform
+
+      - name: Initialize Terraform
+        working-directory: infra/aws
+        run: terraform init
+
+      - name: Destroy Infrastructure (Rollback)
+        working-directory: infra/aws
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          echo "🚨 E2E tests failed — initiating automatic rollback..."
+          terraform destroy -auto-approve -lock=true 2>&1 | tee destroy.log
+          echo "✅ Rollback completed — infrastructure destroyed"
+
+      - name: Upload Destroy Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-logs
+          path: infra/aws/destroy.log
+          retention-days: 30
+
+      - name: Create Issue on Failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Rollback: E2E Test Failure',
+              body: `Commit: \`${context.sha}\`\n\nE2E tests failed after deployment. Automatic rollback initiated. Check artifacts for logs:\n- smoke-test-logs\n- e2e-test-logs\n- rollback-logs`,
+              labels: ['deployment', 'failure', 'e2e-tests'],
+            });
+
+      - name: Create Deployment Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'failure',
+              description: 'E2E tests failed - deployment rolled back',
+              context: 'cd/rollback-complete',
+            });

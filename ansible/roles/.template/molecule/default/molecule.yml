@@ -1,0 +1,51 @@
+---
+# Molecule driver and platform configuration
+
+driver:
+  name: docker
+
+platforms:
+  - name: "[ROLE_NAME]-test"
+    image: debian:bookworm-slim
+    pre_build_image: true
+    command: /bin/bash -c "sleep infinity"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+  inventory:
+    hosts:
+      all:
+        hosts:
+          "[ROLE_NAME]-test":
+    group_vars:
+      all:
+        # Docker containers run as root; no sudo needed
+        ansible_become: false
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy

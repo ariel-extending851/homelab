@@ -249,6 +249,25 @@ def test_get_host_returns_server_vars():
     assert hostvars["k3s_control_node"] is True
 
 
+def test_list_inventory_returns_full_inventory_dict():
+    def _fake_run(cmd, **kwargs):
+        result = MagicMock()
+        if "terraform" in cmd:
+            result.stdout = json.dumps(MINIMAL_OUTPUTS)
+        else:
+            raise FileNotFoundError
+        return result
+
+    with patch.dict(os.environ, {"ANSIBLE_AWS_SSM_BUCKET_NAME": "test-bucket"}):
+        with patch("subprocess.run", side_effect=_fake_run):
+            inventory = TerraformInventoryAWS(terraform_dir=".")
+            payload = inventory.list_inventory()
+
+    assert "_meta" in payload
+    assert "k3s_server" in payload
+    assert "k3s-server" in payload["k3s_server"]["hosts"]
+
+
 def test_get_host_returns_empty_for_unknown_host():
     def _fake_run(cmd, **kwargs):
         result = MagicMock()
@@ -280,3 +299,145 @@ def test_ssm_connection_type_is_aws_ssm():
     inv = _make_inventory()
     hostvars = inv.inventory["_meta"]["hostvars"]["k3s-server"]
     assert hostvars["ansible_connection"] == "amazon.aws.aws_ssm"
+
+
+def test_tailscale_peer_without_ipv4_falls_back_to_private_ip():
+    ts_ipv6_only = {
+        "Peer": {
+            "peer-key-1": {
+                "HostName": "k3s-server-1",
+                "TailscaleIPs": ["fd7a::1"],
+                "Online": True,
+            },
+        }
+    }
+    inv = _make_inventory(tailscale=ts_ipv6_only)
+    assert (
+        inv.inventory["_meta"]["hostvars"]["k3s-server"]["tailscale_ip"] == "10.0.1.10"
+    )
+
+
+def test_warning_printed_when_ssm_bucket_missing(capsys):
+    def _fake_run(cmd, **kwargs):
+        result = MagicMock()
+        if "terraform" in cmd:
+            result.stdout = json.dumps(MINIMAL_OUTPUTS)
+        else:
+            raise FileNotFoundError
+        return result
+
+    with patch.dict(os.environ, {}, clear=True):
+        with patch("subprocess.run", side_effect=_fake_run):
+            inventory = TerraformInventoryAWS(terraform_dir=".")
+            inventory.build_inventory()
+
+    err = capsys.readouterr().err
+    assert "ANSIBLE_AWS_SSM_BUCKET_NAME environment variable not set" in err
+
+
+def test_main_list_prints_inventory_json(monkeypatch, capsys):
+    class _FakeInventory:
+        def __init__(self, terraform_dir):
+            self.terraform_dir = terraform_dir
+
+        def list_inventory(self):
+            return {"ok": True}
+
+    monkeypatch.setattr(inv_module, "TerraformInventoryAWS", _FakeInventory)
+    monkeypatch.setattr(sys, "argv", ["terraform_inventory_aws.py", "--list"])
+
+    inv_module.main()
+    out = capsys.readouterr().out
+    assert '"ok": true' in out
+
+
+def test_main_host_prints_hostvars_json(monkeypatch, capsys):
+    class _FakeInventory:
+        def __init__(self, terraform_dir):
+            self.terraform_dir = terraform_dir
+
+        def get_host(self, hostname):
+            return {"host": hostname}
+
+    monkeypatch.setattr(inv_module, "TerraformInventoryAWS", _FakeInventory)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["terraform_inventory_aws.py", "--host", "k3s-server"],
+    )
+
+    inv_module.main()
+    out = capsys.readouterr().out
+    assert '"host": "k3s-server"' in out
+
+
+def test_main_without_args_exits_with_help(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["terraform_inventory_aws.py"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        inv_module.main()
+
+    assert exc_info.value.code == 1
+
+
+def test_main_overrides_ssm_env_from_cli(monkeypatch):
+    captured = {}
+
+    class _FakeInventory:
+        def __init__(self, terraform_dir):
+            captured["terraform_dir"] = terraform_dir
+
+        def list_inventory(self):
+            return {"ok": True}
+
+    monkeypatch.setattr(inv_module, "TerraformInventoryAWS", _FakeInventory)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "terraform_inventory_aws.py",
+            "--list",
+            "--terraform-dir",
+            "./tf",
+            "--ssm-bucket",
+            "bucket-cli",
+            "--ssm-region",
+            "us-west-2",
+        ],
+    )
+
+    inv_module.main()
+
+    assert captured["terraform_dir"] == "./tf"
+    assert os.environ["ANSIBLE_AWS_SSM_BUCKET_NAME"] == "bucket-cli"
+    assert os.environ["ANSIBLE_AWS_SSM_REGION"] == "us-west-2"
+
+
+def test_main_empty_ssm_cli_values_do_not_set_env(monkeypatch):
+    class _FakeInventory:
+        def __init__(self, terraform_dir):
+            self.terraform_dir = terraform_dir
+
+        def list_inventory(self):
+            return {"ok": True}
+
+    monkeypatch.setattr(inv_module, "TerraformInventoryAWS", _FakeInventory)
+    monkeypatch.delenv("ANSIBLE_AWS_SSM_BUCKET_NAME", raising=False)
+    monkeypatch.delenv("ANSIBLE_AWS_SSM_REGION", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "terraform_inventory_aws.py",
+            "--list",
+            "--ssm-bucket",
+            "",
+            "--ssm-region",
+            "",
+        ],
+    )
+
+    inv_module.main()
+
+    assert "ANSIBLE_AWS_SSM_BUCKET_NAME" not in os.environ
+    assert "ANSIBLE_AWS_SSM_REGION" not in os.environ

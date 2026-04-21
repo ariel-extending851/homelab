@@ -39,6 +39,14 @@ jobs:
             --verbose
             --no-progress
             --exclude-path ./docs/archive
+            --scheme https
+            --scheme http
+            --exclude "\.ts\.net"
+            --exclude "raspberrypi\.com"
+            --exclude-file .lycheeignore
+            --max-retries 5
+            --retry-wait-time 10
+            --timeout 30
             "**/*.md"
         env:
           # GitHub token is used to avoid rate-limiting when checking github.com links

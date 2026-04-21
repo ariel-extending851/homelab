@@ -33,6 +33,19 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Python coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+# QA audit evidence artifacts (generated locally)
+.qa/
+
+# Benchmark artifacts (transient)
+.benchmarks/results.json
+
 # ArgoCD SSH private keys (NEVER commit private keys to VCS)
 k8s/gitops/ssh/*
 !k8s/gitops/ssh/.gitkeep
@@ -58,3 +71,4 @@ temp_*.yaml
 
 # ArgoCD manifest cache (download via: make argocd-manifest-fetch)
 ansible/roles/argocd/files/argocd-*-install.yaml
+coverage.json

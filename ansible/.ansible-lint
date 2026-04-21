@@ -13,6 +13,7 @@ exclude_paths:
   - molecule/
   - terraform_inventory.py
   - terraform_inventory_aws.py
+  - roles/.template/
   - .git/
 
 # Rules to treat as warnings rather than failures
@@ -28,5 +29,6 @@ skip_list:
   - var-naming            # TODO: prefix all role vars — tracked as tech debt
   - yaml[line-length]     # yamllint handles line length; ansible-lint duplication
   - yaml[comments-indentation]  # yamllint handles this
+  - yaml[document-start]  # SOPS-encrypted files cannot have '---' (breaks MAC verification)
 
 use_default_rules: true

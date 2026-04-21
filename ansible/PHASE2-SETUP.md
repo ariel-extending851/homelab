@@ -81,7 +81,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/homelab-deploy-key -C "argocd@homelab" -N ""
    cat ~/.ssh/homelab-deploy-key.pub
    ```
 
-2. Go to: https://github.com/ariel99gf/homelab/settings/keys
+2. Go to: https://github.com/ariel-extending851/homelab/settings/keys
 
 3. Click "Add deploy key"
    - Title: `ArgoCD Homelab`

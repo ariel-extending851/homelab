@@ -5,290 +5,466 @@ on:
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop"]
+  schedule:
+    - cron: "15 3 * * *"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  # ============================================================================
-  # TERRAFORM VALIDATION (AWS Infrastructure)
-  # Installs tools, then delegates all logic to: make validate-terraform-all
-  # ============================================================================
-  terraform:
-    name: Terraform Check
-    runs-on: ubuntu-latest
+env:
+  MISE_CACHE_DIR: ~/.cache/mise
+  MISE_FETCH_TIMEOUT: 300
 
+jobs:
+  terraform:
+    name: "Terraform: Validate + Test"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
         with:
-          terraform_version: "1.5.7" # Pinned for stability
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-terraform-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-terraform-
 
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
-        with:
-          tflint_version: v0.50.3
+      - name: Setup Terraform dependencies via Makefile
+        run: make setup-ci-deps-terraform
 
-      - name: Validate all Terraform modules (validate + fmt + tflint)
+      - name: Run Terraform Validation
         run: make validate-terraform-all
 
-  # ============================================================================
-  # YAML LINTING + KUBERNETES MANIFEST VALIDATION
-  # yamllint uses the action for PR annotations; k8s validation via make.
-  # ============================================================================
+      - name: Run Terraform Unit Tests
+        run: make validate-terraform-tests
+
+      - name: Run Terraform Guardrail Tests
+        run: make test-terraform
+
   yaml-lint:
-    name: YAML Syntax + K8s Schemas
+    name: "YAML: Lint + K8s Schemas"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run yamllint
-        uses: ibiqlik/action-yamllint@v3
+      - name: Setup Yamllint Dependencies via Makefile
+        run: make setup-ci-deps-yamllint
+
+      - name: Run Yamllint via Makefile
+        run: make validate-yaml-lint
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
         with:
-          config_file: .yamllint
-          strict: false
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-k8s-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-k8s-
 
-      - name: Install kustomize
+      - name: Setup Kubernetes dependencies via Makefile
         run: |
-          sudo rm -f /usr/local/bin/kustomize
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
-            | bash -s -- /usr/local/bin
+          make setup-ci-deps-kustomize
+          make setup-ci-deps-kubeconform
 
-      - name: Install kubeconform
-        run: |
-          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
-            | tar xz -C /usr/local/bin
-
-      - name: Validate all Kubernetes manifests (kustomize + kubeconform)
+      - name: Run Kubernetes Manifest Validation
         run: make validate-k8s-all
 
-      - name: Install Python template validation deps
-        run: pip install --quiet jinja2 pyyaml
+      - name: Setup Conftest via Makefile
+        run: make setup-ci-deps-conftest
 
-      - name: Validate k3s Jinja2 templates
+      - name: Run OPA Policy Checks
+        run: make validate-k8s-policies
+
+      - name: Setup Python test dependencies via Makefile
+        run: make setup-ci-deps-python
+
+      - name: Run Jinja2 Template Validation via Makefile
         run: make test-templates
 
-  # ============================================================================
-  # ANSIBLE ROLE TESTS (Molecule — offline Docker-based)
-  # Also runs validate-ansible (syntax-check all playbooks) — was missing from CI.
-  # ============================================================================
-  molecule:
-    name: Molecule Role Tests
+  enforce-molecule-tests:
+    name: Enforce Molecule Tests
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Python
+      - name: Validate New Roles Have Molecule Structure
+        run: make validate-ansible-structure
+
+  molecule:
+    name: "Ansible: Molecule Role Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-ansible-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-ansible-
+
+      - name: Setup Molecule dependencies via Makefile
+        run: make setup-ci-deps-molecule
+
+      - name: Setup Python Runtime
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install Molecule and dependencies
-        run: |
-          pip install --quiet \
-            molecule \
-            molecule-plugins[docker] \
-            ansible \
-            ansible-lint \
-            yamllint
+      - name: Install Ansible Collections
+        run: make ansible-galaxy-install
 
-      - name: Validate Ansible playbook syntax (all playbooks)
+      - name: Run Ansible Syntax Validation
         run: make validate-ansible
 
-      - name: Run ArgoCD role tests
-        run: make test-molecule-argocd
+      - name: Run Molecule Role Tests
+        run: make test-molecule
 
-      - name: Run k3s role tests
-        run: make test-molecule-k3s
-
-      - name: Run rpi_optimization role tests
-        run: make test-molecule-rpi
-
-      - name: Run tailscale role tests
-        run: make test-molecule-tailscale
-
-      - name: Run gatekeeper role tests
-        run: make test-molecule-gatekeeper
-
-      - name: Run emergency_recovery role tests
-        run: make test-molecule-emergency-recovery
-
-  # ============================================================================
-  # SHELL UNIT TESTS (bats — deploy script functions + contract tests)
-  # ============================================================================
   shell-tests:
-    name: Shell Unit Tests (bats)
+    name: "Shell: Unit Tests"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install bats
-        uses: bats-core/bats-action@3.0.0
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-shell-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-shell-
 
-      - name: Install kustomize (required by contract tests)
+      - name: Setup Shell Test Dependencies via Makefile
         run: |
-          sudo rm -f /usr/local/bin/kustomize
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
-            | bash -s -- /usr/local/bin
+          make setup-ci-deps-bats
+          make setup-ci-deps-kustomize
 
-      - name: Run deploy script function tests
-        run: make test-shell
+      - name: Run Shell Test Suite
+        run: make test-contracts test-shell
 
-      - name: Run contract tests (App-of-Apps path + SOPS structure)
-        run: make test-contracts
-
-  # ============================================================================
-  # PYTHON UNIT TESTS
-  # ============================================================================
   python-tests:
-    name: Python Unit Tests (pytest)
+    name: "Python: Unit Tests + Coverage"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Python Runtime
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install Python dependencies
-        run: pip install --quiet pytest boto3
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-python-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-python-
 
-      - name: Run Python tests
-        run: make test-python
+      - name: Setup Python test dependencies via Makefile
+        run: make setup-ci-deps-python
 
-  # ============================================================================
-  # SOPS WORKFLOW VALIDATION
-  # Installs age + sops, then delegates to Makefile targets.
-  # ============================================================================
-  sops-validation:
-    name: SOPS Workflow Validation
+      - name: Run Python tests with coverage via Makefile
+        run: make test-python-ci
+
+      - name: Upload Coverage Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-report
+          path: htmlcov/
+          retention-days: 30
+
+      - name: Publish Coverage Summary
+        if: always()
+        run: |
+          COVERAGE=$(python3 -c "import xml.etree.ElementTree as ET; root = ET.parse('coverage.xml').getroot(); print(f\"{float(root.attrib['line-rate'])*100:.1f}%\")" 2>/dev/null || echo "N/A")
+          echo "## Python Test Coverage: ${COVERAGE}" >> $GITHUB_STEP_SUMMARY
+
+  arm64-validation:
+    name: "ARM64: ${{ matrix.platform }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        include:
+          - platform: linux/arm64
+            safe_platform: linux-arm64
+          - platform: linux/arm/v7
+            safe_platform: linux-arm-v7
+      fail-fast: false
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install age
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.platform }}
+
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup ARM64 validation dependencies via Makefile
+        run: make setup-ci-deps-arm64
+
+      - name: Run Molecule Test Suite
+        env:
+          DOCKER_DEFAULT_PLATFORM: ${{ matrix.platform }}
         run: |
-          curl -sL https://github.com/FiloSottile/age/releases/download/v1.2.1/age-v1.2.1-linux-amd64.tar.gz \
-            | tar xz --strip-components=1 -C /usr/local/bin age/age age/age-keygen
+          set -o pipefail
+          echo "Testing ${{ matrix.platform }} (QEMU emulated)..."
+          make test-molecule 2>&1 | tee "molecule-${{ matrix.safe_platform }}.log"
 
-      - name: Install SOPS
+      - name: Upload Molecule Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: molecule-${{ matrix.safe_platform }}
+          path: ansible/roles/*/.molecule/
+          retention-days: 7
+
+  sops-validation:
+    name: "SOPS: Workflow Validation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-sops-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-sops-
+
+      - name: Setup SOPS dependencies via Makefile
         run: |
-          curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
-          install -m 0755 sops-v3.9.4.linux.amd64 /usr/local/bin/sops
+          make setup-ci-deps-age
+          make setup-ci-deps-terraform
+          make setup-ci-deps-bats
 
-      - name: Install bats (required by test-contracts)
-        uses: bats-core/bats-action@3.0.0
-
-      - name: Validate SOPS encrypt/decrypt workflow
+      - name: Run SOPS Encrypt/Decrypt Validation
         run: make validate-sops-workflow
 
-      - name: Validate committed SOPS secret structure
+      - name: Run SOPS Secret Structure Validation
         run: make test-contracts
 
-  # ============================================================================
-  # BASH SCRIPT ANALYSIS
-  # Uses GitHub Action for PR annotations — make validate-shellcheck for local use.
-  # ============================================================================
   shellcheck:
     name: ShellCheck
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          severity: warning
-          scandir: "."
+      - name: Setup shellcheck dependencies via Makefile
+        run: make setup-ci-deps-shellcheck
 
-  # ============================================================================
-  # SECRET SCAN
-  # TruffleHog requires full git history — kept as GitHub Action only.
-  # ============================================================================
+      - name: Run ShellCheck Validation via Makefile
+        run: make validate-shellcheck
+
   security:
     name: Secret Scan
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # ⚠️ CRÍTICO: Necessário para o TruffleHog olhar o histórico
+          fetch-depth: 0
 
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          # For pull_request: compare PR base to PR head.
-          # For workflow_dispatch: scan full history by using an empty base to avoid identical base/head.
-          # For push: compare previous commit to current; if `before` is all-zero, empty, or missing, fallback to default branch.
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha
-            || github.event_name == 'workflow_dispatch' && ''
-            || (github.event.before != '' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before)
-            || github.event.repository.default_branch }}
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'workflow_dispatch' && '' || (github.event.before != '' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.event.repository.default_branch }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           extra_args: --debug --only-verified
 
-  # ============================================================================
-  # TERRAFORM PLAN (OIDC — real AWS state, requires GitHub secrets)
-  # Kept as inline steps — uses OIDC credentials + real backend, not replicable locally.
-  # ============================================================================
-  terraform-plan:
-    name: Terraform Plan (OIDC)
-    runs-on: ubuntu-latest
-    needs: [terraform]
-    # Skip on pull_requests from forks — secrets are not available there.
-    if: >
-      vars.AWS_ACCOUNT_ID != '' &&
-      (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository)
-    permissions:
-      id-token: write   # Required for OIDC token exchange
-      contents: read
-      pull-requests: write  # Required to comment plan output on PRs
+      - name: Run Security Guardrail Tests
+        run: make test-security
 
+  disaster-recovery-tests:
+    name: "Disaster Recovery: Readiness Tests"
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup Molecule Dependencies via Makefile
+        run: make setup-ci-deps-molecule
+
+      - name: Run Disaster Recovery Readiness Tests
+        run: make test-dr
+
+  disaster-recovery-execution:
+    name: "Disaster Recovery: Real Execution (Molecule)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-dr-execution-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-dr-execution-
+
+      - name: Setup Molecule Dependencies via Makefile
+        run: make setup-ci-deps-molecule
+
+      - name: Run Disaster Recovery Execution Tests
+        run: make test-dr-execution
+
+  policy-as-code-critical:
+    name: "Security: Policy-as-Code Critical Gate"
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-policy-critical-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-policy-critical-
+
+      - name: Setup Critical Policy Dependencies via Makefile
+        run: |
+          make setup-ci-deps-kustomize
+          make setup-ci-deps-conftest
+
+      - name: Run Critical Policy Gate
+        run: make validate-k8s-policies-critical
+
+  k8s-dry-run:
+    name: "Kubernetes: Dry-Run (kind)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup kind dependencies via Makefile
+        run: make setup-ci-deps-kind
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-k8s-dry-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-k8s-dry-
+
+      - name: Setup Kubernetes dependencies via Makefile
+        run: |
+          make setup-ci-deps-kubernetes
+          make setup-ci-deps-kustomize
+
+      - name: Run Kubernetes Dry-Run Validation
+        run: make validate-k8s-dry-run
+
+  terraform-plan:
+    name: "Terraform: Plan (OIDC)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [terraform]
+    if: >
+      vars.AWS_ACCOUNT_ID != '' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform Runtime
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.11.0" # >= 1.10 required by use_lockfile=true in backend
+          terraform_version: "1.11.0"
 
-      - name: Configure AWS Credentials (OIDC)
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-plan
           aws-region: us-east-1
 
-      - name: Install SOPS
-        run: |
-          curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
-          install -m 0755 sops-v3.9.4.linux.amd64 /usr/local/bin/sops
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-terraform-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-terraform-
 
-      - name: Terraform Init
+      - name: Setup SOPS Dependency
+        run: |
+          if ! command -v mise &> /dev/null; then
+            curl https://mise.jdx.dev/install.sh | sh
+          fi
+          export PATH="$HOME/.local/bin:$PATH"
+          mise install sops
+
+      - name: Run Terraform Init
         working-directory: infra/aws
         run: terraform init
 
-      - name: Terraform Plan
+      - name: Run Terraform Plan
         working-directory: infra/aws
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: terraform plan -lock=false -no-color 2>&1 | tee plan.txt
 
-      - name: Comment plan on PR
+      - name: Publish Terraform Plan Comment
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
@@ -296,37 +472,214 @@ jobs:
             const fs = require('fs');
             const plan = fs.readFileSync('infra/aws/plan.txt', 'utf8');
             const body = plan.length > 65000 ? plan.slice(0, 65000) + '\n...(truncado)' : plan;
-            github.rest.issues.createComment({
+             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## Terraform Plan\n\`\`\`\n${body}\n\`\`\``,
             });
 
-  # ============================================================================
-  # PIPELINE GATE (Aggregate Status Check)
-  # Single required status check for branch protection.
-  # terraform-plan is conditional (skipped on forks) — treated as passing when skipped.
-  # ============================================================================
-  pipeline-gate:
+  qa-audit-evidence:
+    name: "QA: Sequential Audit Evidence"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bats Dependency via Makefile
+        run: make setup-ci-deps-bats
+
+      - name: Run QA Audit Sequence
+        run: make qa-audit
+
+      - name: Generate QA Scorecard (14-run history)
+        run: make qa-scorecard
+
+      - name: Enforce Required No-Skip Policy
+        run: make qa-verify-required-no-skips
+
+      - name: Enforce QA Duration Budgets
+        run: make qa-verify-duration-budgets
+
+      - name: Upload QA Evidence Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-audit-evidence
+          path: |
+            .qa/evidence/qa-audit-*.md
+            .qa/evidence/qa-audit-*.json
+            .qa/evidence/qa-scorecard-*.md
+            .qa/evidence/qa-scorecard-*.json
+            .qa/evidence/qa-audit-latest.md
+            .qa/evidence/qa-scorecard-latest.md
+            .qa/evidence/qa-scorecard-latest.json
+            .qa/evidence/logs-*/
+          retention-days: 14
+
+  offline-required-profile:
+    name: "QA: Offline Required Profile"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-offline-required-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-offline-required-
+
+      - name: Setup CI Dependencies via Makefile
+        run: make setup-ci-deps-all
+
+      - name: Install Ansible Collections
+        run: make ansible-galaxy-install
+
+      - name: Run Offline Required QA Profile
+        run: make test-offline-required
+
+  nightly-e2e-live:
+    name: "Nightly: Mandatory Live E2E"
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform Dependencies via Makefile
+        run: make setup-ci-deps-terraform
+
+      - name: Setup Kubernetes Dependencies via Makefile
+        run: |
+          make setup-ci-deps-kubernetes
+          make setup-ci-deps-bats
+
+      - name: Setup Ansible Dependencies via Makefile
+        run: |
+          make setup-ci-deps-ansible
+          make ansible-galaxy-install
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-plan
+          aws-region: us-east-1
+
+      - name: Generate Live Kubeconfig via Makefile
+        run: |
+          make k8s-kubeconfig
+          test -f /tmp/k3s-homelab-kubeconfig.yaml
+          kubectl --kubeconfig=/tmp/k3s-homelab-kubeconfig.yaml cluster-info --request-timeout=15s
+
+      - name: Live Test Preflight
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make test-live-preflight
+
+      - name: Run Mandatory Nightly Live E2E
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+        run: make test-e2e-live-nightly
+
+      - name: Upload Nightly E2E Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-live-e2e-evidence
+          path: .qa/evidence/
+          retention-days: 14
+
+  pipeline-gate-pr:
     name: Pipeline Gate
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, shellcheck, security, molecule, shell-tests, python-tests, sops-validation]
-    if: always()
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    if: always() && github.event_name != 'schedule'
     steps:
-      - name: Check all required jobs passed
+      - name: Validate Required Job Outcomes
         run: |
           results='${{ toJSON(needs) }}'
-          # terraform-plan is conditional (skipped on forks) — treat skipped as passing
           echo "$results" | python3 -c "
           import sys, json
           needs = json.load(sys.stdin)
-          failed = [
-              name for name, data in needs.items()
-              if data['result'] not in ('success', 'skipped')
-          ]
+          required_success = {
+            'k8s-dry-run',
+            'disaster-recovery-execution',
+            'molecule',
+            'policy-as-code-critical',
+            'arm64-validation',
+            'sops-validation',
+            'qa-audit-evidence',
+            'offline-required-profile',
+          }
+
+          failed = []
+          for name, data in needs.items():
+            result = data['result']
+            if name in required_success:
+              if result != 'success':
+                failed.append(f'{name}={result}')
+            elif result not in ('success', 'skipped'):
+              failed.append(f'{name}={result}')
+
           if failed:
-              print('FAILED jobs:', ', '.join(failed))
-              sys.exit(1)
-          print('All checks passed or were skipped (fork PR)')
+            print('[FAIL] Pipeline gate failed:', ', '.join(failed))
+            sys.exit(1)
+          print('[OK] Required jobs passed; optional jobs are success/skipped')
+          "
+
+  pipeline-gate-nightly:
+    name: Pipeline Gate (Nightly)
+    runs-on: ubuntu-latest
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - name: Validate Nightly Required Outcomes
+        run: |
+          results='${{ toJSON(needs) }}'
+          echo "$results" | python3 -c "
+          import sys, json
+          needs = json.load(sys.stdin)
+          required_success = {
+            'terraform',
+            'yaml-lint',
+            'k8s-dry-run',
+            'shellcheck',
+            'security',
+            'policy-as-code-critical',
+            'disaster-recovery-tests',
+            'disaster-recovery-execution',
+            'enforce-molecule-tests',
+            'molecule',
+            'shell-tests',
+            'python-tests',
+            'arm64-validation',
+            'sops-validation',
+            'qa-audit-evidence',
+            'offline-required-profile',
+            'nightly-e2e-live',
+          }
+
+          failed = []
+          for name, data in needs.items():
+            result = data['result']
+            if name in required_success:
+              if result != 'success':
+                failed.append(f'{name}={result}')
+            elif result not in ('success', 'skipped'):
+              failed.append(f'{name}={result}')
+
+          if failed:
+            print('[FAIL] Nightly pipeline gate failed:', ', '.join(failed))
+            sys.exit(1)
+          print('[OK] Nightly required jobs passed; optional jobs are success/skipped')
           "

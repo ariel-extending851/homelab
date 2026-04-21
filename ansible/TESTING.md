@@ -498,7 +498,427 @@ ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.
 
 ---
 
+---
+
+## Python Unit Tests & Code Coverage
+
+### Running Python Unit Tests Locally
+
+The project uses **pytest** to validate Python code for Ansible inventory builders and AWS Lambda functions:
+
+```bash
+# Run all Python tests
+make test-python
+
+# Run with detailed coverage report
+make test-python-coverage
+
+# Run specific test file
+python3 -m pytest ansible/tests/test_terraform_inventory_aws.py -v
+
+# Run with coverage percentage threshold check (fails if <70%)
+python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ --cov --cov-fail-under=70
+```
+
+### Understanding Coverage Reports
+
+After running `make test-python-coverage`, open the HTML report:
+
+```bash
+open htmlcov/index.html
+```
+
+**Report Sections:**
+- **Status**: Overall coverage percentage (must be ≥70%)
+- **Files**: Coverage by file (inventory builder, Lambda scheduler)
+- **Missing Lines**: Lines not executed by tests
+- **Branch Coverage**: Decision paths covered
+
+### Coverage Requirements
+
+| Component | Minimum Coverage | Status |
+|-----------|------------------|--------|
+| Ansible Inventory Builder | 70% | ✓ Enforced in CI |
+| AWS Lambda Scheduler | 70% | ✓ Enforced in CI |
+| **Overall** | **70%** | ✓ Blocks merge if below |
+
+### CI/CD Coverage Enforcement
+
+In GitHub Actions:
+- Coverage threshold is **enforced at 70%**
+- PRs cannot merge if coverage drops below 70%
+- HTML reports are uploaded as artifacts for manual review
+- Coverage info is added to PR summary
+
+### Interpreting Coverage Gaps
+
+**If you see untested lines:**
+1. Add test cases to cover those lines
+2. Or add `# pragma: no cover` comment if line is untestable
+3. Re-run `make test-python-coverage` to verify
+
+**Example:**
+```python
+# Test this function
+def get_instance_status(instance_id):
+    return ec2_client.describe_instances(...)
+
+# Don't test error handling (uses pragma)
+if __name__ == "__main__":  # pragma: no cover
+    main()
+```
+
+### Common Issues
+
+**Coverage is below 70% locally:**
+```bash
+# See which lines are missing
+make test-python-coverage
+
+# Add tests to cover the gaps
+# Re-run to verify
+make test-python-coverage
+```
+
+**Tests pass but CI says coverage is low:**
+- Local Python version may differ from CI (3.12)
+- Check `.github/workflows/ci-validation.yml` for exact pytest command
+- Run: `python3 --version` and ensure it's 3.12+
+
+---
+
+## Molecule Tests for Ansible Roles
+
+All Ansible roles **MUST** have Molecule tests. This is enforced in CI/CD.
+
+For comprehensive guide on creating and testing Ansible roles, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Quick Reference
+
+```bash
+# Test all roles
+make test-molecule
+
+# Test one specific role
+make test-molecule-my_role
+
+# Or directly with molecule
+cd ansible/roles/my_role
+molecule test
+
+# Debug a failing test (stay connected to container)
+cd ansible/roles/my_role
+molecule converge  # runs converge.yml then lets you inspect
+```
+
+---
+
+## Post-Deployment E2E Testing
+
+### Overview
+
+**When to run:** After cluster deployment completes and ArgoCD converges
+
+**What it tests:**
+- ✅ Application health (all 17 apps running + ready)
+- ✅ Cluster readiness (API reachable, namespaces present, no crashed pods)
+- ✅ Persistence validation (PVCs bound and mounted)
+- ✅ Resource allocation (StatefulSets, DaemonSets at desired replicas)
+- ✅ Observability pipeline (Prometheus collects metrics, Loki captures logs)
+- ✅ Compliance checks (no OOMKilled, ImagePullBackOff, CrashLoopBackOff pods)
+
+**Return codes:**
+- **0** = Production-ready ✅
+- **1** = Critical failure ❌ (blocker, rollback recommended)
+- **2** = Warning ⚠️ (investigate, may proceed with caution)
+
+### Prerequisites
+
+```bash
+# 1. Live Kubernetes cluster
+kubectl cluster-info --request-timeout=5s  # Should succeed
+
+# 2. kubectl context pointing to your cluster
+kubectl context  # Should show your cluster
+
+# 3. Required tools
+command -v bats    # BATS test framework
+command -v kubectl # Kubernetes CLI
+command -v jq      # JSON parser
+
+# 4. Network access to cluster services
+# (for port-forward connectivity tests)
+```
+
+### Running E2E Post-Deployment Tests
+
+**Option 1: Full E2E suite (recommended)**
+
+```bash
+# Run complete validation after deploy
+make test-e2e-post-deploy
+
+# This runs:
+# 1. Enhanced smoke tests (20+ offline checks)
+# 2. BATS E2E test suite (~40 test cases)
+```
+
+**Option 2: Specific test categories**
+
+```bash
+# Test inter-app connectivity only
+make test-e2e-connectivity
+
+# Test observability pipeline only
+make test-e2e-observability
+
+# Run smoke tests alone
+make smoke-test
+```
+
+### Typical Workflow
+
+```bash
+# 1. Deploy infrastructure + ArgoCD
+make deploy-aws-homelab
+
+# 2. Wait for ArgoCD to converge (usually 2-5 minutes)
+kubectl wait --for condition=synced app/root -n argocd --timeout=300s
+
+# 3. Run E2E tests
+make test-e2e-post-deploy
+
+# 4. Interpret results
+# Exit 0:  ✅ Green — Production-ready
+# Exit 1:  ❌ Red  — Blocker, rollback
+# Exit 2:  ⚠️  Yellow — Investigate, proceed with caution
+```
+
+### What Tests Check
+
+#### Cluster Readiness (Baseline)
+```bats
+@test "Cluster API is reachable"
+@test "ArgoCD root app is Synced and Healthy"
+```
+
+#### Application Health (17 apps)
+```bats
+@test "E2E: adguard deployment is Ready"
+@test "E2E: prometheus deployment is Ready"
+@test "E2E: grafana deployment is Ready"
+# ... all 17 apps tested for readyReplicas >= 1
+```
+
+#### Persistence Validation (PVCs)
+```bats
+@test "E2E: All PVCs are Bound"
+@test "E2E: adguard PVC is mounted"
+@test "E2E: *** PVC is mounted"
+```
+
+#### Compliance Checks
+```bats
+@test "E2E: No pods in CrashLoopBackOff"
+@test "E2E: No pods in ImagePullBackOff"
+@test "E2E: No pods in OOMKilled state"
+@test "E2E: All StatefulSets at desired replicas"
+```
+
+#### Resource Validation
+```bats
+@test "E2E: All nodes are Ready"
+@test "E2E: All DaemonSets are deployed to all nodes"
+@test "E2E: ArgoCD namespace exists"
+@test "E2E: monitoring namespace exists"
+```
+
+#### Observability Pipeline
+```bats
+@test "E2E: Prometheus has metrics available"
+@test "E2E: Loki has logs available"
+```
+
+#### Final Summary
+```bats
+@test "E2E: Final health check — cluster ready for production"
+```
+
+### Interpreting Results
+
+**All tests pass (exit 0) ✅**
+```
+✅ All smoke tests passed — cluster is production-ready.
+```
+→ **Action:** Deploy to production with confidence
+
+**Some apps not ready (exit 2) ⚠️**
+```
+⚠️  Minor issues (2 app(s)) — investigate before release.
+```
+→ **Action:** Investigate with `kubectl describe pod`, check logs, may proceed if transient
+
+**Critical failure (exit 1) ❌**
+```
+❌ 5 smoke test(s) FAILED — ROLLBACK recommended.
+```
+→ **Action:** Rollback, check logs, fix infrastructure issues
+
+### Debugging Failed Tests
+
+#### View test output with verbose mode
+```bash
+bats bin/tests/e2e_post_deploy.bats --verbose
+```
+
+#### Check a specific pod
+```bash
+kubectl describe pod -n monitoring prometheus-0
+
+kubectl logs -n monitoring prometheus-0 --tail=50
+
+kubectl get events -n monitoring --sort-by='.lastTimestamp'
+```
+
+#### Check PVC status
+```bash
+kubectl get pvc -A
+
+kubectl describe pvc -n ***
+```
+
+#### Check if Prometheus can scrape targets
+```bash
+# Port-forward to Prometheus
+kubectl port-forward -n monitoring svc/prometheus 9090:9090 &
+
+# Query targets endpoint
+curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {labels, health}'
+
+# Kill port-forward
+pkill -f "port-forward"
+```
+
+#### Check if Loki has logs
+```bash
+# Port-forward to Loki
+kubectl port-forward -n monitoring svc/loki 3100:3100 &
+
+# Query logs endpoint
+curl -s 'http://localhost:3100/loki/api/v1/query_range?query={job="kubelet"}' | jq '.data.result | length'
+
+# Kill port-forward
+pkill -f "port-forward"
+```
+
+#### View all failed pods
+```bash
+kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+
+# For more detail
+kubectl get pods -A -o wide | grep -E "CrashLoop|ImagePull|OOMKilled|Error"
+```
+
+### Common Issues & Solutions
+
+#### Issue: "Connection refused" / No cluster
+```
+❌ API server unreachable — check KUBECONFIG
+```
+
+**Solution:**
+```bash
+# Set KUBECONFIG explicitly
+export KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml
+
+# Verify connection
+kubectl cluster-info
+```
+
+#### Issue: App deployment not ready
+```
+❌ adguard (adguard): 0/1 replicas (expected 1)
+```
+
+**Solution:**
+```bash
+# Check pod status
+kubectl describe pod -n adguard -l app=adguard
+
+# Check logs for errors
+kubectl logs -n adguard deployment/adguard --tail=100
+
+# Wait a bit longer (slow startup)
+kubectl wait --for condition=ready pod -n adguard -l app=adguard --timeout=300s
+
+# Re-run tests
+make test-e2e-post-deploy
+```
+
+#### Issue: PVC not bound
+```
+❌ PVCs not Bound:
+    adguard adguard PVC (Pending)
+```
+
+**Solution:**
+```bash
+# Check PVC events
+kubectl describe pvc -n adguard
+
+# Check storage class
+kubectl get storageclass
+
+# If using local storage, check node has mount point
+kubectl get pv
+```
+
+#### Issue: Transient failures during startup
+```
+⚠️  Minor issues (1 app(s)) — investigate before release.
+```
+
+**Solution:**
+```bash
+# Wait 30-60 seconds for convergence
+sleep 60
+
+# Retry tests
+make test-e2e-post-deploy
+```
+
+### Integration with CD Pipeline
+
+E2E tests can be automated in CI/CD. Example GitHub Actions workflow:
+
+```yaml
+- name: Deploy to Kubernetes
+  run: make deploy-aws-homelab
+
+- name: Wait for convergence
+  run: kubectl wait --for condition=synced app/root -n argocd --timeout=300s
+
+- name: Run E2E post-deploy tests
+  run: make test-e2e-post-deploy
+
+- name: Upload test results
+  if: always()
+  uses: actions/upload-artifact@v3
+  with:
+    name: e2e-test-logs
+    path: test-results/
+```
+
+### Test File Reference
+
+- **Smoke tests:** `bin/smoke-test.sh` (20+ offline checks, manual CLI)
+- **E2E BATS suite:** `bin/tests/e2e_post_deploy.bats` (~40 comprehensive tests)
+- **Makefile targets:** `make test-e2e-post-deploy`, `make smoke-test`
+
+---
+
 ## Questions? Issues?
+
 
 If you encounter issues during testing:
 
@@ -507,5 +927,6 @@ If you encounter issues during testing:
 3. Increase verbosity: Add `-v`, `-vv`, or `-vvv`
 4. Check this guide's "Common Issues" section
 5. Refer to `ansible/README.md` for detailed documentation
+6. For Python tests: `make test-python-coverage` and check htmlcov/index.html
 
 Happy testing! 🚀

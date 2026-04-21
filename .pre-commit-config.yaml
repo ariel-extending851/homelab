@@ -44,7 +44,7 @@ repos:
     hooks:
       - id: shellcheck
         args: [-e, SC1091]
-        files: ".*\\.sh$|bin/.*"
+        files: "^(?!docs/archive/).*(\\.sh$|bin/.*)"
 
   # Python linting
   - repo: https://github.com/psf/black

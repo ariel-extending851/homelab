@@ -10,6 +10,10 @@ awscli = "latest"
 kubectl = "latest"
 kustomize = "5.8.1"
 jq = "latest"
+tflint = "latest"
+kubeconform = "0.7.0"
+age = "1.2.1"
+conftest = "0.57.0"
 
 # Local Testing (LocalStack)
 localstack = "4.13.1"
@@ -22,6 +26,10 @@ localstack = "4.13.1"
 "pipx:yamllint" = "1.38.0"
 "pipx:molecule" = "25.12.0"
 "pipx:ansible-core" = "2.18.0"
+"pipx:pytest" = "9.0.3"
+
+# Shell testing
+bats = "1.11.1"
 
 # Runtimes
 node = "lts"
@@ -87,5 +95,7 @@ ANSIBLE_AWS_SSM_BUCKET_NAME = "homelab-ssm-transfer-bucket"
 
 SOPS_AGE_KEY_FILE = "/home/vscode/.config/sops/age/keys.txt"
 
-TF_VAR_ssh_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"
-TF_VAR_k3s_api_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"
+# TF_VAR_* with dynamic values: set at runtime by CI/environment
+# These require network access which may not be available during config parsing
+# TF_VAR_ssh_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"
+# TF_VAR_k3s_api_allowed_cidr = "{{ exec(command='curl -s ifconfig.me') }}/32"

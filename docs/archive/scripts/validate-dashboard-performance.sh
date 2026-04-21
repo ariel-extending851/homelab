@@ -34,26 +34,26 @@ NC='\033[0m' # No Color
 echo "📊 Test 1: Grafana Pod Status"
 echo "------------------------------------------------------------"
 
-GRAFANA_POD=$(kubectl get pod -n $GRAFANA_NAMESPACE -l app=grafana -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+GRAFANA_POD=$(kubectl get pod -n "$GRAFANA_NAMESPACE" -l app=grafana -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 
 if [ -z "$GRAFANA_POD" ]; then
     echo -e "${RED}❌ FAIL${NC}: Grafana pod not found in namespace '$GRAFANA_NAMESPACE'"
     exit 1
 fi
 
-POD_STATUS=$(kubectl get pod -n $GRAFANA_NAMESPACE $GRAFANA_POD -o jsonpath='{.status.phase}')
-POD_READY=$(kubectl get pod -n $GRAFANA_NAMESPACE $GRAFANA_POD -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+POD_STATUS=$(kubectl get pod -n $GRAFANA_NAMESPACE "$GRAFANA_POD" -o jsonpath='{.status.phase}')
+POD_READY=$(kubectl get pod -n $GRAFANA_NAMESPACE "$GRAFANA_POD" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
 
 if [ "$POD_STATUS" == "Running" ] && [ "$POD_READY" == "True" ]; then
     echo -e "${GREEN}✅ PASS${NC}: Grafana pod '$GRAFANA_POD' is Running and Ready"
 else
     echo -e "${RED}❌ FAIL${NC}: Grafana pod status: $POD_STATUS, Ready: $POD_READY"
-    kubectl describe pod -n $GRAFANA_NAMESPACE $GRAFANA_POD
+    kubectl describe pod -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD"
     exit 1
 fi
 
 # Check CPU limit
-CPU_LIMIT=$(kubectl get pod -n $GRAFANA_NAMESPACE $GRAFANA_POD -o jsonpath='{.spec.containers[0].resources.limits.cpu}')
+CPU_LIMIT=$(kubectl get pod -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -o jsonpath='{.spec.containers[0].resources.limits.cpu}')
 echo "   CPU Limit: $CPU_LIMIT (expected: 1000m or 1)"
 
 if [ "$CPU_LIMIT" == "1000m" ] || [ "$CPU_LIMIT" == "1" ]; then
@@ -70,7 +70,7 @@ echo ""
 echo "📁 Test 2: Dashboard ConfigMaps"
 echo "------------------------------------------------------------"
 
-CONFIGMAPS=$(kubectl get configmap -n $GRAFANA_NAMESPACE --no-headers 2>/dev/null | wc -l)
+CONFIGMAPS=$(kubectl get configmap -n "$GRAFANA_NAMESPACE" --no-headers 2>/dev/null | wc -l)
 
 if [ "$CONFIGMAPS" -ge "$EXPECTED_CONFIGMAPS" ]; then
     echo -e "${GREEN}✅ PASS${NC}: Found $CONFIGMAPS ConfigMaps (expected >= $EXPECTED_CONFIGMAPS)"
@@ -86,8 +86,8 @@ declare -a REQUIRED_CMS=(
 )
 
 for cm in "${REQUIRED_CMS[@]}"; do
-    if kubectl get configmap -n $GRAFANA_NAMESPACE $cm &>/dev/null; then
-        SIZE=$(kubectl get configmap -n $GRAFANA_NAMESPACE $cm -o jsonpath='{.data}' | wc -c)
+    if kubectl get configmap -n "$GRAFANA_NAMESPACE" "$cm" &>/dev/null; then
+        SIZE=$(kubectl get configmap -n "$GRAFANA_NAMESPACE" "$cm" -o jsonpath='{.data}' | wc -c)
         echo -e "${GREEN}✅ PASS${NC}: ConfigMap '$cm' exists ($SIZE bytes)"
     else
         echo -e "${RED}❌ FAIL${NC}: ConfigMap '$cm' not found"
@@ -103,20 +103,20 @@ echo "📄 Test 3: Dashboard Files Mounted in Pod"
 echo "------------------------------------------------------------"
 
 # Check dashboard provisioner config
-if kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /etc/grafana/provisioning/dashboards/dashboards.yaml &>/dev/null; then
-    PROVIDER_SIZE=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- stat -c%s /etc/grafana/provisioning/dashboards/dashboards.yaml 2>/dev/null || echo "0")
+if kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- cat /etc/grafana/provisioning/dashboards/dashboards.yaml &>/dev/null; then
+    PROVIDER_SIZE=$(kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- stat -c%s /etc/grafana/provisioning/dashboards/dashboards.yaml 2>/dev/null || echo "0")
     echo -e "${GREEN}✅ PASS${NC}: Dashboard provider config mounted ($PROVIDER_SIZE bytes)"
 else
     echo -e "${RED}❌ FAIL${NC}: Dashboard provider config not found at /etc/grafana/provisioning/dashboards/dashboards.yaml"
 fi
 
 # Check dashboard JSON
-if kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json &>/dev/null; then
-    DASHBOARD_SIZE=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- stat -c%s /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null || echo "0")
+if kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json &>/dev/null; then
+    DASHBOARD_SIZE=$(kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- stat -c%s /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null || echo "0")
     echo -e "${GREEN}✅ PASS${NC}: Dashboard JSON mounted ($DASHBOARD_SIZE bytes, expected ~50KB)"
 
     # Validate panel count
-    PANEL_COUNT=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null | grep -o '"type":"[^"]*"' | wc -l)
+    PANEL_COUNT=$(kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- cat /etc/grafana/provisioning/dashboards/homelab-k3s-overview.json 2>/dev/null | grep -o '"type":"[^"]*"' | wc -l)
 
     if [ "$PANEL_COUNT" -ge "$EXPECTED_PANELS" ]; then
         echo -e "${GREEN}✅ PASS${NC}: Dashboard contains $PANEL_COUNT panels (expected >= $EXPECTED_PANELS)"
@@ -137,11 +137,11 @@ echo "------------------------------------------------------------"
 
 LOKI_CM="loki"
 
-if kubectl get configmap -n $LOKI_NAMESPACE $LOKI_CM &>/dev/null; then
+if kubectl get configmap -n "$LOKI_NAMESPACE" "$LOKI_CM" &>/dev/null; then
     echo -e "${GREEN}✅ PASS${NC}: Loki ConfigMap '$LOKI_CM' exists"
 
     # Check query parallelism
-    MAX_PARALLELISM=$(kubectl get configmap -n $LOKI_NAMESPACE $LOKI_CM -o jsonpath='{.data.config\.yaml}' 2>/dev/null | grep 'max_query_parallelism' | grep -o '[0-9]*' || echo "0")
+    MAX_PARALLELISM=$(kubectl get configmap -n "$LOKI_NAMESPACE" "$LOKI_CM" -o jsonpath='{.data.config\.yaml}' 2>/dev/null | grep 'max_query_parallelism' | grep -o '[0-9]*' || echo "0")
 
     if [ "$MAX_PARALLELISM" -ge 16 ]; then
         echo -e "${GREEN}✅ PASS${NC}: max_query_parallelism set to $MAX_PARALLELISM (expected >= 16)"
@@ -168,8 +168,8 @@ echo "🚦 Test 5: CPU Throttling Analysis"
 echo "------------------------------------------------------------"
 
 # Get throttling stats
-THROTTLED_PERIODS=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /sys/fs/cgroup/cpu.stat 2>/dev/null | grep 'nr_throttled' | awk '{print $2}' || echo "0")
-TOTAL_PERIODS=$(kubectl exec -n $GRAFANA_NAMESPACE $GRAFANA_POD -- cat /sys/fs/cgroup/cpu.stat 2>/dev/null | grep 'nr_periods' | awk '{print $2}' || echo "1")
+THROTTLED_PERIODS=$(kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- cat /sys/fs/cgroup/cpu.stat 2>/dev/null | grep 'nr_throttled' | awk '{print $2}' || echo "0")
+TOTAL_PERIODS=$(kubectl exec -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" -- cat /sys/fs/cgroup/cpu.stat 2>/dev/null | grep 'nr_periods' | awk '{print $2}' || echo "1")
 
 if [ "$TOTAL_PERIODS" -gt 0 ]; then
     THROTTLE_PERCENT=$(awk "BEGIN {printf \"%.2f\", ($THROTTLED_PERIODS / $TOTAL_PERIODS) * 100}")
@@ -195,18 +195,18 @@ echo "📋 Test 6: Grafana Error Log Analysis"
 echo "------------------------------------------------------------"
 
 # Check for HTTP 400 errors (query errors)
-HTTP_400_COUNT=$(kubectl logs -n $GRAFANA_NAMESPACE $GRAFANA_POD --tail=1000 2>/dev/null | grep -c 'status=400' || echo "0")
+HTTP_400_COUNT=$(kubectl logs -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" --tail=1000 2>/dev/null | grep -c 'status=400' || echo "0")
 
 if [ "$HTTP_400_COUNT" -eq 0 ]; then
     echo -e "${GREEN}✅ PASS${NC}: No HTTP 400 errors in last 1000 log lines"
 else
     echo -e "${RED}❌ FAIL${NC}: Found $HTTP_400_COUNT HTTP 400 errors in logs"
     echo "   Recent errors:"
-    kubectl logs -n $GRAFANA_NAMESPACE $GRAFANA_POD --tail=1000 2>/dev/null | grep 'status=400' | tail -5
+    kubectl logs -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" --tail=1000 2>/dev/null | grep 'status=400' | tail -5
 fi
 
 # Check for panel errors
-PANEL_ERROR_COUNT=$(kubectl logs -n $GRAFANA_NAMESPACE $GRAFANA_POD --tail=1000 2>/dev/null | grep -i 'panel.*error' | wc -l || echo "0")
+PANEL_ERROR_COUNT=$(kubectl logs -n "$GRAFANA_NAMESPACE" "$GRAFANA_POD" --tail=1000 2>/dev/null | grep -i 'panel.*error' | wc -l)
 
 if [ "$PANEL_ERROR_COUNT" -eq 0 ]; then
     echo -e "${GREEN}✅ PASS${NC}: No panel errors in last 1000 log lines"
@@ -225,10 +225,10 @@ echo "------------------------------------------------------------"
 ARGOCD_APP="homelab-apps-root"
 ARGOCD_NAMESPACE="argocd"
 
-if kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP &>/dev/null; then
-    SYNC_STATUS=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.status.sync.status}')
-    TARGET_REVISION=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.spec.source.targetRevision}')
-    CURRENT_REVISION=$(kubectl get application -n $ARGOCD_NAMESPACE $ARGOCD_APP -o jsonpath='{.status.sync.revision}' | cut -c1-7)
+if kubectl get application -n "$ARGOCD_NAMESPACE" "$ARGOCD_APP" &>/dev/null; then
+    SYNC_STATUS=$(kubectl get application -n "$ARGOCD_NAMESPACE" "$ARGOCD_APP" -o jsonpath='{.status.sync.status}')
+    TARGET_REVISION=$(kubectl get application -n "$ARGOCD_NAMESPACE" "$ARGOCD_APP" -o jsonpath='{.spec.source.targetRevision}')
+    CURRENT_REVISION=$(kubectl get application -n "$ARGOCD_NAMESPACE" "$ARGOCD_APP" -o jsonpath='{.status.sync.revision}' | cut -c1-7)
 
     echo "   Sync Status: $SYNC_STATUS"
     echo "   Target Revision: $TARGET_REVISION"

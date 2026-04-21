@@ -437,3 +437,269 @@ _make_stub_bin() {
 
   rm -f "$dest"
 }
+
+# ── destroy_infrastructure ────────────────────────────────────────────────────
+
+@test "destroy_infrastructure: cancels without running terraform when user inputs 'no'" {
+  local tmpbin workdir calllog
+  tmpbin="$(mktemp -d)"
+  workdir="$(mktemp -d)"
+  calllog="${tmpbin}/terraform_calls.txt"
+
+  printf '#!/bin/bash\necho "$@" >> "%s"\nexit 0\n' "${calllog}" > "${tmpbin}/terraform"
+  chmod +x "${tmpbin}/terraform"
+  printf '#!/bin/bash\nexit 0\n' > "${tmpbin}/ansible-playbook"
+  chmod +x "${tmpbin}/ansible-playbook"
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    export TERRAFORM_DIR='${workdir}'
+    export ANSIBLE_DIR='${workdir}'
+    source '${DEPLOY_SCRIPT}'
+    echo 'no' | destroy_infrastructure
+  "
+  [ "$status" -eq 0 ]
+  [ ! -f "${calllog}" ] || ! grep -q "destroy" "${calllog}" 2>/dev/null
+
+  rm -rf "${tmpbin}" "${workdir}"
+}
+
+@test "destroy_infrastructure: calls terraform destroy -auto-approve when user inputs 'yes'" {
+  local tmpbin workdir calllog
+  tmpbin="$(mktemp -d)"
+  workdir="$(mktemp -d)"
+  calllog="${tmpbin}/terraform_calls.txt"
+
+  printf '#!/bin/bash\necho "$@" >> "%s"\nexit 0\n' "${calllog}" > "${tmpbin}/terraform"
+  chmod +x "${tmpbin}/terraform"
+  printf '#!/bin/bash\nexit 0\n' > "${tmpbin}/ansible-playbook"
+  chmod +x "${tmpbin}/ansible-playbook"
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    export TERRAFORM_DIR='${workdir}'
+    export ANSIBLE_DIR='${workdir}'
+    source '${DEPLOY_SCRIPT}'
+    echo 'yes' | destroy_infrastructure
+  "
+  [ "$status" -eq 0 ]
+  grep -q "destroy -auto-approve" "${calllog}"
+
+  rm -rf "${tmpbin}" "${workdir}"
+}
+
+# ── phase1_terraform ─────────────────────────────────────────────────────────
+
+@test "phase1_terraform: runs init, validate, apply and refresh-only" {
+  local tmpbin tfdir calllog
+  tmpbin="$(mktemp -d)"
+  tfdir="$(mktemp -d)"
+  calllog="${tmpbin}/terraform_calls.txt"
+
+  cat > "${tmpbin}/terraform" <<EOF
+#!/bin/bash
+if [ "\$1" = "state" ] && [ "\$2" = "list" ]; then
+  echo "tailscale_acl.homelab_acl"
+  exit 0
+fi
+echo "\$*" >> "${calllog}"
+exit 0
+EOF
+  chmod +x "${tmpbin}/terraform"
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    source '${DEPLOY_SCRIPT}'
+    TERRAFORM_DIR='${tfdir}' phase1_terraform
+  "
+
+  [ "$status" -eq 0 ]
+  grep -q "init -upgrade" "${calllog}"
+  grep -q "validate" "${calllog}"
+  grep -q "apply -auto-approve" "${calllog}"
+  grep -q "apply -refresh-only -auto-approve" "${calllog}"
+
+  rm -rf "${tmpbin}" "${tfdir}"
+}
+
+@test "phase1_terraform: imports tailscale ACL when missing from state" {
+  local tmpbin tfdir calllog
+  tmpbin="$(mktemp -d)"
+  tfdir="$(mktemp -d)"
+  calllog="${tmpbin}/terraform_calls.txt"
+
+  cat > "${tmpbin}/terraform" <<EOF
+#!/bin/bash
+if [ "\$1" = "state" ] && [ "\$2" = "list" ]; then
+  # Empty output means ACL not yet in state.
+  exit 0
+fi
+echo "\$*" >> "${calllog}"
+exit 0
+EOF
+  chmod +x "${tmpbin}/terraform"
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    source '${DEPLOY_SCRIPT}'
+    TERRAFORM_DIR='${tfdir}' phase1_terraform
+  "
+
+  [ "$status" -eq 0 ]
+  grep -q "import tailscale_acl.homelab_acl acl" "${calllog}"
+
+  rm -rf "${tmpbin}" "${tfdir}"
+}
+
+@test "phase1_terraform: exits 1 when terraform init fails" {
+  local tmpbin tfdir
+  tmpbin="$(mktemp -d)"
+  tfdir="$(mktemp -d)"
+
+  cat > "${tmpbin}/terraform" <<'EOF'
+#!/bin/bash
+if [ "$1" = "init" ]; then
+  exit 1
+fi
+exit 0
+EOF
+  chmod +x "${tmpbin}/terraform"
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    source '${DEPLOY_SCRIPT}'
+    TERRAFORM_DIR='${tfdir}' phase1_terraform
+  "
+
+  [ "$status" -eq 1 ]
+  [[ "$output" =~ "Terraform init failed" ]]
+
+  rm -rf "${tmpbin}" "${tfdir}"
+}
+
+# ── phase3_ansible ───────────────────────────────────────────────────────────
+
+@test "phase3_ansible: validates inventory and runs site playbook" {
+  local tmpbin ansdir calllog
+  tmpbin="$(mktemp -d)"
+  ansdir="$(mktemp -d)"
+  calllog="${tmpbin}/ansible_calls.txt"
+
+  cat > "${tmpbin}/python3" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "${tmpbin}/python3"
+
+  cat > "${tmpbin}/ansible-playbook" <<EOF
+#!/bin/bash
+echo "\$*" >> "${calllog}"
+exit 0
+EOF
+  chmod +x "${tmpbin}/ansible-playbook"
+
+  cat > "${ansdir}/terraform_inventory_aws.py" <<'EOF'
+#!/usr/bin/env python3
+print('{}')
+EOF
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    source '${DEPLOY_SCRIPT}'
+    ANSIBLE_DIR='${ansdir}' phase3_ansible
+  "
+
+  [ "$status" -eq 0 ]
+  grep -q -- "-i terraform_inventory_aws.py playbooks/site.yml" "${calllog}"
+
+  rm -rf "${tmpbin}" "${ansdir}"
+}
+
+@test "phase3_ansible: exits 1 when inventory script is missing" {
+  local ansdir
+  ansdir="$(mktemp -d)"
+
+  run bash -c "
+    source '${DEPLOY_SCRIPT}'
+    ANSIBLE_DIR='${ansdir}' phase3_ansible
+  "
+
+  [ "$status" -eq 1 ]
+  [[ "$output" =~ "Dynamic inventory script not found" ]]
+
+  rm -rf "${ansdir}"
+}
+
+@test "phase3_ansible: exits 1 when ansible-playbook fails" {
+  local tmpbin ansdir
+  tmpbin="$(mktemp -d)"
+  ansdir="$(mktemp -d)"
+
+  cat > "${tmpbin}/python3" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "${tmpbin}/python3"
+
+  cat > "${tmpbin}/ansible-playbook" <<'EOF'
+#!/bin/bash
+exit 1
+EOF
+  chmod +x "${tmpbin}/ansible-playbook"
+
+  cat > "${ansdir}/terraform_inventory_aws.py" <<'EOF'
+#!/usr/bin/env python3
+print('{}')
+EOF
+
+  run bash -c "
+    export PATH='${tmpbin}:\$PATH'
+    source '${DEPLOY_SCRIPT}'
+    ANSIBLE_DIR='${ansdir}' phase3_ansible
+  "
+
+  [ "$status" -eq 1 ]
+  [[ "$output" =~ "Ansible playbook failed" ]]
+
+  rm -rf "${tmpbin}" "${ansdir}"
+}
+
+# ── phase4_verify ────────────────────────────────────────────────────────────
+
+@test "phase4_verify: writes kubeconfig with Tailscale endpoint when data is available" {
+  local kubeconfig_path
+  kubeconfig_path="/tmp/k3s-homelab-kubeconfig.yaml"
+  rm -f "${kubeconfig_path}"
+
+  run bash -c "
+    source '${DEPLOY_SCRIPT}'
+    K3S_SERVER_ID='i-server123'
+    ssm_run() {
+      case \"\$2\" in
+        *'sudo cat /etc/rancher/k3s/k3s.yaml'*)
+          cat <<'YAML'
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+  name: default
+YAML
+          ;;
+        *'tailscale ip -4'*)
+          echo '100.64.0.50'
+          ;;
+        *)
+          echo 'ok'
+          ;;
+      esac
+    }
+    export -f ssm_run
+    phase4_verify
+    test -f '${kubeconfig_path}'
+    grep -q '100.64.0.50' '${kubeconfig_path}'
+    ! grep -q '127.0.0.1' '${kubeconfig_path}'
+  "
+
+  [ "$status" -eq 0 ]
+  rm -f "${kubeconfig_path}"
+}

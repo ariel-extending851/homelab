@@ -68,6 +68,9 @@ spec:
           image: searxng/searxng:2026.2.14-39ac4d438
           imagePullPolicy: IfNotPresent
 
+          securityContext:
+            allowPrivilegeEscalation: false
+
           ports:
             - containerPort: 8080
               name: http

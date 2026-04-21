@@ -16,7 +16,7 @@ This directory contains the SSH keypair used by ArgoCD to authenticate with the 
    cat k8s/gitops/ssh/argocd.pub
    ```
 
-2. Navigate to: https://github.com/ariel99gf/homelab/settings/keys/new
+2. Navigate to: https://github.com/ariel-extending851/homelab/settings/keys/new
 
 3. Configure Deploy Key:
    - **Title:** `ArgoCD Deploy Key (Read-Only)`

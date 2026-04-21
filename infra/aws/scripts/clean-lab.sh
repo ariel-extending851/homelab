@@ -13,8 +13,8 @@ echo -e "${YELLOW}==================================================${NC}"
 # 1. Verifica em qual conta estamos logados
 echo "Verificando credenciais atuais..."
 IDENTITY=$(aws sts get-caller-identity --output json)
-ACCOUNT_ID=$(echo $IDENTITY | grep -o '"Account": "[^"]*' | cut -d'"' -f4)
-ARN=$(echo $IDENTITY | grep -o '"Arn": "[^"]*' | cut -d'"' -f4)
+ACCOUNT_ID=$(echo "$IDENTITY" | grep -o '"Account": "[^"]*' | cut -d'"' -f4)
+ARN=$(echo "$IDENTITY" | grep -o '"Arn": "[^"]*' | cut -d'"' -f4)
 
 echo -e "Você está prestes a limpar a conta:"
 echo -e "🆔 Account ID: ${GREEN}$ACCOUNT_ID${NC}"
@@ -25,7 +25,7 @@ echo -e "${RED}    Todos os recursos não filtrados serão DESTRUÍDOS.${NC}"
 echo ""
 
 # 2. Pergunta de confirmação
-read -p "Tem certeza absoluta que deseja continuar? Digite 'SIM' para confirmar: " CONFIRM
+read -r -p "Tem certeza absoluta que deseja continuar? Digite 'SIM' para confirmar: " CONFIRM
 
 if [ "$CONFIRM" != "SIM" ]; then
     echo "Operação cancelada pelo usuário."

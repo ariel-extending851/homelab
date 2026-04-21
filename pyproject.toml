@@ -1,0 +1,47 @@
+[project]
+name = "homelab"
+version = "0.1.0"
+description = "Homelab infrastructure-as-code project"
+
+[tool.pytest.ini_options]
+# Test discovery paths
+testpaths = ["ansible/tests", "infra/aws/modules/scheduler/lambda_src/tests"]
+
+# Pytest options
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.coverage.run]
+# Measure branch coverage
+branch = true
+
+# Omit test files and __pycache__
+omit = [
+  "*/tests/*",
+  "*/test_*.py",
+  "*/__pycache__/*",
+  "*/venv/*",
+  "*/.venv/*",
+]
+
+# Relative file paths
+relative_files = true
+
+[tool.coverage.report]
+# Skip lines with pragma: no cover
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+]
+
+# Show missing lines in output
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"

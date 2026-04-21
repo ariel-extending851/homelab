@@ -31,8 +31,8 @@ status() {
 
 # 1. Check *** pod status
 echo "1. Checking *** pod status..."
-if kubectl get pods -n $NAMESPACE -l app=*** --field-selector=status.phase=Running | grep -q ***; then
-    POD_NAME=$(kubectl get pods -n $NAMESPACE -l app=*** -o jsonpath='{.items[0].metadata.name}')
+if kubectl get pods -n "$NAMESPACE" -l app=*** --field-selector=status.phase=Running | grep -q ***; then
+    POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l app=*** -o jsonpath='{.items[0].metadata.name}')
     status "success" "Pod is running: $POD_NAME"
 else
     status "error" "*** pod is not running"
@@ -42,7 +42,7 @@ fi
 # 2. Check VPN connection
 echo ""
 echo "2. Verifying VPN connection..."
-PUBLIC_IP=$(kubectl exec -n $NAMESPACE $POD_NAME -c *** -- wget -qO- http://localhost:8000/v1/publicip/ip 2>/dev/null | grep -o '"public_ip":"[^"]*"' | cut -d'"' -f4)
+PUBLIC_IP=$(kubectl exec -n "$NAMESPACE" "$POD_NAME" -c *** -- wget -qO- http://localhost:8000/v1/publicip/ip 2>/dev/null | grep -o '"public_ip":"[^"]*"' | cut -d'"' -f4)
 if [ -n "$PUBLIC_IP" ]; then
     status "success" "VPN active - Public IP: $PUBLIC_IP"
 else
@@ -52,8 +52,8 @@ fi
 # 3. Test DNS resolution from ***
 echo ""
 echo "3. Testing DNS resolution from ***..."
-if kubectl exec -n $NAMESPACE deploy/*** -- nslookup *** >/dev/null 2>&1; then
-    RESOLVED_IP=$(kubectl exec -n $NAMESPACE deploy/*** -- nslookup *** 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $2}')
+if kubectl exec -n "$NAMESPACE" deploy/*** -- nslookup *** >/dev/null 2>&1; then
+    RESOLVED_IP=$(kubectl exec -n "$NAMESPACE" deploy/*** -- nslookup *** 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $2}')
     status "success" "DNS resolution: *** → $RESOLVED_IP"
 else
     status "error" "DNS resolution failed from ***"
@@ -62,8 +62,8 @@ fi
 # 4. Test DNS resolution from ***
 echo ""
 echo "4. Testing DNS resolution from ***..."
-if kubectl exec -n $NAMESPACE deploy/*** -- nslookup *** >/dev/null 2>&1; then
-    RESOLVED_IP=$(kubectl exec -n $NAMESPACE deploy/*** -- nslookup *** 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $2}')
+if kubectl exec -n "$NAMESPACE" deploy/*** -- nslookup *** >/dev/null 2>&1; then
+    RESOLVED_IP=$(kubectl exec -n "$NAMESPACE" deploy/*** -- nslookup *** 2>/dev/null | grep -A1 "Name:" | tail -1 | awk '{print $2}')
     status "success" "DNS resolution: *** → $RESOLVED_IP"
 else
     status "error" "DNS resolution failed from ***"
@@ -72,7 +72,7 @@ fi
 # 5. Test HTTP connectivity from ***
 echo ""
 echo "5. Testing HTTP connectivity from ***..."
-if kubectl exec -n $NAMESPACE deploy/*** -- wget --spider --timeout=5 http://$QB_SERVICE >/dev/null 2>&1; then
+if kubectl exec -n "$NAMESPACE" deploy/*** -- wget --spider --timeout=5 http://$QB_SERVICE >/dev/null 2>&1; then
     status "success" "HTTP connectivity from ***"
 else
     status "error" "HTTP connectivity failed from ***"
@@ -81,7 +81,7 @@ fi
 # 6. Test HTTP connectivity from ***
 echo ""
 echo "6. Testing HTTP connectivity from ***..."
-if kubectl exec -n $NAMESPACE deploy/*** -- wget --spider --timeout=5 http://$QB_SERVICE >/dev/null 2>&1; then
+if kubectl exec -n "$NAMESPACE" deploy/*** -- wget --spider --timeout=5 http://$QB_SERVICE >/dev/null 2>&1; then
     status "success" "HTTP connectivity from ***"
 else
     status "error" "HTTP connectivity failed from ***"
@@ -90,8 +90,8 @@ fi
 # 7. Check bootstrap Job status
 echo ""
 echo "7. Checking category bootstrap Job..."
-if kubectl get job ***-category-bootstrap -n $NAMESPACE >/dev/null 2>&1; then
-    JOB_STATUS=$(kubectl get job ***-category-bootstrap -n $NAMESPACE -o jsonpath='{.status.conditions[0].type}')
+if kubectl get job ***-category-bootstrap -n "$NAMESPACE" >/dev/null 2>&1; then
+    JOB_STATUS=$(kubectl get job ***-category-bootstrap -n "$NAMESPACE" -o jsonpath='{.status.conditions[0].type}')
     if [ "$JOB_STATUS" = "Complete" ]; then
         status "success" "Bootstrap Job completed successfully"
     else
@@ -107,11 +107,11 @@ echo "8. Verifying *** categories..."
 echo "   (Requires ***-secret to be configured)"
 
 # Get credentials from secret
-QB_USER=$(kubectl get secret ***-secret -n $NAMESPACE -o jsonpath='{.data.username}' 2>/dev/null | base64 -d)
-QB_PASS=$(kubectl get secret ***-secret -n $NAMESPACE -o jsonpath='{.data.password}' 2>/dev/null | base64 -d)
+QB_USER=$(kubectl get secret ***-secret -n "$NAMESPACE" -o jsonpath='{.data.username}' 2>/dev/null | base64 -d)
+QB_PASS=$(kubectl get secret ***-secret -n "$NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d)
 
 if [ -n "$QB_USER" ] && [ -n "$QB_PASS" ]; then
-    CATEGORIES=$(kubectl exec -n $NAMESPACE deploy/*** -- sh -c "
+    CATEGORIES=$(kubectl exec -n "$NAMESPACE" deploy/*** -- sh -c "
         curl -s -c /tmp/cookies.txt -d 'username=$QB_USER&password=$QB_PASS' http://$QB_SERVICE/api/v2/auth/login >/dev/null 2>&1
         curl -s -b /tmp/cookies.txt http://$QB_SERVICE/api/v2/torrents/categories
     " 2>/dev/null)
@@ -134,7 +134,7 @@ fi
 # 9. Check UMASK configuration
 echo ""
 echo "9. Verifying UMASK configuration..."
-UMASK_VALUE=$(kubectl exec -n $NAMESPACE $POD_NAME -c *** -- sh -c 'umask' 2>/dev/null)
+UMASK_VALUE=$(kubectl exec -n "$NAMESPACE" "$POD_NAME" -c *** -- sh -c 'umask' 2>/dev/null)
 if [ "$UMASK_VALUE" = "0002" ]; then
     status "success" "UMASK is correctly set to 0002 (group-writable)"
 else
@@ -144,8 +144,8 @@ fi
 # 10. Check shared storage mount
 echo ""
 echo "10. Verifying shared storage mount..."
-if kubectl exec -n $NAMESPACE $POD_NAME -c *** -- ls -ld /data >/dev/null 2>&1; then
-    MOUNT_INFO=$(kubectl exec -n $NAMESPACE $POD_NAME -c *** -- ls -ld /data 2>/dev/null)
+if kubectl exec -n "$NAMESPACE" "$POD_NAME" -c *** -- ls -ld /data >/dev/null 2>&1; then
+    MOUNT_INFO=$(kubectl exec -n "$NAMESPACE" "$POD_NAME" -c *** -- ls -ld /data 2>/dev/null)
     status "success" "Shared PVC mounted at /data"
     echo "    $MOUNT_INFO"
 else

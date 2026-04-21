@@ -10,6 +10,7 @@
     },
     "mounts": [
         "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+	"source=opencode-data,target=/home/vscode/.local/share/opencode,type=volume",
         "source=${localEnv:HOME}/.config/sops,target=/home/vscode/.config/sops,type=bind,consistency=cached"
     ],
     "customizations": {

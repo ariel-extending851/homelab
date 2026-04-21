@@ -34,6 +34,13 @@ spec:
               add:
                 - DAC_READ_SEARCH  # Read host log files via hostPath mounts
 
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
           livenessProbe:
             httpGet:
               path: /

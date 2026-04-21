@@ -1,0 +1,20 @@
+---
+# Verify: assert expected state after role convergence
+
+- name: Verify — [ROLE_NAME] role
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Add at least one assertion to verify role execution
+    # Examples:
+    # - name: Assert config file exists
+    #   ansible.builtin.stat:
+    #     path: /etc/myapp/config.yml
+    #   register: config_stat
+    #   failed_when: not config_stat.stat.exists
+
+    - name: Example verification task
+      ansible.builtin.debug:
+        msg: "Add specific assertions for your role here"

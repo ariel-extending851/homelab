@@ -23,6 +23,7 @@ Understand the "why" behind the project's design.
 | **[Secrets Management](secrets-management.md)** | Strategy for handling secrets with SOPS and age encryption. |
 | **[Security Audit](security/SECURITY_AUDIT.md)** | Comprehensive security analysis and hardening plan. |
 | **[Platform Engineering Roadmap](plans/PLATFORM_ENGINEERING_ROADMAP.md)**| The future vision for the homelab as a platform. |
+| **[QA DevOps Roadmap (30 Days)](plans/QA-DEVOPS-ROADMAP-30D.md)**| 30-day plan to raise test maturity with measurable QA gates. |
 
 ## ⚙️ Core Components
 
