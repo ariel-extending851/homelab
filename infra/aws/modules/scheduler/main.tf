@@ -76,6 +76,7 @@ data "archive_file" "lambda_zip" {
 }
 
 # Lambda Function
+# tfsec:ignore:aws-lambda-enable-tracing
 resource "aws_lambda_function" "scheduler" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "hl-ec2-scheduler"

@@ -47,6 +47,7 @@ resource "aws_security_group" "k3s_cluster" {
   # ============================================================================
   # EGRESS: Allow outbound (required for Tailscale, ECR, package repos)
   # ============================================================================
+  # tfsec:ignore:aws-ec2-no-public-egress-sgr
   egress {
     description = "Allow all outbound (Tailscale, container pulls, updates)"
     from_port   = 0

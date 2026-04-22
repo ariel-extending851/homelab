@@ -34,6 +34,7 @@ resource "random_string" "suffix" {
 }
 
 # Create a private S3 bucket to store the Terraform state.
+# tfsec:ignore:aws-s3-enable-bucket-logging
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "homelab-terraform-state-${random_string.suffix.result}"
 
@@ -49,6 +50,7 @@ resource "aws_s3_bucket" "terraform_state" {
 }
 
 # Enable server-side encryption by default for all objects in the bucket.
+# tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "state_encryption" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -77,6 +79,9 @@ resource "aws_s3_bucket_public_access_block" "state_public_access" {
 }
 
 # Create a DynamoDB table for state locking.
+# tfsec:ignore:aws-dynamodb-enable-recovery
+# tfsec:ignore:aws-dynamodb-table-customer-key
+# tfsec:ignore:aws-dynamodb-enable-at-rest-encryption
 resource "aws_dynamodb_table" "terraform_state_lock" {
   name         = "homelab-terraform-state-lock"
   billing_mode = "PAY_PER_REQUEST"

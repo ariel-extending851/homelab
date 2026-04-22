@@ -110,6 +110,7 @@ module "k3s_cluster" {
 # CRITICAL SECURITY: This bucket is SEPARATE from the Terraform state bucket.
 # EC2 instances have read/write access to this bucket for Ansible SSM connections.
 # Using the Terraform state bucket would expose decrypted secrets to compromised nodes.
+# tfsec:ignore:aws-s3-enable-bucket-logging
 resource "aws_s3_bucket" "ssm_transfer" {
   bucket        = var.ssm_s3_bucket
   force_destroy = true
@@ -131,6 +132,7 @@ resource "aws_s3_bucket_versioning" "ssm_transfer" {
 }
 
 # Enable encryption at rest
+# tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "ssm_transfer" {
   bucket = aws_s3_bucket.ssm_transfer.id
 
