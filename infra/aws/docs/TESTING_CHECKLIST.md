@@ -21,7 +21,7 @@ Use this checklist to track your LocalStack structure validation progress.
 - [ ] All testing files present:
   - [ ] `terraform.tfvars.localstack`
   - [ ] `provider.localstack.tf.example`
-  - [ ] `test-localstack.sh`
+  - [ ] `scripts/validate_localstack.py`
   - [ ] `LOCALSTACK_TESTING.md`
 
 ---
@@ -29,8 +29,8 @@ Use this checklist to track your LocalStack structure validation progress.
 ## 🚀 Automated Testing (Recommended)
 
 ### Quick Test
-- [ ] Make test script executable: `chmod +x test-localstack.sh`
-- [ ] Run automated tests: `./test-localstack.sh`
+- [ ] Make test script executable: `chmod +x scripts/validate_localstack.py`
+- [ ] Run automated tests: `python3 scripts/validate_localstack.py`
 - [ ] All tests pass (6/7 expected to pass)
 - [ ] Review test output for warnings
 

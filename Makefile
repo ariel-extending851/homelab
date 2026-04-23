@@ -20,7 +20,8 @@
         validate-shellcheck validate-sops-workflow \
 		validate-terraform-tests validate-k8s-policies validate-k8s-policies-critical validate-k8s-dry-run \
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
-		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly
+		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
+		setup-ci-deps-workflow-lint lint-workflows
 
 # Default target
 .DEFAULT_GOAL := help
@@ -29,7 +30,7 @@
 TERRAFORM_DIR  := infra/aws
 ARGOCD_VERSION := v2.13.2
 ANSIBLE_DIR := ansible
-DEPLOY_SCRIPT := bin/deploy-aws-homelab.sh
+DEPLOY_SCRIPT := python3 bin/deploy_aws_homelab.py
 
 # Offline-safe AWS environment for Terraform validate/init in local and CI runs.
 TF_AWS_OFFLINE_ENV := AWS_EC2_METADATA_DISABLED=true AWS_SDK_LOAD_CONFIG=0 AWS_ACCESS_KEY_ID=dummy AWS_SECRET_ACCESS_KEY=dummy AWS_SESSION_TOKEN=dummy AWS_DEFAULT_REGION=us-east-1 AWS_REGION=us-east-1 AWS_SKIP_REQUESTING_ACCOUNT_ID=true TF_SKIP_REQUESTING_ACCOUNT_ID=true AWS_ENDPOINT_URL= AWS_ENDPOINT_URL_STS= AWS_ENDPOINT_URL_IAM= AWS_ENDPOINT_URL_EC2= AWS_ENDPOINT_URL_S3=
@@ -197,11 +198,22 @@ setup-ci-deps-bats: ## Install bats testing framework (for CI)
 		cd /tmp/bats && sudo ./install.sh /usr/local && rm -rf /tmp/bats)
 	@echo "✅ bats installed"
 
-setup-ci-deps-python: ## Install Python test dependencies (pytest, pytest-cov, boto3)
-	@echo "📦 Setting up Python testing dependencies for CI..."
-	@python3 -c "import pytest, coverage" 2>/dev/null || \
-		pip install --quiet --break-system-packages pytest pytest-cov boto3
-	@echo "✅ Python test dependencies installed"
+setup-ci-deps-python: ## Install Python test dependencies (pytest, pytest-cov, boto3, jinja2, pyyaml)
+	@python3 -c "import pytest, pytest_cov, boto3, jinja2, yaml" 2>/dev/null \
+	  || (echo "📦 Installing Python test dependencies..." \
+	      && pip install --quiet --break-system-packages --timeout 60 --retries 2 \
+	         pytest pytest-cov boto3 jinja2 pyyaml \
+	      && echo "✅ Python test dependencies installed")
+
+setup-ci-deps-workflow-lint: ## Install actionlint + zizmor (for CI)
+	@echo "🔧 Setting up workflow linters for CI..."
+	@command -v actionlint >/dev/null 2>&1 || $(MISE_EXEC) actionlint --version >/dev/null 2>&1 \
+	  || (curl -fsSL -o /tmp/actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+	      && bash /tmp/actionlint.bash latest "$$HOME/.local/bin" \
+	      && rm -f /tmp/actionlint.bash)
+	@command -v zizmor >/dev/null 2>&1 || $(MISE_EXEC) zizmor --version >/dev/null 2>&1 \
+	  || pip install --quiet --break-system-packages zizmor
+	@echo "✅ actionlint + zizmor ready"
 
 setup-ci-deps-kustomize: ## Install kustomize (for CI)
 	@echo "🔧 Setting up kustomize for CI..."
@@ -485,7 +497,19 @@ test-e2e-prereqs: ## Check for all E2E testing dependencies
 
 test-e2e-localstack: ## Run Terraform apply/destroy against a localstack container
 	@echo "📦 Testing Terraform against LocalStack..."
-	@$(TERRAFORM_DIR)/scripts/test-localstack.sh
+	@python3 $(TERRAFORM_DIR)/scripts/validate_localstack.py
+
+test-integration-localstack: ## Spin up LocalStack via docker-compose, run terraform apply + schema validation, tear down
+	@echo "🐳 Starting LocalStack..."
+	@docker compose -f docker-compose.localstack.yml up -d
+	@echo "⏳ Waiting for LocalStack to be healthy..."
+	@until curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; do sleep 2; done
+	@echo "✅ LocalStack ready."
+	@python3 $(TERRAFORM_DIR)/scripts/validate_localstack.py \
+	  || (echo "⚠️  validation finished with issues — inspect /tmp/tf-*.log"; exit_code=$$?; \
+	      docker compose -f docker-compose.localstack.yml down; exit $$exit_code)
+	@echo "🧹 Stopping LocalStack..."
+	@docker compose -f docker-compose.localstack.yml down
 
 test-e2e-ansible: ## Test Ansible playbooks with a fake inventory
 	@echo "⚙️  Testing Ansible playbooks in check-mode with fake inventory..."
@@ -550,7 +574,7 @@ validate-ansible-structure: ## Validate all Ansible roles have required Molecule
 	@echo "✅ All Ansible roles have valid Molecule structure"
 
 new-role: ## Create new Ansible role from template: make new-role ROLE=my_role
-	@bash scripts/create-ansible-role.sh $(ROLE)
+	@python3 bin/create_ansible_role.py $(ROLE)
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 
@@ -652,7 +676,7 @@ TERRAFORM_DIR_AWS   := infra/aws
 
 smoke-test: ## Post-deploy smoke test — verifies ArgoCD sync, pod health, and namespaces (requires live cluster)
 	@echo "🔍 Running post-deploy smoke tests..."
-	@bash bin/smoke-test.sh
+	@python3 bin/smoke_test.py
 
 ##@ E2E Post-Deployment Testing
 
@@ -662,7 +686,7 @@ test-e2e-post-deploy: ## Run full E2E tests after deployment (requires live clus
 	@command -v kubectl >/dev/null || (echo "❌ kubectl not found. Install: https://kubernetes.io/docs/tasks/tools/"; exit 1)
 	@echo ""
 	@echo "▶ Phase 1: Enhanced smoke tests (20+ checks)"
-	@bash bin/smoke-test.sh
+	@python3 bin/smoke_test.py
 	@echo ""
 	@echo "▶ Phase 2: BATS E2E test suite (~40+ test cases)"
 	@$(MISE_EXEC) bats bin/tests/e2e_post_deploy.bats --verbose
@@ -685,37 +709,29 @@ test-contracts: ## Verify App-of-Apps path contracts and SOPS secret structure (
 	@bats bin/tests/contract_tests.bats
 	@echo "  ✓ Contract tests passed."
 
-test-shell: ## Run shell unit tests for deploy script functions (requires bats)
-	@echo "🧪 Running shell unit tests..."
-	@command -v bats >/dev/null || (echo "❌ bats not found. Install: https://github.com/bats-core/bats-core"; exit 1)
-	@bats bin/tests/deploy_functions.bats
-	@bats bin/tests/smoke_tests.bats
-	@echo "  ✓ Shell unit tests passed."
+test-shell: ## No-op: scripts migrated to Python (covered by make test-python)
+	@echo "ℹ️  Shell unit tests removed — scripts are now Python, covered by make test-python."
 
-test-terraform: ## Run Terraform validation tests (syntax, security, outputs, best practices)
+test-terraform: setup-ci-deps-python ## Run Terraform validation tests (syntax, security, outputs, best practices)
 	@echo "🧪 Running Terraform infrastructure tests..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest
 	@python3 -m pytest infra/aws/tests/test_terraform_infrastructure.py -v
 	@echo "  ✓ Terraform infrastructure tests passed."
 
-test-security: ## Run security guardrail tests (SOPS, policy scope, secret leakage checks)
+test-security: setup-ci-deps-python ## Run security guardrail tests (SOPS, policy scope, secret leakage checks)
 	@echo "🔐 Running security guardrail tests..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest
 	@python3 -m pytest ansible/tests/test_security_guardrails.py ansible/tests/test_k8s_supply_chain.py ansible/tests/test_k8s_policy_coverage.py -v
 	@echo "  ✓ Security guardrail tests passed."
 
 test-security-runtime: test-security ## Alias: runtime security is covered by test-security
 	@echo "  ✓ Runtime security tests passed."
 
-test-security-supply-chain: ## Run image supply-chain guardrail tests (offline/static)
+test-security-supply-chain: setup-ci-deps-python ## Run image supply-chain guardrail tests (offline/static)
 	@echo "🔗 Running image supply-chain tests..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest
 	@python3 -m pytest ansible/tests/test_k8s_supply_chain.py -v
 	@echo "  ✓ Image supply-chain tests passed."
 
-test-k8s-policy-coverage: ## Run Kubernetes policy coverage tests (offline/static)
+test-k8s-policy-coverage: setup-ci-deps-python ## Run Kubernetes policy coverage tests (offline/static)
 	@echo "📐 Running Kubernetes policy coverage tests..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest
 	@python3 -m pytest ansible/tests/test_k8s_policy_coverage.py -v
 	@echo "  ✓ Kubernetes policy coverage tests passed."
 
@@ -732,20 +748,16 @@ test-dr-execution: ## Run disaster recovery role as real execution in Molecule t
 	@make test-molecule-emergency-recovery
 	@echo "  ✓ Disaster recovery execution test passed."
 
-test-python: ## Run Python unit tests for inventory script and Lambda scheduler with coverage (requires pytest-cov)
+test-python: setup-ci-deps-python ## Run Python unit tests for inventory script and Lambda scheduler with coverage (requires pytest-cov)
 	@echo "🧪 Running Python unit tests with coverage..."
-	@python3 -c "import pytest, pytest_cov" 2>/dev/null || pip install --quiet --break-system-packages pytest pytest-cov
-	@python3 -c "import boto3" 2>/dev/null || pip install --quiet --break-system-packages boto3
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
+	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
 	  --cov \
 	  --cov-report=term-missing
 	@echo "  ✓ Python unit tests passed with coverage."
 
-test-python-ci: ## Run Python tests for CI with coverage artifacts and fail-under threshold
+test-python-ci: setup-ci-deps-python ## Run Python tests for CI with coverage artifacts and fail-under threshold
 	@echo "🧪 Running Python CI tests with coverage artifacts..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest pytest-cov
-	@python3 -c "import boto3" 2>/dev/null || pip install --quiet --break-system-packages boto3
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
+	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
 	  --cov \
 	  --cov-report=html \
 	  --cov-report=xml \
@@ -753,11 +765,9 @@ test-python-ci: ## Run Python tests for CI with coverage artifacts and fail-unde
 	  --cov-fail-under=85
 	@echo "  ✓ Python CI tests passed with coverage artifacts."
 
-test-python-coverage: ## Generate HTML coverage report for Python tests (opens htmlcov/index.html)
+test-python-coverage: setup-ci-deps-python ## Generate HTML coverage report for Python tests (opens htmlcov/index.html)
 	@echo "📊 Generating detailed coverage report..."
-	@python3 -c "import pytest" 2>/dev/null || pip install --quiet --break-system-packages pytest pytest-cov
-	@python3 -c "import boto3" 2>/dev/null || pip install --quiet --break-system-packages boto3
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
+	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
 	  --cov \
 	  --cov-report=html \
 	  --cov-report=term-missing
@@ -770,19 +780,19 @@ test-performance: ## Removed: benchmark tests eliminated (overkill for homelab)
 
 qa-audit: ## Run tests one-by-one and generate QA evidence report (.qa/evidence)
 	@echo "🧾 Running QA audit (sequential test evidence)..."
-	@bash scripts/qa_test_audit.sh
+	@python3 bin/qa_test_audit.py
 
 qa-scorecard: ## Generate QA scorecard from latest 14 audit runs (.qa/evidence)
 	@echo "📈 Generating QA scorecard (latest 14 runs)..."
-	@python3 scripts/qa_scorecard.py --input-dir .qa/evidence --history-limit 14
+	@python3 bin/qa_scorecard.py --input-dir .qa/evidence --history-limit 14
 
 qa-verify-required-no-skips: ## Fail if any required suite was skipped in the latest QA audit
 	@echo "🚫 Verifying required suites were not skipped..."
-	@python3 scripts/qa_scorecard.py --input-dir .qa/evidence --verify-no-required-skips
+	@python3 bin/qa_scorecard.py --input-dir .qa/evidence --verify-no-required-skips
 
 qa-verify-duration-budgets: ## Fail if latest QA audit exceeds suite duration budgets
 	@echo "⏱️ Verifying QA duration budgets..."
-	@python3 scripts/qa_scorecard.py --input-dir .qa/evidence --verify-duration-budgets
+	@python3 bin/qa_scorecard.py --input-dir .qa/evidence --verify-duration-budgets
 
 qa-flake-report: qa-scorecard ## Alias to generate flake/trend report from QA scorecard
 	@echo "  ✓ Flake report generated via QA scorecard."
@@ -845,10 +855,9 @@ test-live-preflight: ## Preflight checks for live cluster tests (KUBECONFIG + AP
 performance-baseline: ## Removed: benchmark tests eliminated (overkill for homelab)
 	@echo "ℹ️  Performance baseline removed. Benchmarks no longer tracked."
 
-test-templates: ## Validate k3s Jinja2 templates (renders with StrictUndefined + yamllint)
+test-templates: setup-ci-deps-python ## Validate k3s Jinja2 templates (renders with StrictUndefined + yamllint)
 	@echo "🧪 Validating k3s Jinja2 templates..."
-	@python3 -c "import jinja2, yaml" 2>/dev/null || pip install --quiet --break-system-packages jinja2 pyyaml
-	@python3 scripts/render_and_lint_templates.py
+	@python3 bin/render_and_lint_templates.py
 	@echo "  ✓ Template validation passed."
 
 test-k8s-schemas: validate-k8s-all ## Validate k8s manifest schemas (alias for validate-k8s-all)
@@ -914,6 +923,13 @@ docs=[d for d in yaml.safe_load_all(sys.stdin) if d \
 	@rm -f /tmp/homelab-dryrun.yaml
 	@echo "  ✓ Kubernetes dry-run passed — no selector mismatches or reference errors."
 
+lint-workflows: ## Lint GitHub Actions workflows (actionlint syntax + zizmor security, HIGH only)
+	@echo "🔍 Linting .github/workflows with actionlint..."
+	@$(MISE_EXEC) actionlint -color
+	@echo "🔐 Scanning .github/workflows with zizmor (HIGH severity only; solo-homelab gate)..."
+	@$(MISE_EXEC) zizmor --config .github/zizmor.yml --min-severity=high .github/workflows/
+	@echo "✅ Workflow lint passed (run 'mise exec -- zizmor .github/workflows/' for all findings)."
+
 validate-yaml-lint: ## Run yamllint across the entire repo (root .yamllint config — same scope as CI)
 	@echo "✓ Running yamllint (root .yamllint)..."
 	@command -v yamllint >/dev/null 2>&1 || (echo "❌ yamllint not found. Install: pip install yamllint"; exit 1)
@@ -923,10 +939,12 @@ validate-yaml-lint: ## Run yamllint across the entire repo (root .yamllint confi
 validate-shellcheck: ## Run shellcheck on all shell scripts (local equivalent of CI shellcheck action)
 	@echo "✓ Running shellcheck..."
 	@command -v shellcheck >/dev/null 2>&1 || (echo "❌ shellcheck not found. Install: apt install shellcheck"; exit 1)
-	@find . -name "*.sh" -not -path "./.git/*" -not -path "./.terraform/*" \
-		-not -path "./docs/archive/*" \
-		| xargs shellcheck --severity=warning
-	@echo "  ✓ ShellCheck passed."
+	@files=$$(find . -name "*.sh" -not -path "./.git/*" -not -path "./.terraform/*" -not -path "./docs/archive/*"); \
+	if [ -z "$$files" ]; then \
+	  echo "  ℹ️  No shell scripts found — all migrated to Python."; \
+	else \
+	  echo "$$files" | xargs shellcheck --severity=warning && echo "  ✓ ShellCheck passed."; \
+	fi
 
 validate-sops-workflow: ## Validate SOPS encrypt/decrypt with a throwaway Age keypair (no secrets committed)
 	@echo "🔐 Validating SOPS workflow (throwaway keypair)..."

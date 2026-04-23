@@ -11,18 +11,15 @@ export KUBECONFIG
 ARGOCD_NS="${ARGOCD_NAMESPACE:-argocd}"
 TIMEOUT_SECONDS=10
 
-# ── helpers ────────────────────────────────────────────────────────────────────
-
-skip_if_no_cluster() {
-  if ! kubectl cluster-info --request-timeout=5s >/dev/null 2>&1; then
-    skip "Cluster not reachable (KUBECONFIG=${KUBECONFIG})"
-  fi
-}
-
 # ── setup ──────────────────────────────────────────────────────────────────────
+# Post-deploy: cluster MUST be up. Unreachable = hard fail, never skip.
+# Silent skips previously let the deployment-gate job pass on vacuous "success".
 
 setup() {
-  skip_if_no_cluster
+  if ! kubectl cluster-info --request-timeout=5s >/dev/null 2>&1; then
+    echo "FATAL: cluster unreachable (KUBECONFIG=${KUBECONFIG})" >&2
+    return 1
+  fi
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -30,12 +27,10 @@ setup() {
 # ──────────────────────────────────────────────────────────────────────────────
 
 @test "E2E: Cluster API is reachable" {
-  skip_if_no_cluster
   kubectl cluster-info --request-timeout="${TIMEOUT_SECONDS}s" >/dev/null
 }
 
 @test "E2E: ArgoCD root app is Synced and Healthy" {
-  skip_if_no_cluster
   APPS_JSON=$(kubectl get applications -n "$ARGOCD_NS" -o json 2>/dev/null || echo "{}")
   SYNCED=$(echo "$APPS_JSON" | jq -r '[.items[] | select(.status.sync.status == "Synced")] | length')
   [ "$SYNCED" -gt 0 ]
@@ -205,4 +200,48 @@ declare -a APPS=(
     | awk '$3 ~ /CrashLoopBackOff|ImagePullBackOff|OOMKilled/ {count++} END {print count}' || echo "0")
 
   [ "$FAILED_PODS" -eq 0 ]
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HTTP FUNCTIONAL CONTRACT (Service-level, in-cluster)
+# ──────────────────────────────────────────────────────────────────────────────
+# Tailscale ingress can't be reached from CI (not on the tailnet), so we probe
+# each Service's ClusterIP from inside the cluster via a one-shot curl pod.
+# This catches: wrong Service selector, wrong targetPort, app listening on wrong
+# port, app returning 5xx. Pod-Ready alone doesn't catch any of these.
+#
+# "Any non-5xx response" = routing works. 3xx (redirect) and 4xx (auth) are OK.
+
+@test "E2E: HTTP contract — all key Services respond (no 5xx)" {
+  # svc:namespace:port — only apps with HTTP APIs; exclude DNS-only (adguard),
+  # headless (loki push-only endpoints), exporters (not user-facing).
+  SERVICES=(
+    "grafana:monitoring:3000"
+    "prometheus:monitoring:9090"
+    "***:***:8096"
+    "***:media:9696"
+    "searxng:searxng:8080"
+  )
+
+  script=""
+  for entry in "${SERVICES[@]}"; do
+    IFS=':' read -r svc ns port <<<"$entry"
+    url="http://${svc}.${ns}.svc.cluster.local:${port}/"
+    # Print "svc CODE" per line. 000 = connection failure.
+    script+="code=\$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 '${url}' || echo 000); echo '${svc} '\$code; "
+  done
+
+  output=$(kubectl run http-probe-$$ \
+    --rm --restart=Never --quiet -i \
+    --image=curlimages/curl:8.10.1 \
+    --timeout=60s \
+    -- sh -c "$script" 2>&1)
+
+  echo "$output"
+
+  # Any 5xx or connection failure (000) = fail. Accept 1xx/2xx/3xx/4xx.
+  if echo "$output" | grep -E ' (5[0-9][0-9]|000)$' >/dev/null; then
+    echo "FAIL: one or more Services returned 5xx or timed out"
+    return 1
+  fi
 }

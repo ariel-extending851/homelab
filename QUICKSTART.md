@@ -30,10 +30,10 @@ ssh-keygen -t ed25519 -f ~/.ssh/homelab-aws -N ""
 
 ```bash
 # Make script executable (first time only)
-chmod +x bin/deploy-aws-homelab.sh
+chmod +x bin/deploy_aws_homelab.py
 
 # Deploy complete infrastructure
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 ```
 
 **Or with Makefile:**
@@ -92,7 +92,7 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```bash
 # Destroy infrastructure
 make destroy
-# OR: ./bin/deploy-aws-homelab.sh --destroy
+# OR: python3 bin/deploy_aws_homelab.py --destroy
 
 # Recreate after termination (same command)
 make deploy
@@ -140,7 +140,7 @@ make help
 ### Deployment fails?
 ```bash
 # Re-run (script is idempotent)
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 ```
 
 ### Can't SSH to instances?

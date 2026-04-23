@@ -206,7 +206,7 @@ jobs:
         if: always()
         run: |
           COVERAGE=$(python3 -c "import xml.etree.ElementTree as ET; root = ET.parse('coverage.xml').getroot(); print(f\"{float(root.attrib['line-rate'])*100:.1f}%\")" 2>/dev/null || echo "N/A")
-          echo "## Python Test Coverage: ${COVERAGE}" >> $GITHUB_STEP_SUMMARY
+          echo "## Python Test Coverage: ${COVERAGE}" >> "$GITHUB_STEP_SUMMARY"
 
   arm64-validation:
     name: "ARM64: ${{ matrix.platform }}"
@@ -295,6 +295,55 @@ jobs:
 
       - name: Run ShellCheck Validation via Makefile
         run: make validate-shellcheck
+
+  integration-localstack:
+    name: "Integration: LocalStack (terraform apply + output schema)"
+    # Advisory job — LocalStack free tier has known limitations (no spot);
+    # failures here flag drift but must not block PRs.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Start LocalStack via docker-compose
+        run: docker compose -f docker-compose.localstack.yml up -d
+
+      - name: Wait for LocalStack health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/_localstack/health > /dev/null; then
+              echo "LocalStack ready after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "LocalStack did not become healthy in time"
+          exit 1
+
+      - name: Setup tooling (terraform + python)
+        run: |
+          make setup-ci-deps-terraform
+          make setup-ci-deps-python
+          pip install --quiet --break-system-packages terraform-local awscli-local
+
+      - name: Run LocalStack integration validator
+        run: python3 infra/aws/scripts/validate_localstack.py
+
+      - name: Upload LocalStack logs on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localstack-logs
+          path: |
+            /tmp/tf-*.log
+          if-no-files-found: ignore
+
+      - name: Stop LocalStack
+        if: always()
+        run: docker compose -f docker-compose.localstack.yml down
 
   security:
     name: Secret Scan

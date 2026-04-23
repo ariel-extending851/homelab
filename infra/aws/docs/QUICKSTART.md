@@ -258,7 +258,7 @@ terraform apply
 ### Destroy Everything
 ```bash
 terraform destroy
-# Or use AWS Nuke: ./clean-lab.sh
+# Or use AWS Nuke: python3 scripts/clean_lab.py
 ```
 
 ### Check Spot Instance Status

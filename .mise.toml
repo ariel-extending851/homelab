@@ -28,6 +28,10 @@ localstack = "4.13.1"
 "pipx:ansible-core" = "2.18.0"
 "pipx:pytest" = "9.0.3"
 
+# GitHub Actions workflow linting
+actionlint = "latest"
+"pipx:zizmor" = "latest"
+
 # Shell testing
 bats = "1.11.1"
 

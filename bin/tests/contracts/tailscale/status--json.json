@@ -1,0 +1,35 @@
+{
+  "Version": "1.58.2-t",
+  "BackendState": "Running",
+  "Self": {
+    "HostName": "dev-workstation",
+    "TailscaleIPs": ["100.64.0.1", "fd7a:115c:a1e0::1"],
+    "Online": true
+  },
+  "Peer": {
+    "nodekey:aaa111": {
+      "HostName": "k3s-server-1",
+      "TailscaleIPs": ["100.101.102.103", "fd7a:115c:a1e0::2"],
+      "Online": true,
+      "OS": "linux"
+    },
+    "nodekey:bbb222": {
+      "HostName": "k3s-agent-2",
+      "TailscaleIPs": ["100.101.102.104", "fd7a:115c:a1e0::3"],
+      "Online": true,
+      "OS": "linux"
+    },
+    "nodekey:ccc333": {
+      "HostName": "old-offline-host",
+      "TailscaleIPs": ["100.101.102.99"],
+      "Online": false,
+      "OS": "linux"
+    },
+    "nodekey:ddd444": {
+      "HostName": "ipv6-only-peer",
+      "TailscaleIPs": ["fd7a:115c:a1e0::99"],
+      "Online": true,
+      "OS": "linux"
+    }
+  }
+}

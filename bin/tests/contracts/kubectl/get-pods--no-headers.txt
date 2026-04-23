@@ -1,0 +1,7 @@
+argocd        argocd-server-6f4d8b8c4f-abcd1       1/1     Running            0               2d
+argocd        argocd-repo-server-7d9f8c6b5d-xyz98  1/1     Running            0               2d
+monitoring    prometheus-0                          2/2     Running            1 (3h ago)      2d
+monitoring    loki-0                                1/1     Running            0               2d
+media         ***-5c9b4d7f8-crash1          0/1     CrashLoopBackOff   12 (2m ago)     1h
+media         ***-7d4b8c9d6-pullf                0/1     ImagePullBackOff   0               30m
+adguard       adguard-home-846c4b7c9d-xyz11         1/1     Running            0               2d

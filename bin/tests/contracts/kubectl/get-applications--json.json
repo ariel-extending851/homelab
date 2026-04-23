@@ -1,0 +1,32 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "argoproj.io/v1alpha1",
+      "kind": "Application",
+      "metadata": {
+        "name": "adguard",
+        "namespace": "argocd"
+      },
+      "status": {
+        "sync": {"status": "Synced", "revision": "abc123"},
+        "health": {"status": "Healthy"}
+      }
+    },
+    {
+      "metadata": {"name": "prometheus", "namespace": "argocd"},
+      "status": {
+        "sync": {"status": "Synced"},
+        "health": {"status": "Healthy"}
+      }
+    },
+    {
+      "metadata": {"name": "***", "namespace": "argocd"},
+      "status": {
+        "sync": {"status": "OutOfSync"},
+        "health": {"status": "Degraded"}
+      }
+    }
+  ],
+  "kind": "List"
+}

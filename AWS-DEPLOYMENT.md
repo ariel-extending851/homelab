@@ -126,10 +126,10 @@ ls ~/.ssh/homelab-deploy-key
 
 ```bash
 # Make script executable (first time only)
-chmod +x bin/deploy-aws-homelab.sh
+chmod +x bin/deploy_aws_homelab.py
 
 # Deploy everything
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 ```
 
 ### Option 2: Using Makefile
@@ -373,7 +373,7 @@ make test                # Run all tests
 
 ```bash
 # Deploy everything
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 
 # Or with make
 make deploy
@@ -383,7 +383,7 @@ make deploy
 
 ```bash
 # Same command recreates everything
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 
 # Infrastructure will be recreated with new IPs
 # Ansible will configure the new instances
@@ -408,7 +408,7 @@ ansible-playbook -i terraform_inventory_aws.py playbooks/site.yml
 make destroy
 
 # Or with script
-./bin/deploy-aws-homelab.sh --destroy
+python3 bin/deploy_aws_homelab.py --destroy
 ```
 
 ### Scenario 5: Check Status Without Making Changes
@@ -495,7 +495,7 @@ terraform show | grep spot
 
 ```bash
 # Script is safe to re-run (idempotent)
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 
 # If Terraform already applied, it will show "no changes"
 # If Ansible already configured, it will skip completed tasks
@@ -567,7 +567,7 @@ terraform show | grep spot
 
 ✅ **YES!** Just run:
 ```bash
-./bin/deploy-aws-homelab.sh
+python3 bin/deploy_aws_homelab.py
 ```
 
 **What if instances are terminated?**

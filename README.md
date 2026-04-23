@@ -10,7 +10,7 @@ The platform is designed with a clear separation of concerns, orchestrated by a 
 graph TD
     A[Developer] -- runs --> B(make deploy);
     subgraph Orchestration Layer
-        B -- calls --> C{bin/deploy-aws-homelab.sh};
+        B -- calls --> C{bin/deploy_aws_homelab.py};
     end
 
     subgraph Infrastructure Layer - Terraform
@@ -43,7 +43,7 @@ graph TD
 ```
 
 ### Key Technologies
-*   **Orchestration:** `Makefile`, Bash (`bin/deploy-aws-homelab.sh`)
+*   **Orchestration:** `Makefile`, Python (`bin/deploy_aws_homelab.py`)
 *   **Infrastructure as Code:** **Terraform** (`infra/aws/`)
 *   **Configuration Management:** **Ansible** (`ansible/`)
 *   **Container Orchestration:** **Kubernetes (k3s)**

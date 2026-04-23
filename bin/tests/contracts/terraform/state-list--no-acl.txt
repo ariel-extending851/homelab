@@ -1,0 +1,3 @@
+data.aws_ami.amazon_linux_2023
+module.compute.aws_iam_role.k3s
+module.network.aws_security_group.k3s

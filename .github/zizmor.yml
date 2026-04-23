@@ -1,0 +1,29 @@
+# zizmor configuration — solo-homelab pragmatic defaults.
+#
+# Disabled audits (per-file, because zizmor does not accept wildcards):
+#
+# unpinned-uses: every action pinned to a SHA is enterprise-grade hygiene, but
+#   high-maintenance for a single maintainer. Renovate + trusted @vN tags from
+#   well-known publishers is an acceptable trade-off for this threat model.
+#
+# artipacked: `persist-credentials: false` on every checkout is best-practice,
+#   but most findings here are Low confidence and the repo's artifacts never
+#   include credentials. Not worth the churn.
+#
+# Everything else (excessive-permissions, template-injection, dangerous-triggers,
+# etc.) stays enabled — those are the actually-dangerous classes.
+rules:
+  unpinned-uses:
+    ignore:
+      - ci-validation.yml
+      - ci-deployment.yml
+      - claude.yml
+      - claude-code-review.yml
+      - link-checker.yml
+  artipacked:
+    ignore:
+      - ci-validation.yml
+      - ci-deployment.yml
+      - claude.yml
+      - claude-code-review.yml
+      - link-checker.yml

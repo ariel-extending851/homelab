@@ -124,8 +124,8 @@ cp provider.localstack.tf.example provider.localstack.tf
 ### Step 3: Run Automated Tests
 
 ```bash
-# Execute test script
-./test-localstack.sh
+# Execute test script (from infra/aws/)
+python3 scripts/validate_localstack.py
 ```
 
 **Expected Output:**
@@ -356,7 +356,7 @@ terraform console -var-file="terraform.tfvars.localstack"
 
 ### Success Indicators ✅
 
-- All tests pass in `test-localstack.sh`
+- All tests pass in `validate_localstack.py`
 - `terraform plan` generates 13 resource changes
 - No validation errors in modules
 - Dependency graph generates without errors

@@ -1,0 +1,2 @@
+Linux ip-10-0-1-42 5.10.0-aws #1 SMP x86_64 GNU/Linux
+k3s version v1.28.4+k3s2

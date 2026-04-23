@@ -21,8 +21,8 @@ aws/
 │   └── LOCALSTACK_TEST_RESULTS.md # Latest test results
 │
 ├── scripts/                       # 🔧 Utility scripts
-│   ├── clean-lab.sh               # AWS Nuke cleanup script
-│   ├── test-localstack.sh         # LocalStack testing
+│   ├── clean_lab.py               # AWS Nuke cleanup script
+│   ├── validate_localstack.py     # LocalStack testing
 │   ├── config.yml                 # AWS Nuke configuration
 │   └── cost-estimate.csv          # Cost analysis data
 │
@@ -63,7 +63,7 @@ aws/
 docker run -d -p 4566:4566 localstack/localstack:latest
 
 # Run tests
-./scripts/test-localstack.sh
+python3 scripts/validate_localstack.py
 ```
 
 **Documentation:** [docs/LOCALSTACK_TESTING.md](docs/LOCALSTACK_TESTING.md)
@@ -116,7 +116,7 @@ terraform apply
 
 ### Structure Validation (LocalStack)
 ```bash
-./scripts/test-localstack.sh
+python3 scripts/validate_localstack.py
 ```
 
 Tests: Module structure, variables, dependencies
@@ -162,7 +162,7 @@ Time: 10 minutes | Cost: ~$17.65/month
 
 ### Cleanup AWS Resources
 ```bash
-./scripts/clean-lab.sh
+python3 scripts/clean_lab.py
 ```
 
 ### Update Infrastructure

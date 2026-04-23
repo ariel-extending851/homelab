@@ -7,7 +7,7 @@
 docker run -d -p 4566:4566 localstack/localstack:latest && \
 sleep 15 && \
 cd /var/mnt/nvme/repos/repos/homelab/infra/aws && \
-./test-localstack.sh
+python3 scripts/validate_localstack.py
 ```
 
 ## 📋 Common Commands
@@ -20,7 +20,7 @@ docker run -d --name localstack -p 4566:4566 localstack/localstack:latest
 curl http://localhost:4566/_localstack/health
 
 # Run automated tests
-./test-localstack.sh
+python3 scripts/validate_localstack.py
 
 # Manual testing
 cp provider.localstack.tf.example provider.localstack.tf
@@ -47,7 +47,7 @@ docker stop localstack
 |------|---------|
 | `LOCALSTACK_TESTING.md` | Complete guide |
 | `TESTING_CHECKLIST.md` | Progress tracker |
-| `test-localstack.sh` | Automated tests |
+| `validate_localstack.py` | Automated tests |
 | `terraform.tfvars.localstack` | Test variables |
 | `provider.localstack.tf.example` | Provider config |
 
@@ -96,4 +96,4 @@ terraform init
 
 ---
 
-**Ready?** Run: `./test-localstack.sh`
+**Ready?** Run: `python3 scripts/validate_localstack.py`

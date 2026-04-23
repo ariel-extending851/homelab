@@ -1,0 +1,27 @@
+# LocalStack for integration testing (terraform apply + schema validation).
+#
+# Usage:
+#   docker compose -f docker-compose.localstack.yml up -d
+#   make test-integration-localstack
+#   docker compose -f docker-compose.localstack.yml down
+#
+# Free-tier limitations:
+#   - No EC2 Spot Instances (spot_instance_request will fail — tolerated)
+#   - User data does not execute (no k3s bootstrap)
+#   - Security groups are metadata-only (no traffic enforcement)
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: homelab-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: ec2,iam,s3,sts,ssm,lambda,events,logs
+      DEBUG: "0"
+      PERSISTENCE: "0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s

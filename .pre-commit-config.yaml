@@ -44,7 +44,7 @@ repos:
     hooks:
       - id: shellcheck
         args: [-e, SC1091]
-        files: "^(?!docs/archive/).*(\\.sh$|bin/.*)"
+        files: "\\.sh$"
 
   # Python linting
   - repo: https://github.com/psf/black
@@ -53,3 +53,21 @@ repos:
       - id: black
         language_version: python3
         files: ".*\\.py$"
+
+  # GitHub Actions workflow linting (syntax + security)
+  - repo: local
+    hooks:
+      - id: actionlint
+        name: actionlint
+        description: Lint GitHub Actions workflow syntax
+        entry: bash -c 'command -v actionlint >/dev/null 2>&1 && actionlint "$@" || mise exec -- actionlint "$@"' --
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: true
+      - id: zizmor
+        name: zizmor
+        description: Security-lint GitHub Actions workflows
+        entry: bash -c 'command -v zizmor >/dev/null 2>&1 && zizmor --min-severity=medium "$@" || mise exec -- zizmor --min-severity=medium "$@"' --
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: true

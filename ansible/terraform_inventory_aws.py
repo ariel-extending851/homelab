@@ -25,6 +25,41 @@ import os
 from pathlib import Path
 
 
+# ── parsing helpers (pure functions — contract-testable) ────────────────────
+
+
+def parse_terraform_output_json(stdout):
+    """Parse `terraform output -json` stdout into a flat dict {name: value}.
+
+    Strips Terraform's `{"value": ..., "type": ...}` wrapper. Missing keys
+    become empty strings so downstream `.get()` chains are simpler.
+    Raises json.JSONDecodeError if stdout is not valid JSON.
+    """
+    raw = json.loads(stdout or "{}")
+    return {k: v.get("value", "") if isinstance(v, dict) else v for k, v in raw.items()}
+
+
+def parse_tailscale_status_json(stdout):
+    """Parse `tailscale status --json` into {hostname: ipv4} for ONLINE peers only.
+
+    Skips IPv6-only peers and offline peers. Returns {} on any JSON error so the
+    inventory can fall back to private IPs.
+    """
+    try:
+        data = json.loads(stdout or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    ips = {}
+    for peer in (data.get("Peer") or {}).values():
+        hostname = peer.get("HostName", "")
+        tailscale_ips = peer.get("TailscaleIPs", [])
+        if hostname and tailscale_ips and peer.get("Online", False):
+            ipv4 = next((ip for ip in tailscale_ips if ":" not in ip), None)
+            if ipv4:
+                ips[hostname] = ipv4
+    return ips
+
+
 class TerraformInventoryAWS:
     """Generate Ansible inventory from Terraform state (AWS)"""
 
@@ -48,7 +83,7 @@ class TerraformInventoryAWS:
                 text=True,
                 check=True,
             )
-            return json.loads(result.stdout)
+            return parse_terraform_output_json(result.stdout)
         except subprocess.CalledProcessError as e:
             print(
                 f"ERROR: Failed to read Terraform outputs: {e.stderr}", file=sys.stderr
@@ -72,18 +107,7 @@ class TerraformInventoryAWS:
                 text=True,
                 check=True,
             )
-            data = json.loads(result.stdout)
-            peers = data.get("Peer", {})
-            ips = {}
-            for peer in peers.values():
-                hostname = peer.get("HostName", "")
-                tailscale_ips = peer.get("TailscaleIPs", [])
-                # Only include online peers with a v4 address
-                if hostname and tailscale_ips and peer.get("Online", False):
-                    ipv4 = next((ip for ip in tailscale_ips if ":" not in ip), None)
-                    if ipv4:
-                        ips[hostname] = ipv4
-            return ips
+            return parse_tailscale_status_json(result.stdout)
         except Exception:
             return {}
 
@@ -92,14 +116,14 @@ class TerraformInventoryAWS:
         outputs = self.get_terraform_outputs()
 
         # Extract server data
-        server_public_ip = outputs.get("k3s_server_public_ip", {}).get("value", "")
-        server_private_ip = outputs.get("k3s_server_private_ip", {}).get("value", "")
-        server_instance_id = outputs.get("k3s_server_instance_id", {}).get("value", "")
+        server_public_ip = outputs.get("k3s_server_public_ip", "")
+        server_private_ip = outputs.get("k3s_server_private_ip", "")
+        server_instance_id = outputs.get("k3s_server_instance_id", "")
 
         # Extract agent data
-        agent_public_ip = outputs.get("k3s_agent_public_ip", {}).get("value", "")
-        agent_private_ip = outputs.get("k3s_agent_private_ip", {}).get("value", "")
-        agent_instance_id = outputs.get("k3s_agent_instance_id", {}).get("value", "")
+        agent_public_ip = outputs.get("k3s_agent_public_ip", "")
+        agent_private_ip = outputs.get("k3s_agent_private_ip", "")
+        agent_instance_id = outputs.get("k3s_agent_instance_id", "")
 
         if not server_instance_id:
             print(
