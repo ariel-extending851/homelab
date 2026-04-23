@@ -21,7 +21,7 @@ git diff bin/tests/contracts/
 
 ## Layout
 
-```
+```text
 aws_ssm/      describe-instance-information, send-command, get-command-invocation
 aws_ec2/      describe-instances (various filters)
 terraform/    output -json, output -raw, state list

@@ -1,0 +1,174 @@
+# Kubernetes Architecture
+
+> **Status:** Active
+> **Last reviewed:** 2026-04-23
+> **Owner:** @ariel-extending851
+
+How the k3s cluster is organized — namespaces, ingress, deployment ordering, and node placement. The "what runs where" view; per-app detail lives under [`../services/`](../services/).
+
+---
+
+## Cluster
+
+| Item | Value |
+|---|---|
+| Distribution | k3s `v1.34.3+k3s1` |
+| Topology | 1 server (AWS, t3.medium) + 3 agents (1 AWS t3.small + 2 RPi) |
+| CNI | Flannel (VXLAN) |
+| Pod CIDR | 10.42.0.0/16 |
+| Service CIDR | 10.43.0.0/16 |
+| Ingress | Tailscale operator (no Traefik — disabled in k3s server config) |
+| Storage | `local-path-provisioner` (k3s default) |
+| Policy enforcement | OPA Conftest (CI) + Kubernetes admission via the policy files in [`k8s/policies/`](../../k8s/policies/) |
+
+Source of truth: [`ansible/group_vars/all.yml`](../../ansible/group_vars/all.yml) and [`ansible/group_vars/k3s_server.yml`](../../ansible/group_vars/k3s_server.yml).
+
+---
+
+## Namespaces
+
+| Namespace | Purpose |
+|---|---|
+| `argocd` | GitOps controller |
+| `tailscale` | Tailscale operator + per-Ingress proxy pods |
+| `monitoring` | Prometheus, kube-state-metrics, node-exporter, blackbox |
+| `otel-collector` | OpenTelemetry collector (pipes logs to Loki) |
+| `grafana` | Grafana |
+| `loki` | Loki |
+| `media` | ***, ***, ***, ***, *** |
+| `***` | *** (own namespace because of dedicated PV) |
+| `searxng` | SearXNG (own namespace, sidecar pattern) |
+| `golink` | GoLink |
+| `adguard` | AdGuard Home |
+| `kube-system` | k3s system components |
+
+---
+
+## Application Layout
+
+Every app lives under [`k8s/apps/<name>/`](../../k8s/apps/) with a `kustomization.yaml`. ArgoCD's `homelab-apps-root` Application watches the directory and creates a child Application per app — see [`gitops.md`](gitops.md) for the App-of-Apps detail.
+
+For the full app inventory with namespace, node, and ingress: [`../services/README.md`](../services/README.md).
+
+---
+
+## Node Placement
+
+Hardware-aware scheduling via `nodeSelector` / `nodeAffinity` in each app's `deployment.yaml`.
+
+| Service | Node | Why |
+|---|---|---|
+| Grafana | k3s-agent-2 (AWS) | Dashboard rendering uses memory |
+| Prometheus | k3s-agent-2 (AWS) | TSDB storage IO |
+| Loki | k3s-agent-2 (AWS) | Log write IO |
+| *** | rasp-pi-04 | Storage on `/mnt/storage` |
+| *** | rasp-pi-04 | Same — pinned via PV `nodeAffinity` |
+| *** / *** / *** | rasp-pi-04 | Hardlink with ***'s `/data` |
+| AdGuard | rasp-pi-03 | hostNetwork on stable LAN IP |
+| SearXNG | rasp-pi-03 | Pinned for tailscale sidecar identity |
+| Blackbox | k3s-server (AWS) | Lightweight; saves Pi resources |
+| OTEL Collector / node-exporter | All nodes | DaemonSet (host-level metrics/logs) |
+| kube-state-metrics | Any | Stateless metric exporter |
+| Tailscale operator + proxies | Mixed | Operator on AWS; proxies follow their app |
+
+Resource budget for the media namespace specifically: [`../operations/resource-limits.md`](../operations/resource-limits.md).
+
+---
+
+## Ingress
+
+`ingressClassName: tailscale` for everything user-facing. The Tailscale operator creates a proxy pod per Ingress and assigns a tailnet hostname matching the Ingress `host`. Two ProxyClasses:
+
+- `default` — standard
+- `high-bandwidth` — Grafana (label the Service: `tailscale.com/proxy-class: high-bandwidth`)
+
+Active hostnames: [`../reference/tailnet-services.md`](../reference/tailnet-services.md).
+
+---
+
+## Deployment Order
+
+ArgoCD handles dependency ordering implicitly via sync waves and resource hooks. For a manual deploy (rare — only when ArgoCD is itself being bootstrapped), use this order:
+
+```bash
+# 1. Foundation (no dependencies)
+kubectl apply -k k8s/apps/kube-state-metrics/
+kubectl apply -k k8s/apps/node-exporter/
+kubectl apply -k k8s/apps/blackbox/
+
+# 2. Loki (logs sink)
+kubectl apply -k k8s/apps/loki/
+kubectl wait --for=condition=ready pod -l app=loki -n loki --timeout=300s
+
+# 3. OTEL collector (depends on Loki)
+kubectl apply -k k8s/apps/otel-collector/
+
+# 4. Prometheus (depends on metrics exporters)
+kubectl wait --for=condition=ready pod -l app=kube-state-metrics -n monitoring --timeout=120s
+kubectl wait --for=condition=ready pod -l app=node-exporter -n monitoring --timeout=120s
+kubectl apply -k k8s/apps/prometheus/
+
+# 5. Grafana (depends on Prometheus + Loki)
+kubectl wait --for=condition=ready pod -l app=prometheus -n monitoring --timeout=300s
+kubectl apply -k k8s/apps/grafana/
+
+# 6. The rest (independent)
+kubectl apply -k k8s/apps/adguard/
+kubectl apply -k k8s/apps/searxng/
+kubectl apply -k k8s/apps/golink/
+kubectl apply -k k8s/apps/***/
+kubectl apply -k k8s/apps/***/
+kubectl apply -k k8s/apps/***/ -k k8s/apps/***/ -k k8s/apps/***/ -k k8s/apps/***/
+```
+
+In practice, run `make ansible-deploy` and let `apps-root` do this for you.
+
+---
+
+## Verifying GitOps Health
+
+```bash
+# kube-system + ArgoCD + apps healthy
+kubectl get pods -A | grep -vE 'Running|Completed'
+# expect: empty or only Pending pods
+
+# All ArgoCD apps Synced + Healthy
+kubectl get applications -n argocd
+
+# Tailscale ingresses got their proxies
+kubectl get pods -n tailscale | grep ^ts-
+
+# Tailnet hostnames respond
+for h in grafana *** *** *** *** ***; do
+  curl -sI -o /dev/null -w "%{http_code} $h\n" https://$h.tail57bf10.ts.net
+done
+```
+
+---
+
+## Policies
+
+Conftest rules in [`k8s/policies/`](../../k8s/policies/) enforce:
+
+| File | Rule |
+|---|---|
+| `health_probes.rego` | Every Deployment must have a `readinessProbe` |
+| `rbac_safety.rego` | No wildcard verbs (`*`) or resources (`*`) in RBAC |
+| `resource_limits.rego` | Every container must declare CPU + memory limits |
+| `security_context.rego` | `allowPrivilegeEscalation: false` required |
+
+Run locally:
+```bash
+make validate-k8s-policies            # all rules
+make validate-k8s-policies-critical   # blocking subset (CI gate)
+```
+
+---
+
+## Where to Go Next
+
+- **Operate the cluster:** [`../operations/ansible.md`](../operations/ansible.md) (which orchestrates everything)
+- **GitOps detail:** [`gitops.md`](gitops.md)
+- **Networking & ingress:** [`networking.md`](networking.md)
+- **Per-app detail:** [`../services/README.md`](../services/README.md)
+- **When the API server goes down:** [`../runbooks/control-plane-recovery.md`](../runbooks/control-plane-recovery.md)

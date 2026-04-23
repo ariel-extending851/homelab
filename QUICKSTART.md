@@ -1,167 +1,125 @@
-# Homelab Quickstart - 5 Minutes to Deployment
+# Quickstart — 5 Minutes to Deploy
 
-**For the impatient:** Get your complete homelab running in one command.
+For the impatient: get the homelab running in one command. For the full guide see [`docs/getting-started/deployment.md`](docs/getting-started/deployment.md).
 
 ---
 
-## 🚀 Prerequisites (One-Time Setup)
+## Prerequisites (one-time)
 
 ```bash
-# 1. Install tools
-brew install terraform ansible  # macOS
-# OR: pip3 install ansible && <install terraform>
+# 1. Install all tools (mise reads .mise.toml)
+curl https://mise.jdx.dev/install.sh | sh
+mise install
 
-# 2. Install Ansible collections
-cd ansible && ansible-galaxy collection install -r requirements.yml
+# 2. Ansible collections
+ansible-galaxy collection install -r ansible/requirements.yml
 
-# 3. Install Python kubernetes library
+# 3. Python deps
 pip3 install kubernetes
 
-# 4. Configure AWS credentials
-aws configure  # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# 4. AWS credentials (mise auto-sets AWS_PROFILE=homelab inside the repo)
+aws configure --profile homelab
 
-# 5. Generate SSH key
+# 5. SSH keys
 ssh-keygen -t ed25519 -f ~/.ssh/homelab-aws -N ""
+ssh-keygen -t ed25519 -f ~/.ssh/homelab-deploy-key -C "argocd@homelab" -N ""
+
+# 6. SOPS age key (must match age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja)
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt   # see docs/operations/sops-setup.md if mismatch
 ```
+
+Full prereqs checklist: [`docs/getting-started/prerequisites.md`](docs/getting-started/prerequisites.md).
 
 ---
 
-## ⚡ Deploy Everything (One Command)
+## Deploy
 
-```bash
-# Make script executable (first time only)
-chmod +x bin/deploy_aws_homelab.py
-
-# Deploy complete infrastructure
-python3 bin/deploy_aws_homelab.py
-```
-
-**Or with Makefile:**
 ```bash
 make deploy
 ```
 
-**What happens:**
-1. Creates AWS infrastructure (Terraform)
-2. Waits for instances to boot
-3. Configures k3s cluster (Ansible)
-4. Installs ArgoCD with SOPS
-5. Bootstraps all applications
+Or directly:
+```bash
+python3 bin/deploy_aws_homelab.py
+```
 
-**Time:** 15-25 minutes (unattended)
+Time: **15–25 minutes** unattended. Phases: Terraform → wait for SSH → Ansible (k3s + ArgoCD) → bootstrap apps → verify.
 
 ---
 
-## ✅ Verify Deployment
+## Verify
 
 ```bash
-# Set kubeconfig
 export KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml
 
-# Check nodes (should show 2 AWS + 2 RPi if connected)
-kubectl get nodes
-
-# Check applications
+kubectl get nodes                 # 2 AWS + 2 RPi (if home LAN reachable)
 kubectl get applications -n argocd
-
-# Check all pods
-kubectl get pods -A
+make smoke-test                   # post-deploy HTTP checks (16 apps)
 ```
 
 ---
 
-## 🎯 Access ArgoCD
+## Access ArgoCD
 
 ```bash
-# Get admin password
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d && echo
+make argocd-password
+make argocd-port-forward          # https://localhost:8080
+```
 
-# Port forward
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+Username: `admin`. Password from `make argocd-password`.
 
-# Open browser: https://localhost:8080
-# Username: admin
-# Password: <from above>
+---
+
+## Common Operations
+
+```bash
+make destroy             # tear down AWS infra
+make ansible-deploy      # re-run config without Terraform
+make ansible-health      # cluster health check
+make help                # every target with description
 ```
 
 ---
 
-## 🔄 Common Operations
+## Cost
 
+| Mode | Estimate |
+|---|---|
+| With scheduling (default, ~45% uptime) | **~$24.59/month** |
+| 24/7 (`enable_scheduling = false`) | ~$45.55/month |
+
+Schedule: starts EC2 at 10:00 BRT, stops at 21:00 BRT (no DST in Brazil since 2019). Full breakdown: [`docs/operations/cost-and-scheduling.md`](docs/operations/cost-and-scheduling.md).
+
+---
+
+## Troubleshooting
+
+### Deployment fails
+The script is idempotent — re-run:
 ```bash
-# Destroy infrastructure
-make destroy
-# OR: python3 bin/deploy_aws_homelab.py --destroy
-
-# Recreate after termination (same command)
-make deploy
-
-# Check status
-make status
-
-# Update configuration only (infrastructure exists)
-make ansible-deploy
-
-# Health check
-make ansible-health
-
-# Show all commands
-make help
-```
-
----
-
-## 💰 Cost
-
-**With 11-hour daily schedule (10 AM - 9 PM BRT):**
-- ~$13/month
-
-**Running 24/7:**
-- ~$24/month
-
-**Scheduler automatically:**
-- Starts instances: 10:00 AM BRT
-- Stops instances: 21:00 PM BRT (9 PM)
-
----
-
-## 📚 Full Documentation
-
-- **Complete Guide:** `AWS-DEPLOYMENT.md`
-- **Ansible Phase 2:** `ansible/PHASE2-SETUP.md`
-- **Testing:** `ansible/TESTING.md`
-- **Main README:** `README.md`
-
----
-
-## ⚠️ Troubleshooting
-
-### Deployment fails?
-```bash
-# Re-run (script is idempotent)
 python3 bin/deploy_aws_homelab.py
 ```
 
-### Can't SSH to instances?
+### Can't SSH to instances
+There's no public SSH. Use Tailscale (after the deploy completes), or AWS SSM:
 ```bash
-# Check security group allows your IP
-cd infra/aws && terraform output
-
-# Verify SSH key exists
-ls ~/.ssh/homelab-aws
+aws ssm start-session --target $(make terraform-output | jq -r '.k3s_server_instance_id.value')
 ```
 
-### ArgoCD apps stuck?
+### ArgoCD apps stuck in `Progressing`
 ```bash
-# Force sync all
-kubectl get applications -n argocd -o name | \
-  xargs -I {} kubectl patch {} -n argocd \
-    --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+kubectl get applications -n argocd -o name | xargs -I {} kubectl patch {} -n argocd \
+  --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
 ```
+
+For a Tailscale auth issue making the cluster unreachable: [`docs/runbooks/tailscale-logged-out.md`](docs/runbooks/tailscale-logged-out.md). For control plane unresponsive: [`docs/runbooks/control-plane-recovery.md`](docs/runbooks/control-plane-recovery.md).
 
 ---
 
-**That's it! Your homelab is running.** 🎉
+## Next Steps
 
-For detailed documentation, see `AWS-DEPLOYMENT.md`
+- **Full deployment guide:** [`docs/getting-started/deployment.md`](docs/getting-started/deployment.md)
+- **Documentation hub:** [`docs/README.md`](docs/README.md)
+- **Per-app details:** [`docs/services/README.md`](docs/services/README.md)
+- **Architecture overview:** [`docs/architecture/overview.md`](docs/architecture/overview.md)

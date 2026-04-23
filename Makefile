@@ -1200,8 +1200,9 @@ docs: ## Open documentation
 	@echo "📚 Documentation:"
 	@echo "  Main README: cat README.md"
 	@echo "  Ansible: cat ansible/README.md"
-	@echo "  Phase 2 Setup: cat ansible/PHASE2-SETUP.md"
-	@echo "  Testing Guide: cat ansible/TESTING.md"
+	@echo "  Hub:           cat docs/README.md"
+	@echo "  Ansible Ops:   cat docs/operations/ansible.md"
+	@echo "  Testing Guide: cat docs/operations/testing.md"
 
 show-costs: ## Show estimated costs using the code defaults
 	@echo "💰 Calculating real-time cost estimates from code defaults..."

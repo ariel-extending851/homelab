@@ -1,0 +1,222 @@
+# Monitoring Stack
+
+> **Status:** Active · **Namespace:** monitoring (mostly) · **Last reviewed:** 2026-04-23
+> **Manifests:** [`k8s/apps/{prometheus,node-exporter,kube-state-metrics,blackbox,otel-collector}/`](../../k8s/apps/)
+
+The metrics + logs collection stack. Five components: Prometheus scrapes, node-exporter and kube-state-metrics expose, blackbox probes, OTEL collector relays. Visualized by [Grafana](grafana.md). Logs land in [Loki](loki.md).
+
+| Component | Namespace | Ingress |
+|---|---|---|
+| [Prometheus](#prometheus) | `monitoring` | <https://prometheus.tail57bf10.ts.net> |
+| [node-exporter](#node-exporter) | `monitoring` | — (DaemonSet, scraped) |
+| [kube-state-metrics](#kube-state-metrics) | `monitoring` | — (scraped) |
+| [Blackbox exporter](#blackbox) | `monitoring` | — (scraped) |
+| [OTEL Collector](#otel-collector) | `otel-collector` | — (writes to Loki) |
+
+---
+
+## Prometheus
+
+[Prometheus](https://prometheus.io/) — TSDB for metrics. Single-replica server with PV-backed storage.
+
+| Item | Value |
+|---|---|
+| Namespace | `monitoring` |
+| Storage | 20 Gi PVC (`local-path-provisioner`) |
+| Retention | 15 days (default) |
+| Scrape interval | 30 s |
+| Ingress | `prometheus.tail57bf10.ts.net` (UI / `/targets` / debug) |
+
+Scrape config lives in [`k8s/apps/prometheus/configmap.yaml`](../../k8s/apps/prometheus/configmap.yaml). Targets:
+
+- `kubernetes-apiservers` — Kubernetes API server metrics
+- `kubernetes-nodes` — kubelet metrics (every node)
+- `kubernetes-pods` — auto-discovers pods with `prometheus.io/scrape: "true"` annotation
+- `node-exporter` — system metrics (CPU, memory, disk, network)
+- `kube-state-metrics` — K8s object state (pods, deployments, jobs, etc.)
+- `blackbox` — HTTP/TCP probes against ingresses
+
+### Operations
+
+```bash
+# Confirm targets are healthy
+# Status → Targets at https://prometheus.tail57bf10.ts.net/targets
+
+# Drop & re-create a noisy series
+kubectl exec -n monitoring deploy/prometheus -- \
+  curl -X POST 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=high_cardinality_metric'
+
+# Check storage usage
+kubectl exec -n monitoring deploy/prometheus -- du -sh /prometheus
+```
+
+### Recording rules + alerts
+
+In [`k8s/apps/prometheus/rules.yaml`](../../k8s/apps/prometheus/rules.yaml). Add new ones, commit, push — ArgoCD reloads via the Prometheus sidecar `configmap-reloader`.
+
+---
+
+## node-exporter
+
+[Prometheus node-exporter](https://github.com/prometheus/node_exporter) — system-level metrics (CPU, memory, disk, network) per node. Runs as a DaemonSet so every node has its own pod.
+
+| Item | Value |
+|---|---|
+| Namespace | `monitoring` |
+| Type | DaemonSet (one pod per node) |
+| Port | 9100 (metrics) |
+| Host network | yes (so it can read host network counters) |
+
+Scraped by Prometheus via the `node-exporter` Service (which selects all DaemonSet pods).
+
+### Quick checks
+
+```bash
+kubectl get ds node-exporter -n monitoring
+# DESIRED == AVAILABLE on all nodes (4 today: 2 AWS + 2 Pi)
+
+# Check a specific node's metrics
+kubectl exec -n monitoring -l app=node-exporter -c node-exporter -- \
+  wget -qO- localhost:9100/metrics | head -30
+```
+
+---
+
+## kube-state-metrics
+
+[kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) — exposes Kubernetes object state as Prometheus metrics. Reports things like: pod restart counts, deployment replica counts, job success/failure, PVC capacity.
+
+| Item | Value |
+|---|---|
+| Namespace | `monitoring` |
+| Type | Deployment (single replica) |
+| Port | 8080 |
+
+### Useful Grafana queries
+
+```promql
+# Pods in CrashLoopBackOff
+kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}
+
+# Recent pod restarts
+increase(kube_pod_container_status_restarts_total[1h])
+
+# Deployment replica drift
+kube_deployment_status_replicas_unavailable
+```
+
+---
+
+## Blackbox
+
+[Blackbox exporter](https://github.com/prometheus/blackbox_exporter) — probes HTTP/TCP endpoints from Prometheus's perspective. Reports latency, status codes, TLS expiry.
+
+| Item | Value |
+|---|---|
+| Namespace | `monitoring` |
+| Type | Deployment (single replica) |
+| Port | 9115 |
+
+Configuration: [`k8s/apps/blackbox/configmap.yaml`](../../k8s/apps/blackbox/configmap.yaml). Probe targets are defined in `prometheus/configmap.yaml` under `scrape_configs.job_name: blackbox`. Today's probe list:
+
+- All app ingresses (e.g., `https://grafana.tail57bf10.ts.net/`)
+- Critical external endpoints (e.g., GitHub API for ArgoCD)
+
+Useful Grafana queries:
+```promql
+probe_success{job="blackbox"} == 0    # who's down
+probe_http_duration_seconds            # latency by phase (resolve, connect, tls, processing)
+probe_ssl_earliest_cert_expiry - time()  # TLS days remaining
+```
+
+---
+
+## OTEL Collector
+
+The [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) is the universal pipeline for logs (and eventually traces). Runs as a deployment in its own namespace, with a Promtail-equivalent configuration that scrapes pod logs and forwards them to Loki.
+
+| Item | Value |
+|---|---|
+| Namespace | `otel-collector` |
+| Type | Deployment (single replica) — also a DaemonSet variant for per-node log scraping |
+| Receivers | filelog (scrapes `/var/log/pods/*/*.log`) |
+| Exporters | loki (writes to `http://loki.loki:3100/loki/api/v1/push`) |
+| Config | [`k8s/apps/otel-collector/configmap.yaml`](../../k8s/apps/otel-collector/configmap.yaml) |
+
+### Pipeline
+
+```text
+container stdout
+  → /var/log/pods/<ns>_<pod>_<uid>/<container>/0.log  (kubelet)
+    → OTEL filelog receiver
+      → kubernetes_attributes processor (adds namespace, pod, container labels)
+        → loki exporter
+          → Loki (push API)
+            → indexed + queryable in Grafana
+```
+
+### Operations
+
+```bash
+# Confirm logs are flowing
+kubectl logs -n otel-collector -l app=otel-collector --tail=20 \
+  | grep -i exporter
+
+# Inject a test log
+kubectl run -n default test-otel --image=busybox --rm -it --restart=Never \
+  -- echo "OTEL_TEST_$(date +%s)"
+
+# Then in Grafana / Loki:
+# {namespace="default"} |= "OTEL_TEST_"
+```
+
+---
+
+## NetworkPolicies
+
+The monitoring stack has its own NetworkPolicy at [`k8s/system/network-policies/monitoring-policies.yaml`](../../k8s/system/network-policies/monitoring-policies.yaml):
+
+- **Allow Prometheus scrape** from `monitoring` namespace into all app namespaces (TCP on each app's metrics port)
+- **Default-deny egress** from `monitoring` to anything other than DNS, scrape targets, and Loki
+
+See [`../security/network-policies.md`](../security/network-policies.md) for the full policy detail.
+
+---
+
+## Troubleshooting
+
+### Prometheus target shows `DOWN`
+
+```bash
+# Click target in Status → Targets to see the error
+# Common causes:
+# - app pod not exposing /metrics on the expected port
+# - NetworkPolicy blocking (check `kubectl describe networkpolicy -A`)
+# - prometheus.io/scrape annotation wrong
+```
+
+### node-exporter pod missing on a node
+
+```bash
+kubectl get nodes
+kubectl describe ds node-exporter -n monitoring | grep -A5 "Events"
+```
+
+Often: node taint blocks the DaemonSet. Check the DS spec for `tolerations`.
+
+### Loki shows no logs from a particular app
+
+Check the OTEL collector saw the log file:
+```bash
+kubectl logs -n otel-collector -l app=otel-collector --tail=200 \
+  | grep -i <app-name>
+```
+
+If absent, check `/var/log/pods/<ns>_<pod>_<uid>/...` exists on the node and the OTEL collector has the right path pattern in its config.
+
+## Related
+
+- **Grafana (visualizes all of this):** [`grafana.md`](grafana.md)
+- **Loki (logs sink):** [`loki.md`](loki.md)
+- **NetworkPolicies:** [`../security/network-policies.md`](../security/network-policies.md)
+- **Dashboard runbook:** [`../runbooks/grafana-dashboards.md`](../runbooks/grafana-dashboards.md)

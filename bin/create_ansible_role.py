@@ -116,7 +116,7 @@ def _print_next_steps(role_name, role_path):
     print("📚 For more details:")
     print("   - Read: CONTRIBUTING.md")
     print("   - Reference: ansible/roles/tailscale/ (simple) or k3s/ (complex)")
-    print("   - Checklist: ansible/roles/.template/.template-checklist.md")
+    print("   - Checklist: docs/contributing/role-template.md")
     print()
 
 

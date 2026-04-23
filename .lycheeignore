@@ -1,8 +1,8 @@
 # URLs excluded from lychee link checking
 # Reasons: internal/localhost hostnames, stale versioned docs, auth-required pages
 
-# LocalStack (only reachable when running locally)
-http://localhost:4566
+# Localhost URLs — sample/doc references, not real endpoints
+^https?://localhost(:[0-9]+)?(/.*)?$
 
 # Internal Tailscale hostnames (not reachable from CI)
 https://searxng

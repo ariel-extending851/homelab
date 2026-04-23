@@ -1,60 +1,105 @@
-# Homelab Documentation Hub
+# Homelab Documentation
 
-Welcome to the central documentation for the Homelab project. This hub organizes all documentation into logical categories, from getting started to deep architectural dives.
+> **Status:** Active
+> **Last reviewed:** 2026-04-23
+> **Owner:** @ariel-extending851
+
+Single source of truth for the homelab project. The repo runs a hybrid k3s cluster (AWS EC2 + Raspberry Pi) reached via Tailscale, deployed with Terraform + Ansible + ArgoCD.
+
+If you're new, start with the root [`README.md`](../README.md), then [`getting-started/deployment.md`](getting-started/deployment.md). For any specific app, jump to [`services/`](services/). For naming and doc style, see [`CONVENTIONS.md`](CONVENTIONS.md).
+
+---
 
 ## 🚀 Getting Started
 
-If you are new to the project, start here.
+| Document | Purpose |
+|---|---|
+| [Project README](../README.md) | High-level project overview (root entry) |
+| [Quickstart](../QUICKSTART.md) | 5-minute deployment path |
+| [Deployment Guide](getting-started/deployment.md) | Comprehensive AWS deployment |
+| [Prerequisites](getting-started/prerequisites.md) | Tools, AWS credentials, SSH keys |
+
+## 🏗️ Architecture
 
 | Document | Purpose |
-| :--- | :--- |
-| **[Project README](../../README.md)** | The main entry point with a high-level overview. |
-| **[Quickstart Guide](../../QUICKSTART.md)** | 5-minute guide to get the entire stack running. |
-| **[Full Deployment Guide](../../AWS-DEPLOYMENT.md)** | A comprehensive, step-by-step guide to deployment. |
+|---|---|
+| [Overview](architecture/overview.md) | High-level architecture (hybrid AWS + RPi) |
+| [AWS Infrastructure](architecture/aws-infrastructure.md) | Terraform modules and AWS layout |
+| [Kubernetes](architecture/kubernetes.md) | k3s cluster, Kustomize layout, ingress |
+| [GitOps](architecture/gitops.md) | ArgoCD App-of-Apps with SOPS CMP |
+| [Networking](architecture/networking.md) | Tailscale mesh and ts.net ingress |
+| [Secrets Management](architecture/secrets-management.md) | SOPS + age workflow |
 
-## 🏗️ Architecture & Design
-
-Understand the "why" behind the project's design.
-
-| Document | Purpose |
-| :--- | :--- |
-| **[Main Architecture](architecture.md)** | High-level architectural principles and project vision. |
-| **[Terraform Architecture](../../infra/aws/docs/ARCHITECTURE.md)**| Deep-dive into the AWS infrastructure design. |
-| **[Secrets Management](secrets-management.md)** | Strategy for handling secrets with SOPS and age encryption. |
-| **[Security Audit](security/SECURITY_AUDIT.md)** | Comprehensive security analysis and hardening plan. |
-| **[Platform Engineering Roadmap](plans/PLATFORM_ENGINEERING_ROADMAP.md)**| The future vision for the homelab as a platform. |
-| **[QA DevOps Roadmap (30 Days)](plans/QA-DEVOPS-ROADMAP-30D.md)**| 30-day plan to raise test maturity with measurable QA gates. |
-
-## ⚙️ Core Components
-
-Detailed documentation for each major technology.
+## ⚙️ Operations
 
 | Document | Purpose |
-| :--- | :--- |
-| **[Terraform](../../infra/aws/README.md)** | Documentation for all AWS modules, variables, and outputs. |
-| **[Ansible](../../ansible/README.md)** | In-depth guide to all roles, playbooks, and inventory. |
-| **[Kubernetes (k8s)](../../k8s/apps/DEPLOYMENT.md)** | Overview of the application deployment strategy using Kustomize. |
-| **[GitOps](../../k8s/gitops/README.md)** | Explanation of the ArgoCD App-of-Apps model used. |
+|---|---|
+| [Terraform](operations/terraform.md) | Apply workflow, state, modules |
+| [Ansible](operations/ansible.md) | Roles, playbooks, inventory |
+| [Testing](operations/testing.md) | Molecule, LocalStack, smoke tests, E2E |
+| [SOPS Setup](operations/sops-setup.md) | Age key generation, encryption workflow |
+| [Cost & Scheduling](operations/cost-and-scheduling.md) | EC2 cost breakdown and scheduler Lambda |
+| [Resource Limits](operations/resource-limits.md) | Pod resource limits in the media namespace |
 
-## 📖 Runbooks & Operations
+## 📦 Services
 
-Guides for day-to-day operations and emergency procedures.
+See the **[Services index](services/README.md)** for the full matrix of all 16 deployed apps with namespace, node, and ingress hostname.
+
+## 🚨 Runbooks
+
+| Runbook | Severity |
+|---|---|
+| [Control plane recovery](runbooks/control-plane-recovery.md) | 🔴 Critical |
+| [Tailscale logged out](runbooks/tailscale-logged-out.md) | 🟡 Warning |
+| [*** VPN failure](runbooks/***-vpn-failure.md) | 🟡 Warning |
+| [Grafana dashboards broken](runbooks/grafana-dashboards.md) | 🟢 Info |
+
+See [Runbooks index](runbooks/README.md).
+
+## 🔧 Troubleshooting
+
+Lower-severity issues that don't need an on-call response.
 
 | Document | Purpose |
-| :--- | :--- |
-| **[Critical Recovery Plan](runbooks/CRITICAL-RECOVERY-PLAN.md)** | How to recover the control plane if it goes down. |
-| **[Tailscale Logged Out Recovery](runbooks/ROOT-CAUSE-TAILSCALE-LOGGED-OUT.md)**| Steps to fix Tailscale when devices can't connect. |
-| **[Checklists](checklists/)** | Various checklists for pull requests, post-merge validation, etc. |
-| **[Incidents](incidents/)** | Post-mortems and analysis of past incidents. |
+|---|---|
+| [Torrent P2P debugging](troubleshooting/torrent-p2p.md) | Why peers won't connect through the VPN |
 
-## 🔍 Troubleshooting
-
-Solutions for common problems.
+## 🔒 Security
 
 | Document | Purpose |
-| :--- | :--- |
-| **[VPN Fix Implementation Plan](troubleshooting/VPN_FIX_IMPLEMENTATION_PLAN.md)** | Guide to debugging and fixing the *** VPN sidecar. |
-| **[Performance Optimization Summary](troubleshooting/PERFORMANCE_OPTIMIZATION_SUMMARY.md)** | Analysis and solutions for performance issues. |
-| **[Grafana Dashboard Troubleshooting](troubleshooting/grafana-dashboard-troubleshooting.md)** | How to fix broken or misconfigured Grafana panels. |
+|---|---|
+| [Overview](security/overview.md) | Current security posture |
+| [Audit history](security/audit-history.md) | Chronological record of audits |
+| [Network policies](security/network-policies.md) | NET_ADMIN usage and NetworkPolicy design |
+| [Fixes backlog](security/fixes-backlog.md) | Open security action items |
+| [Latest review (2026-01-28)](reviews/2026-01-28-***-security.md) | *** security review |
 
-This documentation hub provides a clear and organized way to navigate the project.
+## 🤝 Contributing
+
+| Document | Purpose |
+|---|---|
+| [Project CONTRIBUTING](../CONTRIBUTING.md) | Workflow, PR process, code review |
+| [Conventions](CONVENTIONS.md) | Naming, versioning, doc rules |
+| [Doc style guide](contributing/doc-style.md) | Templates for runbooks, services, stubs |
+| [Ansible roles](contributing/ansible-roles.md) | How to scaffold and test a new role |
+| [Role template checklist](contributing/role-template.md) | What to fill in from `ansible/roles/.template/` |
+
+## 📚 Reference
+
+| Document | Purpose |
+|---|---|
+| [Makefile targets](reference/makefile-targets.md) | Every `make` target with one-line purpose |
+| [Tailnet services](reference/tailnet-services.md) | Every `*.tail57bf10.ts.net` hostname |
+| [Glossary](reference/glossary.md) | Project-specific terms |
+
+## 📅 Plans & Reviews
+
+| Section | Contents |
+|---|---|
+| [Plans](plans/README.md) | Forward-looking, time-boxed initiatives |
+| [Reviews](reviews/) | Date-prefixed audit and review artifacts |
+
+## 📁 Other directories
+
+- [`analysis/`](analysis/) — one-off analyses still relevant to today's stack
+- [`archive/`](archive/) — unmaintained content; excluded from CI link-checking. See [archive policy](archive/README.md).

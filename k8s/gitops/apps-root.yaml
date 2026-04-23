@@ -15,7 +15,7 @@ spec:
   project: default
 
   source:
-    repoURL: git@github.com:ariel99gf/homelab.git
+    repoURL: git@github.com:ariel-extending851/homelab.git
     targetRevision: develop # Tracks develop branch (primary development branch)
     path: k8s/apps
     # Kustomize will automatically detect kustomization.yaml in this directory

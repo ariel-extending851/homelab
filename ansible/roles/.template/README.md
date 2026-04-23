@@ -29,4 +29,4 @@ cd ansible/roles/[ROLE_NAME]
 molecule test
 ```
 
-See `ansible/TESTING.md` for detailed testing guide.
+See [`docs/operations/testing.md`](../../../docs/operations/testing.md) for the full testing guide and [`docs/contributing/role-template.md`](../../../docs/contributing/role-template.md) for the new-role checklist.

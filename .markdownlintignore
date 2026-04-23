@@ -1,0 +1,12 @@
+# Excluded from markdown linting
+
+# Archive — historical documents preserved as-is, not maintained
+docs/archive/
+
+# Vendor / external content
+.opencode/
+.claude/
+
+# Hidden directories
+.git/
+node_modules/

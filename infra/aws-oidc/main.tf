@@ -18,7 +18,7 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
 # Scoped to this repository only; any branch or workflow file can assume it.
 resource "aws_iam_role" "github_actions_terraform_plan" {
   name        = "github-actions-terraform-plan"
-  description = "Read-only role for terraform plan in CI. Assumed via OIDC by ariel99gf/homelab."
+  description = "Read-only role for terraform plan in CI. Assumed via OIDC by ariel-extending851/homelab."
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -28,7 +28,7 @@ resource "aws_iam_role" "github_actions_terraform_plan" {
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:ariel99gf/homelab:*"
+          "token.actions.githubusercontent.com:sub" = "repo:ariel-extending851/homelab:*"
         }
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"

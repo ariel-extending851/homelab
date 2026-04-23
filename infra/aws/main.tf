@@ -1,14 +1,16 @@
 # ==============================================================================
 # AWS Homelab Infrastructure - Root Configuration
 # ==============================================================================
-# Architecture: k3s cluster on EC2 Spot Instances
-# Cost: ~$17.65 USD/month (2× t3.small spot + 40GB gp3 EBS)
+# Architecture: k3s cluster on EC2 Spot Instances (t3.medium server + t3.small agent, 30 GB gp3 EBS each)
+# Cost: ~$24.59/month with scheduling, ~$45.55/month 24/7 (computed in outputs.tf:68-71)
+# See: docs/architecture/aws-infrastructure.md, docs/operations/cost-and-scheduling.md
 #
 # Modules:
-#   - network: VPC, subnets, security groups
-#   - compute: EC2 spot instances, IAM roles, SSH keys
+#   - network:   VPC, subnets, security group (Zero Trust — no public ingress)
+#   - compute:   EC2 spot instances, IAM, SSH key, k3s install user-data
+#   - scheduler: Lambda + EventBridge for daily start/stop (10:00 / 21:00 BRT)
 #
-# Security: SOPS-encrypted secrets, IMDSv2, EBS encryption
+# Security: SOPS-encrypted secrets, IMDSv2 required, EBS encryption
 # ==============================================================================
 
 terraform {

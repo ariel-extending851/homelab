@@ -69,7 +69,7 @@ scripts/rollback-proxy-migration.sh          |  84 ++++++
 ### 3. Naming & Architecture ✅ PASSED
 
 **Naming Conventions:**
-- ✅ `hl-` prefix used consistently (per conventions.md)
+- ✅ `hl-` prefix used consistently (per CONVENTIONS.md)
 - ✅ kebab-case: `hl-longhorn`, `hl-storage-capable`
 - ✅ File names use kebab-case: `migrate-proxies.sh`
 

@@ -32,7 +32,7 @@ run "iam_role_naming_convention" {
 
 run "trust_policy_scoped_to_repo" {
   assert {
-    condition = jsondecode(aws_iam_role.github_actions_terraform_plan.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"] == "repo:ariel99gf/homelab:*"
-    error_message = "Trust policy sub condition must be scoped to repo:ariel99gf/homelab:*"
+    condition = jsondecode(aws_iam_role.github_actions_terraform_plan.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"] == "repo:ariel-extending851/homelab:*"
+    error_message = "Trust policy sub condition must be scoped to repo:ariel-extending851/homelab:*"
   }
 }

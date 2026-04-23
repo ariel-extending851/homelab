@@ -21,7 +21,7 @@ sops_age_public_key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3m
 sops_age_private_key_path: "{{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt"
 
 # Git repository configuration
-git_repo_url: "git@github.com:ariel99gf/homelab.git"
+git_repo_url: "git@github.com:ariel-extending851/homelab.git"
 git_repo_branch: develop
 git_repo_path: k8s/apps
 
