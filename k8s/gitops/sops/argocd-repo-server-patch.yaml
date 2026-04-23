@@ -21,7 +21,6 @@ spec:
       # but keeping on AWS nodes avoids slow ARM image pulls on Pis
       nodeSelector:
         kubernetes.io/arch: amd64
-
       # Init container: install SOPS binary (architecture-aware)
       initContainers:
         - name: install-sops
@@ -51,7 +50,19 @@ spec:
             limits:
               cpu: 100m
               memory: 64Mi
-
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+                - FOWNER
+                - SETGID
+                - SETUID
+            seccompProfile:
+              type: RuntimeDefault
       containers:
         # Main repo-server container — mount Age key + SOPS for inline use
         - name: argocd-repo-server
@@ -65,7 +76,33 @@ spec:
             - name: custom-tools
               mountPath: /usr/local/bin/sops
               subPath: sops
-
+            - name: argocd-repo-server-tmp
+              mountPath: /tmp
+            - name: argocd-repo-server-ssh
+              mountPath: /app/config/ssh
+            - name: argocd-repo-server-tls
+              mountPath: /app/config/tls
+            - name: argocd-repo-server-gpg-source
+              mountPath: /app/config/gpg/source
+            - name: argocd-repo-server-gpg-keys
+              mountPath: /app/config/gpg/keys
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
         # CMP sidecar: runs argocd-cmp-server with SOPS plugin
         # Discovers SOPS-encrypted files and decrypts before kustomize build
         - name: cmp-sops
@@ -75,6 +112,13 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 999
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: SOPS_AGE_KEY_FILE
               value: /helm-sops-tools/age-key/keys.txt
@@ -101,7 +145,6 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
-
       volumes:
         - name: sops-age-key
           secret:
@@ -117,4 +160,14 @@ spec:
           configMap:
             name: cmp-plugin
         - name: cmp-tmp
+          emptyDir: {}
+        - name: argocd-repo-server-tmp
+          emptyDir: {}
+        - name: argocd-repo-server-ssh
+          emptyDir: {}
+        - name: argocd-repo-server-tls
+          emptyDir: {}
+        - name: argocd-repo-server-gpg-source
+          emptyDir: {}
+        - name: argocd-repo-server-gpg-keys
           emptyDir: {}
