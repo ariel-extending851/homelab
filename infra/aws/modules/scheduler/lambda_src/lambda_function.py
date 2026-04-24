@@ -15,14 +15,75 @@ Event Input:
 """
 
 import json
+import logging
 import os
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 from datetime import datetime, timezone
 from typing import Dict, Any, List
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
+# EC2 error codes worth letting EventBridge retry on.
+# Anything else (InvalidInstanceID.NotFound, UnauthorizedOperation, ...) is
+# permanent and retrying only generates noise.
+_RETRYABLE_EC2_ERROR_CODES = frozenset(
+    {
+        "Throttling",
+        "ThrottlingException",
+        "RequestLimitExceeded",
+        "TooManyRequestsException",
+        "InternalError",
+        "InternalFailure",
+        "ServiceUnavailable",
+    }
+)
 
 # Initialize AWS clients
 # Region is inferred from Lambda's AWS_REGION environment variable
 ec2 = boto3.client("ec2", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+
+
+def _is_retryable(err: Exception) -> bool:
+    """True if the caller should re-raise so EventBridge retries the invocation.
+
+    BotoCoreError subclasses (connection/DNS/SSL failures) are always treated
+    as transient. ClientError is retryable only for whitelisted EC2 codes.
+    """
+    if isinstance(err, BotoCoreError):
+        return True
+    if isinstance(err, ClientError):
+        code = err.response.get("Error", {}).get("Code", "")
+        return code in _RETRYABLE_EC2_ERROR_CODES
+    return False
+
+
+def _ec2_error_response(operation: str, err: Exception) -> Dict[str, Any]:
+    """Build a structured 502 response for a *permanent* boto3 error.
+
+    The returned ``statusCode`` is useful for synchronous/manual callers such as
+    a Lambda Function URL. For EventBridge-triggered Lambda invocations the
+    return payload is ignored for retry purposes: retries only happen when the
+    invocation fails with a Lambda error (exception or timeout). Transient
+    errors are therefore re-raised by the caller (see ``_is_retryable``) so
+    EventBridge's built-in async retry applies; this helper is called only for
+    permanent errors where retrying would not help.
+    """
+    if isinstance(err, ClientError):
+        code = err.response.get("Error", {}).get("Code", "ClientError")
+        message = err.response.get("Error", {}).get("Message", str(err))
+    else:
+        code = type(err).__name__
+        message = str(err)
+    body = {"error": code, "message": message, "operation": operation}
+    # logger.exception preserves the traceback in CloudWatch for post-mortem.
+    logger.exception("EC2 %s failed (permanent): %s", operation, code)
+    return {
+        "statusCode": 502,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(body),
+    }
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -57,8 +118,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ),
         }
 
-    # Get current instance states
-    instances = get_instance_details(instance_ids)
+    # Get current instance states.
+    # Transient errors (throttling, connection failures) are re-raised so
+    # EventBridge retries the invocation; permanent errors return a structured
+    # 502 for Function URL callers.
+    try:
+        instances = get_instance_details(instance_ids)
+    except (ClientError, BotoCoreError) as err:
+        if _is_retryable(err):
+            raise
+        return _ec2_error_response("describe_instances", err)
 
     result = {
         "action": action,
@@ -71,7 +140,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if action == "start":
         stopped = [i["InstanceId"] for i in instances if i["State"] == "stopped"]
         if stopped:
-            ec2.start_instances(InstanceIds=stopped)
+            try:
+                ec2.start_instances(InstanceIds=stopped)
+            except (ClientError, BotoCoreError) as err:
+                if _is_retryable(err):
+                    raise
+                return _ec2_error_response("start_instances", err)
             result["started"] = stopped
             result["message"] = f"Started {len(stopped)} instance(s)"
         else:
@@ -80,7 +154,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     elif action == "stop":
         running = [i["InstanceId"] for i in instances if i["State"] == "running"]
         if running:
-            ec2.stop_instances(InstanceIds=running)
+            try:
+                ec2.stop_instances(InstanceIds=running)
+            except (ClientError, BotoCoreError) as err:
+                if _is_retryable(err):
+                    raise
+                return _ec2_error_response("stop_instances", err)
             result["stopped"] = running
             result["message"] = f"Stopped {len(running)} instance(s)"
         else:
