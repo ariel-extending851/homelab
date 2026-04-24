@@ -218,6 +218,37 @@
     mode: '0644'
   when: log_rotation.enabled | bool
 
+# /proc/device-tree/model is the authoritative hardware identifier on a Pi —
+# it reports e.g. "Raspberry Pi 3 Model B Rev 1.2" or "Raspberry Pi 4 Model B Rev 1.4".
+# The file is absent in Docker, so we tolerate that and let rpi_model_override
+# (set by molecule) take over when running tests.
+- name: Detect Raspberry Pi hardware model
+  ansible.builtin.slurp:
+    src: /proc/device-tree/model
+  register: rpi_model_raw
+  failed_when: false
+  changed_when: false
+  tags:
+    - validate
+    - rpi3
+
+- name: Set rpi_model fact
+  ansible.builtin.set_fact:
+    rpi_model: >-
+      {{ rpi_model_override
+         | default((rpi_model_raw.content | default('') | b64decode).replace('\u0000', '')) }}
+  tags:
+    - validate
+    - rpi3
+
+- name: Apply RPi 3-only power optimizations
+  ansible.builtin.include_tasks: rpi3_power.yml
+  when:
+    - rpi3_power.enabled | bool
+    - "'Raspberry Pi 3' in rpi_model"
+  tags:
+    - rpi3
+
 - name: Display final memory status
   ansible.builtin.command: free -h
   register: final_memory

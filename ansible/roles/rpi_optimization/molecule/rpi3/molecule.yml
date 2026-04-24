@@ -1,0 +1,92 @@
+---
+# Molecule scenario: rpi3
+# Exercises the RPi 3-only power optimizations path in main.yml.
+# Mocks /proc/device-tree/model via rpi_model_override (set in converge.yml)
+# and redirects the boot config to /tmp/config.txt so the role writes into a
+# location that exists inside the Docker container.
+#
+# Complements the default scenario (swap/sysctl/logrotate) and sysctl scenario
+# (runtime kernel values). This scenario verifies boot-config mutations only.
+
+driver:
+  name: docker
+
+platforms:
+  - name: rpi3-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    privileged: true
+    hostname: rpi3-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          rpi3-test:
+            architecture: arm64
+            memory_gb: 1
+    group_vars:
+      all:
+        # Docker runs as root — no sudo needed.
+        ansible_become: false
+        # Skip swap/logrotate side effects; this scenario is about boot config.
+        molecule_testing: true
+        swap:
+          enabled: false
+          file_path: /tmp/rpi3-test-swapfile
+          size_mb: 0
+          swappiness: 10
+          vfs_cache_pressure: 50
+          use_fallocate: false
+        required_disk_space_gb: 0
+        memory:
+          overcommit_memory: 1
+          min_free_kbytes: 4096
+          dirty_ratio: 10
+          dirty_background_ratio: 5
+        kernel:
+          max_map_count: 262144
+          max_user_watches: 131072
+          file_max: 524288
+          netfilter_connection_tracking_max: 131072
+        log_rotation:
+          enabled: false
+          max_size: 50M
+          max_files: 3
+          compress: true
+        # Redirect boot config to a writable path in the container.
+        rpi3_power:
+          enabled: true
+          config_path: /tmp/config.txt
+          overlays:
+            - disable-wifi
+            - disable-bt
+          max_usb_current: 1
+
+scenario:
+  # nf_conntrack_max is set with ignore_errors and can cause spurious
+  # idempotence failures in isolated container kernels — align with the
+  # sysctl scenario and omit the idempotence step.
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: ansible

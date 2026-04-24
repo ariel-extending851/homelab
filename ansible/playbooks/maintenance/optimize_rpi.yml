@@ -120,3 +120,15 @@
           Or manually:
             ssh {{ ansible_user }}@{{ ansible_host }} 'sudo reboot'
       when: ansible_sysctl is defined
+
+    # Boot-config changes (WiFi/BT overlays, USB current) only take effect
+    # after the kernel re-reads /boot/firmware/config.txt at boot time.
+    - name: Flag RPi 3 boot-config reboot requirement
+      ansible.builtin.debug:
+        msg: >-
+          ⚠️  {{ inventory_hostname }} is a Raspberry Pi 3 — WiFi/BT/USB power
+          changes in {{ (rpi3_power | default({})).config_path | default('/boot/firmware/config.txt') }}
+          require a reboot to activate.
+      when:
+        - rpi_model is defined
+        - "'Raspberry Pi 3' in (rpi_model | default(''))"

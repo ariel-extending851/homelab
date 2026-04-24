@@ -1,0 +1,26 @@
+---
+# Bootstrap python3/sudo and seed a placeholder boot config file so the role
+# operates against a realistic-looking /boot/firmware/config.txt.
+
+- name: Prepare
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Bootstrap python3 and sudo (raw — no python needed)
+      ansible.builtin.raw: |
+        apt-get update -qq && apt-get install -y -qq sudo python3 2>&1
+      changed_when: false
+
+    - name: Seed a minimal config.txt (simulates a factory-state Pi boot config)
+      ansible.builtin.copy:
+        dest: /tmp/config.txt
+        mode: '0644'
+        content: |
+          # Raspberry Pi configuration file (test fixture)
+          arm_64bit=1
+          kernel=kernel8.img
+
+          [pi4]
+          # pre-existing RPi 4 overlay block — must NOT be modified by the role
+          dtoverlay=vc4-kms-v3d

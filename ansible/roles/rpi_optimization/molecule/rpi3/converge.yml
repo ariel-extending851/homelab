@@ -1,0 +1,52 @@
+---
+# Converge: apply the role with a mocked RPi 3 model string so the include
+# block in main.yml fires. All other side effects (swap, logrotate) are
+# disabled via group_vars in molecule.yml.
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Install prerequisite packages
+      ansible.builtin.apt:
+        name:
+          - procps
+          - util-linux
+        update_cache: true
+        cache_valid_time: 3600
+      changed_when: false
+
+    - name: Ensure /etc/fstab exists
+      ansible.builtin.file:
+        path: /etc/fstab
+        state: touch
+        mode: '0644'
+      changed_when: false
+
+    - name: Ensure /etc/sysctl.d exists
+      ansible.builtin.file:
+        path: /etc/sysctl.d
+        state: directory
+        mode: '0755'
+
+    # Disk-space precheck in the role expects a '/' entry in ansible_mounts.
+    - name: Inject simulated root mount fact
+      ansible.builtin.set_fact:
+        ansible_mounts:
+          - mount: /
+            size_available: 10737418240
+            size_total: 32212254720
+            device: overlay
+            fstype: overlay
+
+    # This is the key mock: /proc/device-tree/model does not exist in Docker,
+    # so we override the detected model directly. main.yml prefers this
+    # override when it is defined.
+    - name: Mock RPi 3 hardware detection
+      ansible.builtin.set_fact:
+        rpi_model_override: "Raspberry Pi 3 Model B Rev 1.2"
+
+  roles:
+    - role: rpi_optimization

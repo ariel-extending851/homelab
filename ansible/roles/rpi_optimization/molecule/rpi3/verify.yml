@@ -1,0 +1,91 @@
+---
+# Verify: the role wrote exactly one copy of each RPi 3 power line into
+# /tmp/config.txt, and left the pre-existing [pi4] block untouched.
+
+- name: Verify rpi_optimization rpi3 scenario
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    config_path: /tmp/config.txt
+
+  tasks:
+    - name: Read the resulting config.txt
+      ansible.builtin.slurp:
+        src: "{{ config_path }}"
+      register: final_config
+
+    - name: Decode config contents
+      ansible.builtin.set_fact:
+        config_text: "{{ final_config.content | b64decode }}"
+
+    - name: Assert [all] section header is present
+      ansible.builtin.assert:
+        that:
+          - config_text is search('(?m)^\[all\]\s*$')
+        fail_msg: "Expected [all] section header in {{ config_path }}"
+
+    - name: Assert disable-wifi overlay line is present exactly once
+      ansible.builtin.assert:
+        that:
+          - config_text.split('\n') | select('match', '^dtoverlay=disable-wifi\s*$') | list | length == 1
+        fail_msg: "Expected exactly one 'dtoverlay=disable-wifi' line in {{ config_path }}"
+
+    - name: Assert disable-bt overlay line is present exactly once
+      ansible.builtin.assert:
+        that:
+          - config_text.split('\n') | select('match', '^dtoverlay=disable-bt\s*$') | list | length == 1
+        fail_msg: "Expected exactly one 'dtoverlay=disable-bt' line in {{ config_path }}"
+
+    - name: Assert max_usb_current=1 is present exactly once
+      ansible.builtin.assert:
+        that:
+          - config_text.split('\n') | select('match', '^max_usb_current=1\s*$') | list | length == 1
+        fail_msg: "Expected exactly one 'max_usb_current=1' line in {{ config_path }}"
+
+    - name: Assert pre-existing [pi4] block was preserved (not clobbered)
+      ansible.builtin.assert:
+        that:
+          - config_text is search('\[pi4\]')
+          - config_text is search('dtoverlay=vc4-kms-v3d')
+        fail_msg: "Pre-existing [pi4] block was modified or removed"
+
+    - name: Re-run the RPi 3 power tasks to prove idempotence
+      ansible.builtin.include_role:
+        name: rpi_optimization
+        tasks_from: rpi3_power.yml
+      vars:
+        rpi3_power:
+          enabled: true
+          config_path: "{{ config_path }}"
+          overlays:
+            - disable-wifi
+            - disable-bt
+          max_usb_current: 1
+      register: second_run
+
+    - name: Read config.txt after the second run
+      ansible.builtin.slurp:
+        src: "{{ config_path }}"
+      register: final_config_2
+
+    - name: Assert idempotence — file contents identical after re-run
+      ansible.builtin.assert:
+        that:
+          - final_config.content == final_config_2.content
+        fail_msg: "rpi3_power tasks are not idempotent — config.txt changed on second run"
+
+    - name: Display verification summary
+      ansible.builtin.debug:
+        msg: |
+          =========================================
+          rpi_optimization rpi3 — Molecule Verify PASSED
+          =========================================
+          ✓ [all] section header present
+          ✓ dtoverlay=disable-wifi (exactly once)
+          ✓ dtoverlay=disable-bt (exactly once)
+          ✓ max_usb_current=1 (exactly once)
+          ✓ Pre-existing [pi4] block preserved
+          ✓ Second run is a no-op (idempotent)
+          =========================================

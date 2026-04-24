@@ -1,0 +1,72 @@
+---
+# RPi 3-only power optimizations.
+# Disables onboard WiFi + Bluetooth and raises the USB current limit so the
+# SBC can deliver more power to an attached SSD. Only included by main.yml
+# after the /proc/device-tree/model check matches "Raspberry Pi 3".
+
+- name: Check that RPi boot config file exists
+  ansible.builtin.stat:
+    path: "{{ rpi3_power.config_path }}"
+  register: rpi3_config_stat
+  tags:
+    - rpi3
+
+- name: Warn and skip if RPi boot config is missing
+  ansible.builtin.debug:
+    msg: "RPi boot config not found at {{ rpi3_power.config_path }} — skipping RPi 3 power optimizations."
+  when: not rpi3_config_stat.stat.exists
+  tags:
+    - rpi3
+
+- name: Ensure [all] section header exists in RPi boot config
+  ansible.builtin.lineinfile:
+    path: "{{ rpi3_power.config_path }}"
+    line: "[all]"
+    regexp: '^\[all\]\s*$'
+    state: present
+    create: false
+  when: rpi3_config_stat.stat.exists
+  tags:
+    - rpi3
+
+- name: Apply RPi 3 dtoverlay entries (disable WiFi + Bluetooth)
+  ansible.builtin.lineinfile:
+    path: "{{ rpi3_power.config_path }}"
+    line: "dtoverlay={{ item }}"
+    regexp: "^#?dtoverlay={{ item }}\\s*$"
+    insertafter: '^\[all\]\s*$'
+    state: present
+  loop: "{{ rpi3_power.overlays }}"
+  loop_control:
+    label: "dtoverlay={{ item }}"
+  when: rpi3_config_stat.stat.exists
+  tags:
+    - rpi3
+
+- name: Raise USB bus current limit for external SSD power delivery
+  ansible.builtin.lineinfile:
+    path: "{{ rpi3_power.config_path }}"
+    line: "max_usb_current={{ rpi3_power.max_usb_current }}"
+    regexp: '^#?max_usb_current=.*$'
+    insertafter: '^\[all\]\s*$'
+    state: present
+  when: rpi3_config_stat.stat.exists
+  tags:
+    - rpi3
+
+- name: Display RPi 3 power optimization summary
+  ansible.builtin.debug:
+    msg: |
+      =========================================
+      RPi 3 Power Optimizations Applied
+      =========================================
+      Config file: {{ rpi3_power.config_path }}
+      Disabled overlays: {{ rpi3_power.overlays | join(', ') }}
+      max_usb_current: {{ rpi3_power.max_usb_current }}
+
+      ⚠️  A reboot is required for these changes to take effect.
+      =========================================
+  when: rpi3_config_stat.stat.exists
+  tags:
+    - rpi3
+    - validate

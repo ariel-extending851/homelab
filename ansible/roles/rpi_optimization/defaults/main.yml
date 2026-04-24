@@ -51,3 +51,15 @@ thermal:
   enabled: true
   warning_temp: 70
   critical_temp: 80
+
+# RPi 3-only power optimizations for external SSD stability.
+# Disables WiFi/Bluetooth radios (SBC draws less current) and raises the USB
+# bus current limit so an attached SSD is less likely to brown out.
+# Skipped on RPi 4 Model B — its native USB 3.0 power delivery handles SSDs.
+rpi3_power:
+  enabled: true
+  config_path: /boot/firmware/config.txt
+  overlays:
+    - disable-wifi
+    - disable-bt
+  max_usb_current: 1

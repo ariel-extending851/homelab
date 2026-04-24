@@ -304,6 +304,10 @@ ansible-emergency: ## Run emergency recovery playbook
 	@echo "🚨 Running emergency recovery..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/recovery/emergency_recovery.yml
 
+ansible-optimize-rpi: ## Optimize Raspberry Pi nodes (swap, sysctl, logrotate, RPi 3 boot config)
+	@echo "🍓 Optimizing Raspberry Pi nodes..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml
+
 ##@ Kubernetes Management
 
 k8s-nodes: ## Show Kubernetes nodes
@@ -594,12 +598,14 @@ test-molecule-emergency-recovery: ## Run Molecule tests for emergency_recovery r
 	@cd $(ANSIBLE_DIR)/roles/emergency_recovery && $(MISE_EXEC) molecule test
 	@echo "  ✓ emergency_recovery role tests passed."
 
-test-molecule-rpi: ## Run Molecule tests for rpi_optimization role (default + sysctl scenarios)
+test-molecule-rpi: ## Run Molecule tests for rpi_optimization role (default + sysctl + rpi3 scenarios)
 	@echo "🧪 Testing rpi_optimization role with Molecule (default scenario)..."
 	@cd $(ANSIBLE_DIR)/roles/rpi_optimization && $(MISE_EXEC) molecule test
 	@echo "🧪 Testing rpi_optimization role with Molecule (sysctl scenario — runtime kernel values)..."
 	@cd $(ANSIBLE_DIR)/roles/rpi_optimization && $(MISE_EXEC) molecule test -s sysctl
-	@echo "  ✓ rpi_optimization role tests passed (both scenarios)."
+	@echo "🧪 Testing rpi_optimization role with Molecule (rpi3 scenario — RPi 3-only boot config)..."
+	@cd $(ANSIBLE_DIR)/roles/rpi_optimization && $(MISE_EXEC) molecule test -s rpi3
+	@echo "  ✓ rpi_optimization role tests passed (all three scenarios)."
 
 test-molecule-argocd: ## Run Molecule tests for argocd role (default + sops scenarios)
 	@echo "🧪 Testing argocd role with Molecule (default scenario)..."
