@@ -90,9 +90,7 @@ def test_describe_instances_throttling_raises_for_retry():
     with patch.dict(os.environ, ENV):
         with patch.object(lambda_function, "ec2", mock_ec2):
             with pytest.raises(ClientError) as exc_info:
-                lambda_function.lambda_handler(
-                    {"action": "start"}, _make_context()
-                )
+                lambda_function.lambda_handler({"action": "start"}, _make_context())
 
     assert exc_info.value.response["Error"]["Code"] == "RequestLimitExceeded"
 
@@ -106,9 +104,7 @@ def test_describe_instances_network_error_raises_for_retry():
     with patch.dict(os.environ, ENV):
         with patch.object(lambda_function, "ec2", mock_ec2):
             with pytest.raises(EndpointConnectionError):
-                lambda_function.lambda_handler(
-                    {"action": "stop"}, _make_context()
-                )
+                lambda_function.lambda_handler({"action": "stop"}, _make_context())
 
 
 # ---------------------------------------------------------------------------
@@ -233,9 +229,7 @@ def test_start_instances_throttling_raises_for_retry():
     with patch.dict(os.environ, ENV):
         with patch.object(lambda_function, "ec2", mock_ec2):
             with pytest.raises(ClientError):
-                lambda_function.lambda_handler(
-                    {"action": "start"}, _make_context()
-                )
+                lambda_function.lambda_handler({"action": "start"}, _make_context())
 
 
 def test_stop_instances_network_error_raises_for_retry():
@@ -261,9 +255,7 @@ def test_stop_instances_network_error_raises_for_retry():
     with patch.dict(os.environ, ENV):
         with patch.object(lambda_function, "ec2", mock_ec2):
             with pytest.raises(EndpointConnectionError):
-                lambda_function.lambda_handler(
-                    {"action": "stop"}, _make_context()
-                )
+                lambda_function.lambda_handler({"action": "stop"}, _make_context())
 
 
 # ---------------------------------------------------------------------------
