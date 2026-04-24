@@ -21,7 +21,8 @@
 		validate-terraform-tests validate-k8s-policies validate-k8s-policies-critical validate-k8s-dry-run \
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
-		setup-ci-deps-workflow-lint lint-workflows
+		setup-ci-deps-workflow-lint lint-workflows \
+		preflight drift
 
 # Default target
 .DEFAULT_GOAL := help
@@ -1215,3 +1216,11 @@ show-costs: ## Show estimated costs using the code defaults
 	@infracost breakdown --path $(TERRAFORM_DIR) \
 		--usage-file infracost-usage.yml \
 		--terraform-var is_cost_scan=true
+
+##@ Pre-deploy diagnostics
+
+preflight: ## Run pre-deploy chain checks (tools/AWS/SOPS/Tailscale/SSH/SSM/kube/git)
+	@python3 bin/preflight.py
+
+drift: ## Detect Terraform / ArgoCD / inventory drift
+	@python3 bin/drift.py
