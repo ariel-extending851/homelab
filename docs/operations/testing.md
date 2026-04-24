@@ -157,7 +157,7 @@ LocalStack mocks AWS APIs. Use it to validate Terraform module structure, variab
 ### Quick start
 
 ```bash
-docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm localstack/localstack:latest
+docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm localstack/localstack:3.8.1
 sleep 15
 cd infra/aws
 python3 scripts/validate_localstack.py

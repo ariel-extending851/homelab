@@ -11,7 +11,7 @@
 #   - Security groups are metadata-only (no traffic enforcement)
 services:
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.8.1
     container_name: homelab-localstack
     ports:
       - "4566:4566"

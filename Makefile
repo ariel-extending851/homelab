@@ -669,7 +669,7 @@ validate-arm64-binary: ## Verify shell scripts are portable (check shebang/forma
 # incurring any AWS charges.
 #
 # Prerequisites:
-#   LocalStack:  docker run -d -p 4566:4566 localstack/localstack
+#   LocalStack:  docker run -d -p 4566:4566 localstack/localstack:3.8.1
 #   awslocal:    pip install awscli-local
 #   mock inv:    ansible/inventory/mock_aws.yml   (already committed)
 #
@@ -1010,7 +1010,7 @@ hybrid-dry-run-prereqs: ## Check prerequisites for hybrid dry-run
 	@command -v docker >/dev/null 2>&1 || (echo "❌ Docker not found"; exit 1)
 	@docker ps --filter "name=localstack" --format "{{.Names}}" 2>/dev/null | grep -q localstack || \
 		(echo "❌ LocalStack container not running.  Start it with:"; \
-		 echo "   docker run -d --name localstack -p 4566:4566 localstack/localstack"; \
+		 echo "   docker run -d --name localstack -p 4566:4566 localstack/localstack:3.8.1"; \
 		 exit 1)
 	@echo "  ⏳ Checking LocalStack service health (S3, STS, EC2)..."
 	@if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then \

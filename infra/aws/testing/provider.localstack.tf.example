@@ -17,7 +17,7 @@
 #
 # PREREQUISITES:
 #   1. LocalStack running:
-#        docker run -d --name localstack -p 4566:4566 localstack/localstack
+#        docker run -d --name localstack -p 4566:4566 localstack/localstack:3.8.1
 #   2. tflocal installed:
 #        pip install terraform-local
 #   3. awslocal installed:

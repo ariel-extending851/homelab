@@ -122,7 +122,7 @@ For the full variable matrix see [`../architecture/aws-infrastructure.md#variabl
 LocalStack lets you `terraform plan` without an AWS account. It validates module structure, variables, and resource dependencies — but **not** EC2 provisioning, IAM, or k3s installation.
 
 ```bash
-docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm localstack/localstack:latest
+docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm localstack/localstack:3.8.1
 sleep 15
 cd infra/aws
 python3 scripts/validate_localstack.py

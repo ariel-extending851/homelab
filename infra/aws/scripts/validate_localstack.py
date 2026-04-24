@@ -71,7 +71,7 @@ class LocalStackTester:
         self.log_error("LocalStack is not running on localhost:4566")
         self.log_warning(
             "Start LocalStack with: "
-            "docker run -d -p 4566:4566 localstack/localstack:latest"
+            "docker run -d -p 4566:4566 localstack/localstack:3.8.1"
         )
         return False
 
