@@ -22,7 +22,7 @@
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
-		preflight drift
+		preflight drift morning-sync
 
 # Default target
 .DEFAULT_GOAL := help
@@ -684,6 +684,10 @@ TERRAFORM_DIR_AWS   := infra/aws
 smoke-test: ## Post-deploy smoke test — verifies ArgoCD sync, pod health, and namespaces (requires live cluster)
 	@echo "🔍 Running post-deploy smoke tests..."
 	@python3 bin/smoke_test.py
+
+morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
+	@echo "🌅 Running morning sync health check..."
+	@python3 bin/morning_sync.py
 
 ##@ E2E Post-Deployment Testing
 
