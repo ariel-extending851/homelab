@@ -1228,3 +1228,6 @@ preflight: ## Run pre-deploy chain checks (tools/AWS/SOPS/Tailscale/SSH/SSM/kube
 
 drift: ## Detect Terraform / ArgoCD / inventory drift
 	@python3 bin/drift.py
+
+drift-fix: ## Detect drift and auto-apply fixes (terraform refresh + argocd sync) without prompting
+	@python3 bin/drift.py --fix

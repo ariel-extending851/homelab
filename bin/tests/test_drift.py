@@ -261,3 +261,188 @@ def test_build_arg_parser_defaults():
 def test_main_all_skipped_returns_zero():
     code = drift.main(["--skip-tf", "--skip-argo", "--skip-inventory", "-o", "json"])
     assert code == 0
+
+
+# ── --fix / --no-fix flags ───────────────────────────────────────────────────
+
+
+def test_arg_parser_fix_flags():
+    p = drift.build_arg_parser()
+    args = p.parse_args(["--fix"])
+    assert args.fix is True
+    assert args.no_fix is False
+
+    args = p.parse_args(["--no-fix"])
+    assert args.no_fix is True
+    assert args.fix is False
+
+
+def test_fix_and_no_fix_are_mutually_exclusive():
+    import subprocess as _sp
+    result = _sp.run(
+        ["python3", str(Path(__file__).resolve().parents[1] / "drift.py"), "--fix", "--no-fix"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+
+
+# ── offer_fixes: no-fix / no drift ──────────────────────────────────────────
+
+
+def test_offer_fixes_no_drift_returns_zero():
+    d = drift.Drift(_args(no_fix=True))
+    d.pass_("tf.drift", "clean")
+    assert d.offer_fixes(io.StringIO()) == 0
+
+
+def test_offer_fixes_no_fix_flag_skips_prompt():
+    d = drift.Drift(_args(no_fix=True))
+    d._tf_drifted = True
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    # --no-fix: no prompt, no fix, exit code unchanged (1 because no checks added yet)
+    assert rc == 0  # exit_code() with no checks = 0
+    assert buf.getvalue() == ""
+
+
+def test_offer_fixes_non_tty_prints_hint(monkeypatch):
+    monkeypatch.setattr("sys.stdin", io.StringIO())  # non-TTY
+    d = drift.Drift(_args())
+    d.fail("tf.drift", "drift")
+    d._tf_drifted = True
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    assert rc == 1
+    assert "--fix" in buf.getvalue()
+
+
+# ── offer_fixes: --fix auto-applies ─────────────────────────────────────────
+
+
+@patch("drift.subprocess.run")
+def test_offer_fixes_fix_flag_runs_tf_apply(mock_run):
+    mock_run.return_value = _proc(0)
+    d = drift.Drift(_args(fix=True))
+    d.fail("tf.drift", "drift")
+    d._tf_drifted = True
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    assert rc == 0
+    assert "terraform" in buf.getvalue()
+    # subprocess.run called once for apply
+    mock_run.assert_called_once()
+    cmd = mock_run.call_args[0][0]
+    assert "apply" in cmd
+    assert "-refresh-only" in cmd
+
+
+@patch("drift.subprocess.run")
+def test_offer_fixes_fix_flag_runs_argo_sync_with_argocd_cli(mock_run, monkeypatch):
+    monkeypatch.setattr(drift, "_which", lambda cmd: "/usr/bin/argocd" if cmd == "argocd" else None)
+    mock_run.return_value = _proc(0)
+    d = drift.Drift(_args(fix=True))
+    d.fail("argo.drift", "bad")
+    d._argo_drifted_apps = ["myapp", "otherapp"]
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    assert rc == 0
+    assert mock_run.call_count == 2
+    for call in mock_run.call_args_list:
+        cmd = call[0][0]
+        assert cmd[0] == "argocd"
+        assert "sync" in cmd
+
+
+@patch("drift.subprocess.run")
+def test_offer_fixes_kubectl_fallback_when_no_argocd_cli(mock_run, monkeypatch):
+    monkeypatch.setattr(drift, "_which", lambda _cmd: None)
+    mock_run.return_value = _proc(0)
+    d = drift.Drift(_args(fix=True))
+    d.fail("argo.drift", "bad")
+    d._argo_drifted_apps = ["myapp"]
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    assert rc == 0
+    cmd = mock_run.call_args[0][0]
+    assert cmd[0] == "kubectl"
+    assert "argocd.argoproj.io/refresh=hard" in cmd
+
+
+@patch("drift.subprocess.run")
+def test_offer_fixes_fix_tf_failure_returns_nonzero(mock_run):
+    mock_run.return_value = _proc(1, "", "apply failed")
+    d = drift.Drift(_args(fix=True))
+    d.fail("tf.drift", "drift")
+    d._tf_drifted = True
+    buf = io.StringIO()
+    rc = d.offer_fixes(buf)
+    assert rc == 1
+
+
+# ── _count_tf_changed_resources ─────────────────────────────────────────────
+
+
+def test_count_tf_changed_resources_empty():
+    assert drift._count_tf_changed_resources("") == 0
+
+
+def test_count_tf_changed_resources_two_resources():
+    plan = (
+        "  # aws_instance.foo has changed\n"
+        "  # aws_security_group.bar has changed\n"
+        "  ~ resource_type = old -> new\n"
+    )
+    assert drift._count_tf_changed_resources(plan) == 2
+
+
+def test_count_tf_changed_resources_ignores_unrelated_lines():
+    plan = "Terraform will perform the following actions:\n  # aws_vpc.main has changed\n"
+    assert drift._count_tf_changed_resources(plan) == 1
+
+
+# ── tf.drift message includes resource count ─────────────────────────────────
+
+
+@patch("drift.subprocess.run")
+def test_check_terraform_drift_message_includes_count(mock_run, monkeypatch, tmp_path):
+    monkeypatch.setattr(drift, "TERRAFORM_DIR", tmp_path)
+    plan_output = (
+        "  # aws_instance.foo has changed\n"
+        "  # aws_s3_bucket.bar has changed\n"
+    )
+    mock_run.side_effect = [_proc(0), _proc(2, plan_output)]
+    d = drift.Drift(_args(skip_tf=False))
+    d.check_terraform()
+    msg = d.checks[-1]["message"]
+    assert "drift detected" in msg
+    assert "2 resource(s)" in msg
+    assert d._tf_drifted is True
+
+
+# ── argo drifted apps list populated ────────────────────────────────────────
+
+
+@patch("drift.subprocess.run")
+def test_check_argo_populates_drifted_apps_list(mock_run):
+    mock_run.return_value = _proc(
+        0,
+        _argocd_items(
+            [
+                _argo_app("ok"),
+                _argo_app("bad1", sync="OutOfSync"),
+                _argo_app("bad2", health="Degraded"),
+            ]
+        ),
+    )
+    d = drift.Drift(_args(skip_argo=False))
+    d.check_argo()
+    assert set(d._argo_drifted_apps) == {"bad1", "bad2"}
+
+
+@patch("drift.subprocess.run")
+def test_check_argo_healthy_leaves_drifted_list_empty(mock_run):
+    mock_run.return_value = _proc(0, _argocd_items([_argo_app("a"), _argo_app("b")]))
+    d = drift.Drift(_args(skip_argo=False))
+    d.check_argo()
+    assert d._argo_drifted_apps == []
