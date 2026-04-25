@@ -22,7 +22,7 @@
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
-		preflight drift morning-sync
+		preflight drift morning-sync update-versions update-versions-dry-run
 
 # Default target
 .DEFAULT_GOAL := help
@@ -1231,3 +1231,9 @@ drift: ## Detect Terraform / ArgoCD / inventory drift
 
 drift-fix: ## Detect drift and auto-apply fixes (terraform refresh + argocd sync) without prompting
 	@python3 bin/drift.py --fix
+
+update-versions: ## Scan for outdated versions, create a branch, apply updates, lint, and stage for review
+	@python3 bin/update_versions.py
+
+update-versions-dry-run: ## Preview outdated versions across Ansible, Terraform, and Kubernetes (no file changes)
+	@python3 bin/update_versions.py --dry-run
