@@ -3,3 +3,5 @@ argocd        argocd-repo-server-7d9f8c6b5d-xyz98  1/1     Running            0 
 monitoring    prometheus-0                          2/2     Running            1 (3h ago)      2d
 monitoring    loki-0                                1/1     Running            0               2d
 adguard       adguard-home-846c4b7c9d-xyz11         1/1     Running            0               2d
+monitoring    prometheus-pushgateway-bad-7bc9f      0/1     CrashLoopBackOff   12              1h
+argocd        argocd-image-updater-broken-9dd       0/1     ImagePullBackOff   3 (5m ago)      30m

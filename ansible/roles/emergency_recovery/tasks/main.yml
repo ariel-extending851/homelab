@@ -46,10 +46,11 @@
   run_once: true
 
 - name: Get current Tailscale proxy pod status
-  ansible.builtin.shell: |
+  ansible.builtin.command: kubectl get pods -n {{ tailscale_namespace }} --no-headers
   environment: "{{ kubeconfig_env }}"
   register: current_proxy_status
   changed_when: false
+  failed_when: false
   delegate_to: "{{ groups['k3s_server'][0] }}"
   run_once: true
 
@@ -80,13 +81,14 @@
   when: delete_statefulsets | bool
 
 - name: Wait for Tailscale operator to recreate pods
-  ansible.builtin.shell: |
+  ansible.builtin.command: kubectl get pods -n {{ tailscale_namespace }} --no-headers
   environment: "{{ kubeconfig_env }}"
   register: pod_count
-  until: pod_count.stdout | int >= 2
+  until: pod_count.stdout_lines | length >= 2
   retries: 6
   delay: 10
   changed_when: false
+  failed_when: false
   delegate_to: "{{ groups['k3s_server'][0] }}"
   run_once: true
   when: wait_for_recreation | bool

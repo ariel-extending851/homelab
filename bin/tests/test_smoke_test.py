@@ -478,6 +478,7 @@ def test_check_pod_health_detects_imagepullbackoff(capsys):
     overrides = {
         "get pods -A --no-headers": _proc(
             0,
+            "argocd  argocd-image-updater-broken-9dd  0/1  ImagePullBackOff  3  30m\n",
         )
     }
     with patch("smoke_test.subprocess.run", side_effect=_build_kubectl_fake(overrides)):

@@ -501,10 +501,12 @@ class TestLatestTagFor:
             m.assert_called_once_with("prometheus/node-exporter", spec.tag_pattern)
 
     def test_github_releases_route(self):
+        spec = self._spec("github_releases", "tailscale/tailscale")
         with patch(
             "update_versions.fetch_github_release_latest", return_value="v3.5.0"
         ) as m:
             assert uv._latest_tag_for(spec) == "v3.5.0"
+            m.assert_called_once_with(spec.lookup)
 
     def test_unknown_registry_raises(self):
         spec = self._spec("bogus", "owner/repo")
