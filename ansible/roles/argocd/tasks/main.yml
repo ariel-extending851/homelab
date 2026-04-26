@@ -31,6 +31,16 @@
   ansible.builtin.include_tasks: configure_repo.yml
   tags: ['repo']
 
+- name: Include second-repo configuration (optional, runs only when argocd_extra_repo_url is defined)
+  ansible.builtin.include_tasks: configure_repo_extra.yml
+  when: argocd_extra_repo_url is defined
+  tags: ['repo', 'extra']
+
+- name: Include second-repo Application bootstrap (optional)
+  ansible.builtin.include_tasks: bootstrap_apps_extra.yml
+  when: argocd_extra_repo_url is defined
+  tags: ['bootstrap', 'extra']
+
 - name: Include verification tasks
   ansible.builtin.include_tasks: verify.yml
   tags: ['verify']

@@ -157,7 +157,9 @@ def check_tailscale(result):
         return
 
     if r.returncode != 0:
-        result.ts_error = (r.stderr or "tailscale status failed").strip().splitlines()[0]
+        result.ts_error = (
+            (r.stderr or "tailscale status failed").strip().splitlines()[0]
+        )
         print(f"  ✗ {result.ts_error}")
         return
 
@@ -198,7 +200,9 @@ def check_k3s_nodes(kubeconfig, result):
         return
 
     if r.returncode != 0:
-        result.k3s_error = (r.stderr or "kubectl get nodes failed").strip().splitlines()[0]
+        result.k3s_error = (
+            (r.stderr or "kubectl get nodes failed").strip().splitlines()[0]
+        )
         print(f"  ✗ {result.k3s_error}")
         return
 
@@ -218,7 +222,9 @@ def check_k3s_nodes(kubeconfig, result):
     if not result.k3s_not_ready:
         print(f"\n  ✓ All {len(nodes)} node(s) Ready")
     else:
-        print(f"\n  ✗ {len(result.k3s_not_ready)} node(s) NOT Ready: {', '.join(result.k3s_not_ready)}")
+        print(
+            f"\n  ✗ {len(result.k3s_not_ready)} node(s) NOT Ready: {', '.join(result.k3s_not_ready)}"
+        )
 
 
 # ── 4. Loki log scan ──────────────────────────────────────────────────────────
@@ -232,7 +238,8 @@ def check_loki_logs(kubeconfig, result, tail=50):
             [
                 "--request-timeout=15s",
                 "logs",
-                "-n", "monitoring",
+                "-n",
+                "monitoring",
                 "deployment/loki",
                 f"--tail={tail}",
             ],
@@ -295,10 +302,11 @@ def print_summary(result):
 
     # Bullet 2 — networking (Tailscale + K3s)
     ts_ok = result.ts_state == "Running" and (
-        result.ts_peers_total == 0
-        or result.ts_peers_online == result.ts_peers_total
+        result.ts_peers_total == 0 or result.ts_peers_online == result.ts_peers_total
     )
-    k3s_ok = bool(result.k3s_nodes) and not result.k3s_not_ready and not result.k3s_error
+    k3s_ok = (
+        bool(result.k3s_nodes) and not result.k3s_not_ready and not result.k3s_error
+    )
 
     if ts_ok and k3s_ok:
         b2 = (

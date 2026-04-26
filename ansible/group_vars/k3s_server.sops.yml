@@ -1,0 +1,27 @@
+# SOPS-encrypted vars for k3s_server group.
+# Decrypted at runtime by community.sops.sops vars plugin (see ansible.cfg).
+#
+# argocd_extra_* keys are encrypted (see .sops.yaml creation_rule).
+# These describe an OPTIONAL second ArgoCD Application sourced from a private
+# repository. Leave keys unset (or remove this file) if you don't run the
+# private side; the role will skip extra wiring when argocd_extra_repo_url is
+# undefined.
+argocd_extra_repo_url: ENC[AES256_GCM,data:A92aqkWOoNojzCVvRmEK36ld2vfstoBvn5spSoUAK6DX4f3lUj8Ubf98J+pqW65DKit4,iv:GOZZCAm2BXOkgByfDDGZ9Sat+dvuWA2dPXiqpGoGwRY=,tag:9X9Sn1lkjhUFWSoWCgf6rA==,type:str]
+argocd_extra_branch: ENC[AES256_GCM,data:JED0rw==,iv:zAJkmCPaVEhm99rMXOoOXHC2W1NVEH6m6iVT1hAjGro=,tag:SxGeU2Mvc/0M5UE/f0asBg==,type:str]
+argocd_extra_path: ENC[AES256_GCM,data:20qlHh5WIi0=,iv:hZt+dMHVDzCRhIgQxStKQvBu22Do8q3LEA9Ws+atLU8=,tag:3uE+kmlczuKYnDqPt8+mKg==,type:str]
+argocd_extra_app_name: ENC[AES256_GCM,data:5hkVGS+vWoGfqruHirAVNIus,iv:fiZFvWGzfOiqOVRsXk1asz4UaaFf+CSAG5aofhJgBog=,tag:sMxdQzSz+hFVVomyBUjl4A==,type:str]
+sops:
+    age:
+        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWVDNHTXZHUnMycEFpS3FE
+            cFZpVzhQWW5PMkd5YmFsN25sampvbnZrcXdFCkNYazRmamhsZkRhTkd1bDB2dnBP
+            MzVjMldwSmZUUlN0MVM4cnBkVUFCWFUKLS0tIEFUQXRtaHBQQlhvY05TVFAxWkpa
+            aVQxNVFCZHJ4ZEdFMDcrNmRGOWU0UXMK2+98gn3n7AWWW8unnDGZpMbtihK53yzc
+            aURdjj/c+WEYLG3HbCCwRFmp5Pxlxd03Ad8YM+FNlBBwtHf4Vst4UA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-04-26T20:44:05Z"
+    mac: ENC[AES256_GCM,data:YN+u36f4sUuY2eLXgARumYRGKS/QZLdFBcpWx+6l/sDBYQEptsbbDxUwqsX843lINO5Xptxl0yC2T9JMa9bv0DnP1fmHG/GuHzGEAESPm/lzHoXA1wGstcAJzLmQUiuYRgSkBfnXrh6lpNuNAHUHiATLdW1sU04bijTjksM4s8M=,iv:HKANaGNoUqRT3dV2fmrQx5q1XF3jIcsWIjqCOeEK5rY=,tag:+B02BZcaA98YRbTCxF5E1A==,type:str]
+    encrypted_regex: ^(argocd_extra_.*)$
+    version: 3.12.2

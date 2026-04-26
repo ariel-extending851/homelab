@@ -28,6 +28,14 @@ git_repo_path: k8s/apps
 # SSH key for Git repository (deploy key)
 git_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/homelab-deploy-key"
 
+# Optional second repo. Set argocd_extra_repo_url (and the rest of the
+# argocd_extra_* vars) in an SOPS-encrypted group_vars file to enable a
+# second ArgoCD Application sourced from a private repo. The path/secret
+# name below are intentionally generic — they don't leak the private repo's
+# identity in this plaintext file.
+argocd_extra_ssh_private_key_path: "{{ lookup('env', 'HOME') }}/.ssh/argocd-extra-deploy-key"
+argocd_extra_secret_name: argocd-extra-repo-secret
+
 # ArgoCD admin password (will be auto-generated if not provided)
 argocd_admin_password: ""  # Leave empty to auto-generate
 

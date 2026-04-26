@@ -279,8 +279,14 @@ def test_arg_parser_fix_flags():
 
 def test_fix_and_no_fix_are_mutually_exclusive():
     import subprocess as _sp
+
     result = _sp.run(
-        ["python3", str(Path(__file__).resolve().parents[1] / "drift.py"), "--fix", "--no-fix"],
+        [
+            "python3",
+            str(Path(__file__).resolve().parents[1] / "drift.py"),
+            "--fix",
+            "--no-fix",
+        ],
         capture_output=True,
         text=True,
     )
@@ -339,7 +345,9 @@ def test_offer_fixes_fix_flag_runs_tf_apply(mock_run):
 
 @patch("drift.subprocess.run")
 def test_offer_fixes_fix_flag_runs_argo_sync_with_argocd_cli(mock_run, monkeypatch):
-    monkeypatch.setattr(drift, "_which", lambda cmd: "/usr/bin/argocd" if cmd == "argocd" else None)
+    monkeypatch.setattr(
+        drift, "_which", lambda cmd: "/usr/bin/argocd" if cmd == "argocd" else None
+    )
     mock_run.return_value = _proc(0)
     d = drift.Drift(_args(fix=True))
     d.fail("argo.drift", "bad")
@@ -397,7 +405,9 @@ def test_count_tf_changed_resources_two_resources():
 
 
 def test_count_tf_changed_resources_ignores_unrelated_lines():
-    plan = "Terraform will perform the following actions:\n  # aws_vpc.main has changed\n"
+    plan = (
+        "Terraform will perform the following actions:\n  # aws_vpc.main has changed\n"
+    )
     assert drift._count_tf_changed_resources(plan) == 1
 
 
@@ -408,8 +418,7 @@ def test_count_tf_changed_resources_ignores_unrelated_lines():
 def test_check_terraform_drift_message_includes_count(mock_run, monkeypatch, tmp_path):
     monkeypatch.setattr(drift, "TERRAFORM_DIR", tmp_path)
     plan_output = (
-        "  # aws_instance.foo has changed\n"
-        "  # aws_s3_bucket.bar has changed\n"
+        "  # aws_instance.foo has changed\n" "  # aws_s3_bucket.bar has changed\n"
     )
     mock_run.side_effect = [_proc(0), _proc(2, plan_output)]
     d = drift.Drift(_args(skip_tf=False))

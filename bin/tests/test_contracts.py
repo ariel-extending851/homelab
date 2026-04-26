@@ -258,7 +258,7 @@ def test_contract_kubectl_get_pods_known_failure_states_detected():
     pods = smoke.parse_pod_status_lines(_read("kubectl/get-pods--no-headers.txt"))
     failures = [p for p in pods if p.status in smoke.POD_FAILURE_STATES]
     assert len(failures) == 2
-    assert {p.name for p in failures} >= {}
+    assert {p.status for p in failures} == {"CrashLoopBackOff", "ImagePullBackOff"}
 
 
 def test_contract_kubectl_get_pvc_extracts_status_and_volume():

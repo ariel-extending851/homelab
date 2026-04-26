@@ -1,3 +1,5 @@
 adguard      config-adguard          Bound     pvc-abc111      1Gi       RWO       local-path     2d
 monitoring   prometheus-storage-0    Bound     pvc-jkl444      20Gi      RWO       local-path     2d
 monitoring   loki-storage-0          Pending   &lt;unset&gt;         &lt;unset&gt;   &lt;unset&gt;   local-path     5m
+argocd       argocd-redis-data       Bound     pvc-def222      1Gi       RWO       local-path     2d
+kube-system  metrics-server-cache    Bound     pvc-ghi333      500Mi     RWO       local-path     2d

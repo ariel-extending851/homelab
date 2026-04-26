@@ -16,6 +16,11 @@
 #   - ArgoCD must have access to the Age private key
 
 creation_rules:
+  # Encrypt argocd_extra_* keys in k3s_server group_vars (optional second repo URL/branch/path)
+  - path_regex: ansible/group_vars/k3s_server\.sops\.ya?ml$
+    encrypted_regex: ^(argocd_extra_.*)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
   # Encrypt Ansible router credentials in group_vars
   - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
     encrypted_regex: ^(wifi_password|wifi_guest_password)$

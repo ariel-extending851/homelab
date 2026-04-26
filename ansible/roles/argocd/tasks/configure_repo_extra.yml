@@ -1,0 +1,120 @@
+---
+# Configure an optional second ArgoCD repository credential.
+# Conditional: only runs when argocd_extra_repo_url is defined (SOPS-encrypted
+# group var). When unset, the whole file no-ops.
+
+- name: Check if extra SSH deploy key exists on control host
+  ansible.builtin.stat:
+    path: "{{ argocd_extra_ssh_private_key_path }}"
+  register: extra_ssh_key_file
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_become: false
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+  tags:
+    - validate
+
+- name: Read extra SSH private key
+  ansible.builtin.slurp:
+    src: "{{ argocd_extra_ssh_private_key_path }}"
+  register: extra_ssh_private_key_content
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_become: false
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - extra_ssh_key_file.stat.exists
+  no_log: true
+
+- name: Write ArgoCD extra repository secret to temp file
+  ansible.builtin.copy:
+    dest: /tmp/argocd-extra-repo-secret.yaml
+    mode: '0600'
+    content: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: {{ argocd_extra_secret_name }}
+        namespace: {{ argocd_namespace }}
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ argocd_extra_repo_url }}"
+        sshPrivateKey: |
+      {{ extra_ssh_private_key_content.content | b64decode | indent(4, True) }}
+        insecure: "false"
+        enableLfs: "false"
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - extra_ssh_key_file.stat.exists
+  no_log: true
+
+- name: Apply ArgoCD extra repository secret
+  ansible.builtin.command: kubectl apply -f /tmp/argocd-extra-repo-secret.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: extra_repo_secret_apply
+  changed_when: "'created' in extra_repo_secret_apply.stdout or 'configured' in extra_repo_secret_apply.stdout"
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - extra_ssh_key_file.stat.exists
+  no_log: true
+
+- name: Remove temp extra repo secret file
+  ansible.builtin.file:
+    path: /tmp/argocd-extra-repo-secret.yaml
+    state: absent
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - extra_ssh_key_file.stat.exists
+
+- name: Display extra repository configuration result
+  ansible.builtin.debug:
+    msg: |
+      ✓ Second repo deploy key configured (secret: {{ argocd_extra_secret_name }})
+      ✓ ArgoCD can now clone the second private repository
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - extra_ssh_key_file.stat.exists
+  tags:
+    - validate
+
+- name: Warn if extra repo configured but key missing
+  ansible.builtin.debug:
+    msg: |
+      ⚠ argocd_extra_repo_url is set but {{ argocd_extra_ssh_private_key_path }}
+        was not found on the control host. The second Application will not be
+        able to authenticate. Place the deploy private key at the path above
+        (chmod 600) and re-run this play.
+  when:
+    - argocd_extra_repo_url is defined
+    - argocd_extra_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - extra_ssh_key_file is defined
+    - extra_ssh_key_file.stat is defined
+    - not extra_ssh_key_file.stat.exists

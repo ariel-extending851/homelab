@@ -1,0 +1,46 @@
+---
+# Optional second ArgoCD Application, rendered from Ansible vars.
+# Repo URL/branch/path/name come from SOPS-encrypted group_vars
+# (ansible/group_vars/k3s_server.sops.yml). The deploy key Secret is
+# created separately by configure_repo_extra.yml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ argocd_extra_app_name }}
+  namespace: {{ argocd_namespace }}
+  labels:
+    app.kubernetes.io/name: {{ argocd_extra_app_name }}
+    app.kubernetes.io/part-of: homelab
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: {{ argocd_extra_repo_url }}
+    targetRevision: {{ argocd_extra_branch }}
+    path: {{ argocd_extra_path }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ argocd_namespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

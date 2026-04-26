@@ -43,7 +43,7 @@ provisioner:
         generate_report: true
         tailscale_namespace: tailscale
         tailscale_network: molecule.test
-        tailscale_proxy_services:
+        tailscale_proxy_services: []
 
 scenario:
   test_sequence:
