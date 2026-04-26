@@ -118,7 +118,10 @@ class Drift:
             self._tf_drifted = True
             n = _count_tf_changed_resources(plan.stdout)
             detail = f"{n} resource(s) changed" if n else "changes detected"
-            self.fail("tf.drift", f"drift detected — {detail} (run: terraform apply -refresh-only)")
+            self.fail(
+                "tf.drift",
+                f"drift detected — {detail} (run: terraform apply -refresh-only)",
+            )
         else:
             self.fail(
                 "tf.drift",
@@ -166,14 +169,12 @@ class Drift:
             )
             return
         bad = [
-            a for a in apps
-            if a.sync_status != "Synced" or a.health_status != "Healthy"
+            a for a in apps if a.sync_status != "Synced" or a.health_status != "Healthy"
         ]
         if bad:
             self._argo_drifted_apps = [a.name for a in bad]
             labels = [
-                f"{a.name}(sync={a.sync_status},health={a.health_status})"
-                for a in bad
+                f"{a.name}(sync={a.sync_status},health={a.health_status})" for a in bad
             ]
             self.fail(
                 "argo.drift",
@@ -261,8 +262,12 @@ class Drift:
             else:
                 # Trigger a hard refresh via annotation; ArgoCD picks it up.
                 cmd = [
-                    "kubectl", "annotate", "application", app,
-                    "-n", "argocd",
+                    "kubectl",
+                    "annotate",
+                    "application",
+                    app,
+                    "-n",
+                    "argocd",
                     "argocd.argoproj.io/refresh=hard",
                     "--overwrite",
                 ]
@@ -387,6 +392,7 @@ def _count_tf_changed_resources(plan_stdout: str) -> int:
 def _which(cmd: str):
     """Return the path to cmd if it exists on PATH, else None."""
     import shutil
+
     return shutil.which(cmd)
 
 
