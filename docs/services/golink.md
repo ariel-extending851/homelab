@@ -7,8 +7,6 @@
 
 ## Overview
 
-GoLink lets you type `https://golink/***` (or `go/***` if MagicDNS is configured) and get redirected to the actual URL. Useful for memorable shortcuts to internal services without remembering the full ts.net hostname.
-
 ## Architecture
 
 - **Deployment:** single replica, no node affinity (lightweight Go binary)
@@ -69,8 +67,6 @@ Tuned for RPi 3 (which can host this pod when AWS isn't running).
 ## Operations
 
 ### Add a link
-
-Visit `https://golink.tail57bf10.ts.net/.add` and submit `name=***`, `url=https://***.tail57bf10.ts.net`. Then `go/***` resolves.
 
 ### Backup the link DB
 

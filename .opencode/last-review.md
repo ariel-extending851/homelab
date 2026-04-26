@@ -137,7 +137,6 @@ All staged files meet the security, resource, and naming requirements. The code 
 
 ### Action Items
 1. ✅ Commit these files to `develop` branch
-2. ⚠️ DO NOT commit: `plain_secret.yaml`, `temp_***_secret.yaml` (marked as untracked - good)
 3. 📋 Optional: Add remaining documentation files (*.md) if desired
 
 ### Post-Commit

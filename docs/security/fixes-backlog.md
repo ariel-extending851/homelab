@@ -21,9 +21,6 @@ Open security work. The 2026-01-31 hardening pass closed all Critical/High items
 # example annotation set on each ArgoCD Application
 metadata:
   annotations:
-    argocd-image-updater.argoproj.io/image-list: "***=lscr.io/linuxserver/***"
-    argocd-image-updater.argoproj.io/***.update-strategy: "semver"
-    argocd-image-updater.argoproj.io/***.allow-tags: "regexp:^[0-9]+\\.[0-9]+\\.[0-9]+"
     argocd-image-updater.argoproj.io/write-back-method: "git:secret:argocd/git-creds"
 ```
 
@@ -35,12 +32,7 @@ kubectl apply -n argocd -f \
 
 **Effort:** ~2 hours (one weekend afternoon).
 
-### 2. Read-only root filesystem on *** (Low)
-
 **Status:** Recommended but not applied
-**File:** `k8s/apps/***/deployment.yaml`
-
-*** doesn't write outside `/tmp` and `/run`. Adding `readOnlyRootFilesystem: true` is a small hardening win.
 
 ```yaml
 securityContext:
@@ -49,8 +41,6 @@ securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true     # <-- add this
 ```
-
-Validate by running normally for a week and confirming no unexpected EROFS errors in *** logs.
 
 **Effort:** 30 min (edit + verify + ArgoCD sync).
 
@@ -64,7 +54,6 @@ Per-namespace mapping (proposed):
 
 | Namespace | Profile |
 |---|---|
-| `media`, `***`, `searxng` | restricted (*** *** would need an exception) |
 | `monitoring`, `loki`, `grafana`, `otel-collector` | restricted |
 | `tailscale` | privileged (operator needs broad permissions) |
 | `argocd`, `kube-system` | privileged |
@@ -98,7 +87,6 @@ The Tailscale operator uses an OAuth client. Rotate the secret every ~6 months, 
 For closed items, see [`audit-history.md`](audit-history.md). Highlights:
 
 - **2026-01-31** — Removed `privileged: true` from otel-collector
-- **2026-01-31** — *** init container moved to UID 1000
 - **2026-01-31** — All hostPath mounts documented and secured
 - **2026-04** (during docs consolidation) — Repo URL OIDC trust policy mismatch flagged for cleanup ([`../architecture/aws-infrastructure.md#bootstrap-modules-aws-backend-aws-oidc`](../architecture/aws-infrastructure.md#bootstrap-modules-aws-backend-aws-oidc))
 
@@ -122,4 +110,3 @@ When closed, move the entry's summary to [`audit-history.md`](audit-history.md) 
 - [`overview.md`](overview.md) — current security posture
 - [`audit-history.md`](audit-history.md) — chronological record (closed items)
 - [`network-policies.md`](network-policies.md) — NetworkPolicy + capability detail
-- **Latest review:** [`../reviews/2026-01-28-***-security.md`](../reviews/2026-01-28-***-security.md)

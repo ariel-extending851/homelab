@@ -43,7 +43,6 @@ Examples: container image tags `ghcr.io/your-user/hl-webapp:v1.0.0`; Terraform m
 ## 3. Documentation File Naming
 
 - **Filenames:** `kebab-case.md` (e.g., `control-plane-recovery.md`, not `CRITICAL-RECOVERY-PLAN.md`)
-- **Date-prefixed audit/review docs:** `YYYY-MM-DD-subject.md` (e.g., `2026-01-28-***-security.md`)
 - **Index files:** `README.md` inside any directory acts as its index
 
 ---

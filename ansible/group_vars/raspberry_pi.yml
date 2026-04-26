@@ -109,6 +109,5 @@ backup:
   config_only: true  # Don't backup media files
   exclude_paths:
     - /mnt/storage/data
-    - /mnt/storage/***
     - /var/log
     - /tmp

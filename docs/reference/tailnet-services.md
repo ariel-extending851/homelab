@@ -15,16 +15,9 @@ Every `*.tail57bf10.ts.net` hostname currently served by the cluster, and what i
 | <https://adguard.tail57bf10.ts.net> | AdGuard Home (DNS UI) | [adguard.md](../services/adguard.md) |
 | <https://golink.tail57bf10.ts.net> | GoLink (short-link redirector) | [golink.md](../services/golink.md) |
 | <https://grafana.tail57bf10.ts.net> | Grafana (high-bandwidth ProxyClass) | [grafana.md](../services/grafana.md) |
-| <https://***.tail57bf10.ts.net> | *** (media streaming) | [***.md](../services/***.md) |
 | <https://loki.tail57bf10.ts.net> | Loki (`/ready` health endpoint) | [loki.md](../services/loki.md) |
 | <https://prometheus.tail57bf10.ts.net> | Prometheus UI (`/targets`, debug) | [monitoring-stack.md](../services/monitoring-stack.md#prometheus) |
-| <https://***.tail57bf10.ts.net> | *** (indexer manager) | [***.md](../services/***.md) |
-| <https://***.tail57bf10.ts.net> | *** (Web UI; traffic via *** VPN) | [***.md](../services/***.md) |
-| <https://***.tail57bf10.ts.net> | *** | [***.md](../services/***.md) |
 | <https://searxng.tail57bf10.ts.net> | SearXNG (Tailscale sidecar pattern) | [searxng.md](../services/searxng.md) |
-| <https://***.tail57bf10.ts.net> | *** | [***.md](../services/***.md) |
-
-Cluster-internal services (no ingress): blackbox, ***, kube-state-metrics, node-exporter, OTEL Collector. They're scraped/used by other in-cluster apps only.
 
 ---
 

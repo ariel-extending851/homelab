@@ -46,8 +46,7 @@
             "memory_gb": 8,
             "architecture": "arm64",
             "storage_path": "/mnt/storage",
-            "media_path": "/mnt/storage/data",
-            "***_path": "/mnt/storage/***"
+            "media_path": "/mnt/storage/data"
           }
         }
       },

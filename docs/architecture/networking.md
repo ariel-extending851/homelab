@@ -68,7 +68,6 @@ To use, label the `Service`: `tailscale.com/proxy-class: high-bandwidth`.
 
 Earlier analysis ([`docs/analysis/rpi4-proxy-audit.md`](../analysis/rpi4-proxy-audit.md)) noted that running every Tailscale proxy pod on a single Pi causes load imbalance. Current placement strategy:
 
-- **rasp-pi-04** (8 GB RPi 4): hosts proxies for storage-heavy apps (***, ***)
 - **rasp-pi-03** (1 GB RPi 3): hosts only lightweight proxies (SearXNG and the monitoring sidecars)
 - **AWS nodes**: host the rest
 
@@ -82,8 +81,6 @@ Most app namespaces are open. The two enforced policies live in [`k8s/system/net
 
 - **Allow Prometheus scrape** from the `monitoring` namespace into all app namespaces (TCP on each app's metrics port)
 - **Default-deny** for the `monitoring` namespace's egress to anything other than DNS, intra-cluster scrape targets, and Loki
-
-The *** namespace also has an aggressive egress policy in [`k8s/apps/***/networkpolicy.yaml`](../../k8s/apps/***/networkpolicy.yaml) — only the *** VPN sidecar may make outbound connections, never the *** process directly. Details: [`../services/***.md`](../services/***.md).
 
 ---
 

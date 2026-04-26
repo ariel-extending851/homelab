@@ -59,7 +59,6 @@ APPS_ROOT="${REPO_ROOT}/k8s/gitops/apps-root.yaml"
 
 @test "k8s/apps: every directory resource in kustomization.yaml has a kustomization.yaml" {
   # Only check resources listed as directory paths (no .yaml extension).
-  # File-level references (e.g. ./***/network-policy.yaml) are intentionally excluded.
   local missing=0
   local apps_dir="${REPO_ROOT}/k8s/apps"
   while IFS= read -r line; do

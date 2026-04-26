@@ -15,7 +15,6 @@ You're hitting this if you see one or more of:
 
 - `kubectl get nodes` times out or refuses connection
 - ArgoCD UI inaccessible or showing connection errors
-- Tailscale ingresses for app services (Grafana, ***, etc.) not responding
 - Pods stuck in `CrashLoopBackOff` or `OOMKilled` on a resource-constrained node (typically a Raspberry Pi)
 
 ## Root Cause
@@ -41,8 +40,6 @@ Common trigger: a `StatefulSet` pod is deleted. Because StatefulSet identities a
 # May be slow but should eventually return
 kubectl get pods -A -o wide | grep -E "CrashLoopBackOff|OOMKilled|Pending"
 ```
-
-Look for pods on the overloaded node (e.g., `rasp-pi-03`) that are failing. Note the pod name like `ts-***-ingress-0`. The parent StatefulSet is the name without the `-0` suffix (`ts-***-ingress`).
 
 ### Step 2 — Delete the parent StatefulSet
 
@@ -84,7 +81,6 @@ All nodes should report `Ready`.
 ### 3. Test the affected service endpoint
 
 ```bash
-SERVICE_URL="https://***.tail57bf10.ts.net"
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL")
 [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ] \
   && echo "✅ Service accessible (HTTP $HTTP_STATUS)" \

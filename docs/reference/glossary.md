@@ -33,10 +33,8 @@ A `tailscale.com/v1alpha1` CRD that configures the Tailscale operator's proxy po
 ArgoCD annotation (`argoproj.io/sync-wave`) that orders resource creation within an Application. Lower waves go first.
 
 **PostSync hook**
-ArgoCD-annotated Kubernetes Job that runs **after** an Application syncs healthy. Used in *** + *** to set up app-internal config (categories, indexer proxies). See [`../services/***.md#gitops-category-bootstrap-postsync-hook`](../services/***.md#gitops-category-bootstrap-postsync-hook).
 
 **Killswitch**
-In the *** context: ***'s iptables rules that drop all egress unless the WireGuard tunnel is up. Without it, a VPN drop would leak the home IP to trackers. See [`../services/***.md`](../services/***.md).
 
 ---
 
@@ -59,10 +57,8 @@ AWS service that gives you a shell on an EC2 instance via the IAM-authenticated 
 ## Storage / Workload
 
 **Hardlink workflow**
-Pattern in the *arr stack where ***/*** atomically `rename(2)` a downloaded file from `/data/torrents/...` into `/data/media/...` instead of copying. Requires same UID + same filesystem. The *** / *** / *** deployments share PUID/PGID 1000 specifically so this works. See [`../services/***.md`](../services/***.md).
 
 **Local PV**
-Kubernetes PersistentVolume backed by a directory on a specific node, with hard `nodeAffinity`. Used by *** to lock storage to `rasp-pi-04`. See [`../services/***.md`](../services/***.md).
 
 **SOPS catch-all rule**
 Last rule in [`.sops.yaml`](../../.sops.yaml) that matches any `*.sops.yaml` file and any field whose name contains `token`, `secret`, `password`, `key`, `api_key`, or `credential`. Protects ad-hoc encrypted files without per-file rules.
@@ -97,7 +93,6 @@ Open Policy Agent's policy-as-code. The repo's policies (`k8s/policies/*.rego`) 
 Quick post-deploy HTTP probe of every app. `make smoke-test`. Exit codes: 0 pass, 2 minor, 1 fail.
 
 **E2E test**
-Bats-based post-deploy test suite (40+ cases). `make test-e2e-post-deploy`. Covers cross-app integration like the *** ↔ *** API key handshake.
 
 ---
 

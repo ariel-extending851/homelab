@@ -4,8 +4,6 @@
 > **Last reviewed:** 2026-04-23
 > **Owner:** @ariel-extending851
 
-Documentation of the active Kubernetes NetworkPolicies plus an analysis of the one elevated capability we use (`NET_ADMIN` on the *** sidecar).
-
 ---
 
 ## Active NetworkPolicies
@@ -23,37 +21,24 @@ Cluster-wide policy for the monitoring namespace.
 
 This stops a compromised exporter from exfiltrating data anywhere it likes.
 
-### `media/media-network-policy` ([`k8s/apps/***/network-policy.yaml`](../../k8s/apps/***/network-policy.yaml))
-
 Scoped policy for the media namespace.
 
 **Ingress allowed:**
-- Same namespace (intra-app: *** ↔ *** ↔ *** ↔ ***)
 - `kube-system` (kubelet probes)
 - `tailscale` namespace (WebUI access on each app's port: 8080, 7878, 8989, 9696, 8191)
 
 **Egress allowed:**
 - Same namespace
 - `kube-system` port 53 (DNS)
-- *** VPN endpoint (193.32.127.66:51820 UDP — pinned IPv4 endpoint)
 - HTTP/HTTPS (ports 80, 443) — for tracker announces, app updates, Grafana scrape
-- *** control API (port 8000, localhost only)
 
 **Egress denied:** everything else.
 
-Important: the policy allows port 80/443 outbound from the namespace, but **the *** killswitch (in ***) constrains *** specifically to only egress through the VPN tunnel**. The NetworkPolicy is defense in depth, not the only barrier.
-
 ---
-
-## Capability Analysis: `NET_ADMIN` on ***
 
 ### Question
 
-Does the *** VPN sidecar **strictly require** `NET_ADMIN`, or can it be removed/reduced?
-
 ### Answer: **Strictly required.**
-
-`NET_ADMIN` is non-negotiable for ***'s VPN tunnel. Three operations need it:
 
 #### 1. TUN/TAP interface creation
 
@@ -84,7 +69,6 @@ Create/modify iptables chains, set firewall rules, NAT/MASQUERADE configuration.
 ### Mitigations in place
 
 ```yaml
-# k8s/apps/***/deployment.yaml (*** container)
 securityContext:
   capabilities:
     add: ["NET_ADMIN"]              # only this; not all-caps
@@ -94,8 +78,6 @@ securityContext:
 ```
 
 Plus:
-- **Network namespace sharing:** *** shares ***'s netns but does **not** itself have `NET_ADMIN`
-- **Filesystem isolation:** *** has no access to ***'s `/data`
 - **Resource limits:** 100m CPU / 128Mi memory cap — can't run away even if compromised
 
 ### Alternatives considered
@@ -110,13 +92,10 @@ Plus:
 
 ```bash
 # Current capability set
-kubectl exec -n media deploy/*** -c *** -- \
   cat /proc/1/status | grep Cap
 
 # Test removal (expected to fail)
-kubectl patch deploy *** -n media --type=json \
   -p='[{"op":"remove","path":"/spec/template/spec/containers/0/securityContext/capabilities"}]'
-# expect (in *** logs): RTNETLINK answers: Operation not permitted
 ```
 
 ### Future hardening (optional)
@@ -130,8 +109,6 @@ securityContext:
   runAsNonRoot: false                 # MUST stay root for iptables
   allowPrivilegeEscalation: false
 ```
-
-`readOnlyRootFilesystem: true` is the obvious next step — *** doesn't write outside `/tmp` and `/run`. Tracked in [`fixes-backlog.md`](fixes-backlog.md).
 
 ---
 
@@ -163,5 +140,4 @@ Pre-deployment enforcement is preferred over admission-time rejection in our wor
 
 - **Security overview:** [`overview.md`](overview.md)
 - **Audit history:** [`audit-history.md`](audit-history.md)
-- ***** VPN architecture:** [`../services/***.md`](../services/***.md)
 - **Open backlog:** [`fixes-backlog.md`](fixes-backlog.md)

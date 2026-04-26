@@ -8,7 +8,6 @@ Thanks for considering a contribution. This file covers the development workflow
 
 ```bash
 git checkout -b <type>/<short-description>
-# e.g., feat/add-my-role, fix/***-ipv6, docs/operations-cleanup
 ```
 
 Conventional commit-style prefixes: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`, `ci/`.
@@ -45,7 +44,6 @@ The full test layer breakdown is in [`docs/operations/testing.md`](docs/operatio
 Use signed commits where possible. Conventional Commits format encouraged:
 
 ```text
-feat(***): pin *** endpoint to IPv4 to avoid IPv6 routing failure
 
 Closes #123
 ```

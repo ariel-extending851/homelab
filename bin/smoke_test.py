@@ -17,20 +17,14 @@ from typing import NamedTuple
 APPS = [
     ("adguard", "adguard"),
     ("blackbox", "monitoring"),
-    ("***", "adguard"),
     ("golink", "golink"),
     ("grafana", "monitoring"),
-    ("***", "***"),
     ("kube-state-metrics", "monitoring"),
     ("loki", "monitoring"),
     ("node-exporter", "monitoring"),
     ("otel-collector", "otel-collector"),
     ("prometheus", "monitoring"),
-    ("***", "media"),
-    ("***", "media"),
-    ("***", "media"),
     ("searxng", "searxng"),
-    ("***", "media"),
 ]
 
 REQUIRED_NAMESPACES = ["argocd", "monitoring", "adguard"]

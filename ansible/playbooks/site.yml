@@ -402,9 +402,6 @@
              kubectl get pods -A
 
           4. Access media apps (via Tailscale):
-             https://***.tail57bf10.ts.net
-             https://***-1.tail57bf10.ts.net
-             https://***.tail57bf10.ts.net
           {% else %}
           AWS k3s_server not in inventory.
           Provision AWS with Terraform, then re-run with:

@@ -16,6 +16,7 @@ import update_versions as uv  # noqa: E402
 
 # ── _version_key ──────────────────────────────────────────────────────────────
 
+
 class TestVersionKey:
     def test_plain_semver(self):
         assert uv._version_key("10.2.3") == (10, 2, 3, 0)
@@ -37,6 +38,7 @@ class TestVersionKey:
 
 
 # ── is_newer ──────────────────────────────────────────────────────────────────
+
 
 class TestIsNewer:
     def test_newer_major(self):
@@ -62,6 +64,7 @@ class TestIsNewer:
 
 
 # ── _is_stable_tag ────────────────────────────────────────────────────────────
+
 
 class TestIsStableTag:
     def test_accepts_semver(self):
@@ -100,6 +103,7 @@ class TestIsStableTag:
 
 # ── _best_tag ─────────────────────────────────────────────────────────────────
 
+
 class TestBestTag:
     def test_picks_highest_semver(self):
         tags = ["v2.44.0", "v2.45.0", "v2.43.1", "latest"]
@@ -109,7 +113,9 @@ class TestBestTag:
         assert uv._best_tag([], r"^v?\d+\.\d+(\.\d+)*$") == ""
 
     def test_all_unstable(self):
-        assert uv._best_tag(["latest", "nightly", "edge"], r"^v?\d+\.\d+(\.\d+)*$") == ""
+        assert (
+            uv._best_tag(["latest", "nightly", "edge"], r"^v?\d+\.\d+(\.\d+)*$") == ""
+        )
 
     def test_pattern_filters_correctly(self):
         tags = ["2.3.5.5327-ls142", "2.3.5.5328-ls143", "latest", "develop"]
@@ -118,6 +124,7 @@ class TestBestTag:
 
 
 # ── constraint_needs_update ───────────────────────────────────────────────────
+
 
 class TestConstraintNeedsUpdate:
     def test_major_bump_two_part(self):
@@ -158,18 +165,23 @@ class TestConstraintNeedsUpdate:
 
 # ── update_ansible_requirements ───────────────────────────────────────────────
 
+
 class TestUpdateAnsibleRequirements:
     def test_bumps_outdated_collection(self, tmp_path):
         req_file = tmp_path / "ansible" / "requirements.yml"
         req_file.parent.mkdir()
-        req_file.write_text(textwrap.dedent("""\
+        req_file.write_text(
+            textwrap.dedent(
+                """\
             ---
             collections:
               - name: kubernetes.core
                 version: ">=3.0.0"
               - name: community.sops
                 version: ">=1.6.0"
-        """))
+        """
+            )
+        )
         updates = [
             uv.VersionUpdate(
                 name="ansible/kubernetes.core",
@@ -187,12 +199,14 @@ class TestUpdateAnsibleRequirements:
     def test_skips_up_to_date(self, tmp_path):
         req_file = tmp_path / "ansible" / "requirements.yml"
         req_file.parent.mkdir()
-        original = textwrap.dedent("""\
+        original = textwrap.dedent(
+            """\
             ---
             collections:
               - name: ansible.posix
                 version: ">=1.5.0"
-        """)
+        """
+        )
         req_file.write_text(original)
         updates = [
             uv.VersionUpdate(
@@ -209,6 +223,7 @@ class TestUpdateAnsibleRequirements:
 
 # ── update_terraform_files ────────────────────────────────────────────────────
 
+
 class TestUpdateTerraformFiles:
     def _make_tf(self, tmp_path: Path, content: str) -> Path:
         f = tmp_path / "main.tf"
@@ -216,14 +231,19 @@ class TestUpdateTerraformFiles:
         return f
 
     def test_bumps_aws_provider(self, tmp_path):
-        tf = self._make_tf(tmp_path, textwrap.dedent("""\
+        tf = self._make_tf(
+            tmp_path,
+            textwrap.dedent(
+                """\
             required_providers {
               aws = {
                 source  = "hashicorp/aws"
                 version = "~> 5.0"
               }
             }
-        """))
+        """
+            ),
+        )
         updates = [
             uv.VersionUpdate(
                 name="terraform/hashicorp/aws",
@@ -237,14 +257,16 @@ class TestUpdateTerraformFiles:
         assert '"~> 6.0"' in tf.read_text()
 
     def test_skips_not_outdated(self, tmp_path):
-        original = textwrap.dedent("""\
+        original = textwrap.dedent(
+            """\
             required_providers {
               random = {
                 source  = "hashicorp/random"
                 version = "~> 3.0"
               }
             }
-        """)
+        """
+        )
         tf = self._make_tf(tmp_path, original)
         updates = [
             uv.VersionUpdate(
@@ -259,14 +281,19 @@ class TestUpdateTerraformFiles:
         assert tf.read_text() == original
 
     def test_bumps_three_part_constraint(self, tmp_path):
-        tf = self._make_tf(tmp_path, textwrap.dedent("""\
+        tf = self._make_tf(
+            tmp_path,
+            textwrap.dedent(
+                """\
             required_providers {
               sops = {
                 source  = "carlpett/sops"
                 version = "~> 0.7.0"
               }
             }
-        """))
+        """
+            ),
+        )
         updates = [
             uv.VersionUpdate(
                 name="terraform/carlpett/sops",
@@ -281,6 +308,7 @@ class TestUpdateTerraformFiles:
 
 
 # ── update_k8s_manifests ──────────────────────────────────────────────────────
+
 
 class TestUpdateK8sManifests:
     def _make_deployment(self, tmp_path: Path, image_line: str) -> Path:
@@ -330,14 +358,17 @@ class TestUpdateK8sManifests:
 
 # ── _extract_tf_constraint ────────────────────────────────────────────────────
 
+
 class TestExtractTfConstraint:
     def test_extracts_constraint(self):
-        hcl = textwrap.dedent("""\
+        hcl = textwrap.dedent(
+            """\
             aws = {
               source  = "hashicorp/aws"
               version = "~> 5.0"
             }
-        """)
+        """
+        )
         assert uv._extract_tf_constraint("aws", hcl) == "~> 5.0"
 
     def test_returns_empty_when_not_found(self):
@@ -349,6 +380,7 @@ class TestExtractTfConstraint:
 
 
 # ── fetch helpers (mocked network) ───────────────────────────────────────────
+
 
 class TestFetchGalaxyVersion:
     def test_extracts_highest_version(self):
@@ -390,7 +422,9 @@ class TestFetchDockerhubLatest:
             "next": None,
         }
         with patch("update_versions.fetch_json", return_value=mock_data):
-            result = uv.fetch_dockerhub_latest("grafana/grafana", r"^v?\d+\.\d+(\.\d+)*$")
+            result = uv.fetch_dockerhub_latest(
+                "grafana/grafana", r"^v?\d+\.\d+(\.\d+)*$"
+            )
         assert result == "11.5.0"
 
     def test_raises_when_no_stable_tag(self):
@@ -417,10 +451,6 @@ class TestFetchQuayLatest:
 
 
 class TestFetchGithubRelease:
-    def test_returns_tag_name(self):
-        with patch("update_versions.fetch_json", return_value={"tag_name": "v3.5.0"}):
-            assert uv.fetch_github_release_latest("***/***") == "v3.5.0"
-
     def test_raises_on_missing_tag(self):
         with patch("update_versions.fetch_json", return_value={"name": "release"}):
             with pytest.raises(RuntimeError, match="GitHub releases API unreachable"):
@@ -428,6 +458,7 @@ class TestFetchGithubRelease:
 
 
 # ── _image_name / _current_tag helpers ───────────────────────────────────────
+
 
 class TestImageHelpers:
     def test_image_name_strips_tag(self):
@@ -442,11 +473,9 @@ class TestImageHelpers:
     def test_current_tag_no_colon(self):
         assert uv._current_tag("busybox") == ""
 
-    def test_current_tag_lscr(self):
-        assert uv._current_tag("lscr.io/linuxserver/***:2.3.5.5327-ls142") == "2.3.5.5327-ls142"
-
 
 # ── _latest_tag_for ───────────────────────────────────────────────────────────
+
 
 class TestLatestTagFor:
     def _spec(self, registry, lookup, tag_pattern=r"^v?\d+\.\d+(\.\d+)*$"):
@@ -459,7 +488,9 @@ class TestLatestTagFor:
 
     def test_dockerhub_route(self):
         spec = self._spec("dockerhub", "grafana/grafana")
-        with patch("update_versions.fetch_dockerhub_latest", return_value="11.0.0") as m:
+        with patch(
+            "update_versions.fetch_dockerhub_latest", return_value="11.0.0"
+        ) as m:
             assert uv._latest_tag_for(spec) == "11.0.0"
             m.assert_called_once_with("grafana/grafana", spec.tag_pattern)
 
@@ -470,10 +501,10 @@ class TestLatestTagFor:
             m.assert_called_once_with("prometheus/node-exporter", spec.tag_pattern)
 
     def test_github_releases_route(self):
-        spec = self._spec("github_releases", "***/***")
-        with patch("update_versions.fetch_github_release_latest", return_value="v3.5.0") as m:
+        with patch(
+            "update_versions.fetch_github_release_latest", return_value="v3.5.0"
+        ) as m:
             assert uv._latest_tag_for(spec) == "v3.5.0"
-            m.assert_called_once_with("***/***")
 
     def test_unknown_registry_raises(self):
         spec = self._spec("bogus", "owner/repo")
@@ -483,11 +514,14 @@ class TestLatestTagFor:
 
 # ── scan_ansible ──────────────────────────────────────────────────────────────
 
+
 class TestScanAnsible:
     def _make_requirements(self, tmp_path: Path) -> Path:
         req = tmp_path / "ansible" / "requirements.yml"
         req.parent.mkdir(parents=True)
-        req.write_text(textwrap.dedent("""\
+        req.write_text(
+            textwrap.dedent(
+                """\
             ---
             collections:
               - name: kubernetes.core
@@ -498,15 +532,20 @@ class TestScanAnsible:
                 version: ">=8.0.0"
               - name: ansible.posix
                 version: ">=1.5.0"
-        """))
+        """
+            )
+        )
         return req
 
     def test_detects_outdated_collection(self, tmp_path):
         self._make_requirements(tmp_path)
 
         def fake_galaxy(ns, name):
-            return {"kubernetes": {"core": "4.2.0"}, "community": {"sops": "1.6.0",
-                    "general": "8.0.0"}, "ansible": {"posix": "1.5.0"}}[ns][name]
+            return {
+                "kubernetes": {"core": "4.2.0"},
+                "community": {"sops": "1.6.0", "general": "8.0.0"},
+                "ansible": {"posix": "1.5.0"},
+            }[ns][name]
 
         with patch("update_versions.fetch_galaxy_version", side_effect=fake_galaxy):
             updates = uv.scan_ansible(tmp_path)
@@ -525,8 +564,10 @@ class TestScanAnsible:
             ("community", "general"): "8.0.0",
             ("ansible", "posix"): "1.5.0",
         }
-        with patch("update_versions.fetch_galaxy_version",
-                   side_effect=lambda ns, name: minimums[(ns, name)]):
+        with patch(
+            "update_versions.fetch_galaxy_version",
+            side_effect=lambda ns, name: minimums[(ns, name)],
+        ):
             updates = uv.scan_ansible(tmp_path)
 
         assert all(not u.outdated for u in updates)
@@ -534,8 +575,10 @@ class TestScanAnsible:
     def test_api_error_recorded(self, tmp_path):
         self._make_requirements(tmp_path)
 
-        with patch("update_versions.fetch_galaxy_version",
-                   side_effect=RuntimeError("Galaxy API unreachable")):
+        with patch(
+            "update_versions.fetch_galaxy_version",
+            side_effect=RuntimeError("Galaxy API unreachable"),
+        ):
             updates = uv.scan_ansible(tmp_path)
 
         assert all(u.error for u in updates)
@@ -544,10 +587,14 @@ class TestScanAnsible:
 
 # ── scan_terraform ────────────────────────────────────────────────────────────
 
+
 class TestScanTerraform:
     def _make_tf_files(self, tmp_path: Path) -> None:
         for path, content in [
-            ("infra/aws/main.tf", textwrap.dedent("""\
+            (
+                "infra/aws/main.tf",
+                textwrap.dedent(
+                    """\
                 required_providers {
                   aws = {
                     source  = "hashicorp/aws"
@@ -562,8 +609,13 @@ class TestScanTerraform:
                     version = "~> 0.13"
                   }
                 }
-            """)),
-            ("infra/aws-backend/main.tf", textwrap.dedent("""\
+            """
+                ),
+            ),
+            (
+                "infra/aws-backend/main.tf",
+                textwrap.dedent(
+                    """\
                 required_providers {
                   aws = {
                     source  = "hashicorp/aws"
@@ -574,15 +626,22 @@ class TestScanTerraform:
                     version = "~> 3.0"
                   }
                 }
-            """)),
-            ("infra/aws/modules/scheduler/versions.tf", textwrap.dedent("""\
+            """
+                ),
+            ),
+            (
+                "infra/aws/modules/scheduler/versions.tf",
+                textwrap.dedent(
+                    """\
                 required_providers {
                   archive = {
                     source  = "hashicorp/archive"
                     version = "~> 2.0"
                   }
                 }
-            """)),
+            """
+                ),
+            ),
         ]:
             f = tmp_path / path
             f.parent.mkdir(parents=True, exist_ok=True)
@@ -597,7 +656,7 @@ class TestScanTerraform:
             p = tmp_path / stub
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(
-                'required_providers {\n  aws = {\n'
+                "required_providers {\n  aws = {\n"
                 '    source  = "hashicorp/aws"\n'
                 '    version = "~> 5.0"\n  }\n}\n'
             )
@@ -606,11 +665,18 @@ class TestScanTerraform:
         self._make_tf_files(tmp_path)
 
         def fake_version(ns, prov):
-            return {"hashicorp/aws": "6.36.0", "carlpett/sops": "0.7.2",
-                    "tailscale/tailscale": "0.15.0", "hashicorp/random": "3.6.0",
-                    "hashicorp/archive": "2.4.0"}[f"{ns}/{prov}"]
+            return {
+                "hashicorp/aws": "6.36.0",
+                "carlpett/sops": "0.7.2",
+                "tailscale/tailscale": "0.15.0",
+                "hashicorp/random": "3.6.0",
+                "hashicorp/archive": "2.4.0",
+            }[f"{ns}/{prov}"]
 
-        with patch("update_versions.fetch_tf_provider_version", side_effect=lambda ns, p: fake_version(ns, p)):
+        with patch(
+            "update_versions.fetch_tf_provider_version",
+            side_effect=lambda ns, p: fake_version(ns, p),
+        ):
             updates = uv.scan_terraform(tmp_path)
 
         aws = next(u for u in updates if "hashicorp/aws" in u.name)
@@ -629,14 +695,17 @@ class TestScanTerraform:
     def test_api_error_recorded(self, tmp_path):
         self._make_tf_files(tmp_path)
 
-        with patch("update_versions.fetch_tf_provider_version",
-                   side_effect=RuntimeError("Registry down")):
+        with patch(
+            "update_versions.fetch_tf_provider_version",
+            side_effect=RuntimeError("Registry down"),
+        ):
             updates = uv.scan_terraform(tmp_path)
 
         assert all(u.error for u in updates)
 
 
 # ── scan_k8s ─────────────────────────────────────────────────────────────────
+
 
 class TestScanK8s:
     def _make_k8s_files(self, tmp_path: Path) -> None:
@@ -675,8 +744,9 @@ class TestScanK8s:
     def test_api_error_recorded(self, tmp_path):
         self._make_k8s_files(tmp_path)
 
-        with patch("update_versions._latest_tag_for",
-                   side_effect=RuntimeError("API down")):
+        with patch(
+            "update_versions._latest_tag_for", side_effect=RuntimeError("API down")
+        ):
             updates = uv.scan_k8s(tmp_path)
 
         errored = [u for u in updates if u.error]
@@ -684,6 +754,7 @@ class TestScanK8s:
 
 
 # ── git helpers ───────────────────────────────────────────────────────────────
+
 
 class TestGitHelpers:
     def test_create_branch_new(self, tmp_path):
@@ -742,6 +813,7 @@ class TestGitHelpers:
 
 # ── run_lint ─────────────────────────────────────────────────────────────────
 
+
 class TestRunLint:
     def _ok(self):
         r = MagicMock()
@@ -759,15 +831,19 @@ class TestRunLint:
 
     def test_kustomize_pass(self, tmp_path):
         (tmp_path / "k8s" / "apps").mkdir(parents=True)
-        with patch("update_versions.shutil.which", return_value="/usr/bin/kustomize"), \
-             patch("update_versions.subprocess.run", return_value=self._ok()):
+        with patch(
+            "update_versions.shutil.which", return_value="/usr/bin/kustomize"
+        ), patch("update_versions.subprocess.run", return_value=self._ok()):
             results = uv.run_lint(tmp_path)
         kustomize_result = next(r for r in results if "kustomize" in r)
         assert "PASS" in kustomize_result
 
     def test_kustomize_fail(self, tmp_path):
-        with patch("update_versions.shutil.which", return_value="/usr/bin/kustomize"), \
-             patch("update_versions.subprocess.run", return_value=self._fail("bad manifest")):
+        with patch(
+            "update_versions.shutil.which", return_value="/usr/bin/kustomize"
+        ), patch(
+            "update_versions.subprocess.run", return_value=self._fail("bad manifest")
+        ):
             results = uv.run_lint(tmp_path)
         kustomize_result = next(r for r in results if "kustomize" in r)
         assert "FAIL" in kustomize_result
@@ -783,10 +859,15 @@ class TestRunLint:
             (tmp_path / d).mkdir(parents=True)
 
         def which_side(cmd):
-            return f"/usr/bin/{cmd}" if cmd in ("kustomize", "terraform", "yamllint") else None
+            return (
+                f"/usr/bin/{cmd}"
+                if cmd in ("kustomize", "terraform", "yamllint")
+                else None
+            )
 
-        with patch("update_versions.shutil.which", side_effect=which_side), \
-             patch("update_versions.subprocess.run", return_value=self._ok()):
+        with patch("update_versions.shutil.which", side_effect=which_side), patch(
+            "update_versions.subprocess.run", return_value=self._ok()
+        ):
             results = uv.run_lint(tmp_path)
 
         tf_results = [r for r in results if "terraform fmt" in r]
@@ -800,8 +881,9 @@ class TestRunLint:
         def which_side(cmd):
             return f"/usr/bin/{cmd}" if cmd == "yamllint" else None
 
-        with patch("update_versions.shutil.which", side_effect=which_side), \
-             patch("update_versions.subprocess.run", return_value=self._ok()):
+        with patch("update_versions.shutil.which", side_effect=which_side), patch(
+            "update_versions.subprocess.run", return_value=self._ok()
+        ):
             results = uv.run_lint(tmp_path)
 
         yamllint_result = next(r for r in results if "yamllint" in r)
@@ -809,6 +891,7 @@ class TestRunLint:
 
 
 # ── print_report ──────────────────────────────────────────────────────────────
+
 
 class TestPrintReport:
     def _make_updates(self, outdated=False):
@@ -842,33 +925,48 @@ class TestPrintReport:
         assert "dry-run" in out
 
     def test_errors_reported(self, capsys):
-        updates = [uv.VersionUpdate(
-            name="k8s/img", current="1.0", latest="", outdated=False,
-            error="API down",
-        )]
+        updates = [
+            uv.VersionUpdate(
+                name="k8s/img",
+                current="1.0",
+                latest="",
+                outdated=False,
+                error="API down",
+            )
+        ]
         uv.print_report([], [], updates, [], "chore/test", dry_run=False)
         out = capsys.readouterr().out
         assert "API down" in out
 
     def test_skipped_shown(self, capsys):
-        updates = [uv.VersionUpdate(
-            name="k8s/golink", current="main", latest="", outdated=False,
-            skip_reason="digest-pinned",
-        )]
+        updates = [
+            uv.VersionUpdate(
+                name="k8s/golink",
+                current="main",
+                latest="",
+                outdated=False,
+                skip_reason="digest-pinned",
+            )
+        ]
         uv.print_report([], [], updates, [], "chore/test", dry_run=False)
         assert "digest-pinned" in capsys.readouterr().out
 
     def test_lint_results_shown(self, capsys):
-        uv.print_report([], [], [], ["PASS kustomize build"], "chore/test", dry_run=False)
+        uv.print_report(
+            [], [], [], ["PASS kustomize build"], "chore/test", dry_run=False
+        )
         assert "kustomize" in capsys.readouterr().out
 
 
 # ── fetch_json ────────────────────────────────────────────────────────────────
 
+
 class TestFetchJson:
     def test_returns_none_on_error(self):
-        with patch("update_versions.urllib.request.urlopen",
-                   side_effect=Exception("network error")):
+        with patch(
+            "update_versions.urllib.request.urlopen",
+            side_effect=Exception("network error"),
+        ):
             assert uv.fetch_json("http://example.com/api") is None
 
     def test_parses_json_response(self):
@@ -884,26 +982,40 @@ class TestFetchJson:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 class TestMain:
     def _up_to_date(self):
         return [uv.VersionUpdate(name="x", current="1.0", latest="1.0", outdated=False)]
 
     def _outdated(self):
-        return [uv.VersionUpdate(
-            name="k8s/grafana/grafana", current="10.2.3", latest="11.5.0",
-            outdated=True, files=[],
-        )]
+        return [
+            uv.VersionUpdate(
+                name="k8s/grafana/grafana",
+                current="10.2.3",
+                latest="11.5.0",
+                outdated=True,
+                files=[],
+            )
+        ]
 
     def test_exits_zero_when_all_current(self, capsys):
-        with patch("update_versions.scan_ansible", return_value=self._up_to_date()), \
-             patch("update_versions.scan_terraform", return_value=self._up_to_date()), \
-             patch("update_versions.scan_k8s", return_value=self._up_to_date()):
-            rc = uv.main.__wrapped__() if hasattr(uv.main, "__wrapped__") else \
-                 self._call_main([])
+        with patch(
+            "update_versions.scan_ansible", return_value=self._up_to_date()
+        ), patch(
+            "update_versions.scan_terraform", return_value=self._up_to_date()
+        ), patch(
+            "update_versions.scan_k8s", return_value=self._up_to_date()
+        ):
+            rc = (
+                uv.main.__wrapped__()
+                if hasattr(uv.main, "__wrapped__")
+                else self._call_main([])
+            )
         assert rc == 0
 
     def _call_main(self, argv):
         import sys as _sys
+
         old = _sys.argv
         _sys.argv = ["update_versions.py"] + argv
         try:
@@ -912,11 +1024,15 @@ class TestMain:
             _sys.argv = old
 
     def test_dry_run_no_file_changes(self, tmp_path, capsys):
-        with patch("update_versions.scan_ansible", return_value=self._outdated()), \
-             patch("update_versions.scan_terraform", return_value=[]), \
-             patch("update_versions.scan_k8s", return_value=[]), \
-             patch("update_versions.update_ansible_requirements") as mock_update, \
-             patch("update_versions.git_create_branch") as mock_branch:
+        with patch(
+            "update_versions.scan_ansible", return_value=self._outdated()
+        ), patch("update_versions.scan_terraform", return_value=[]), patch(
+            "update_versions.scan_k8s", return_value=[]
+        ), patch(
+            "update_versions.update_ansible_requirements"
+        ) as mock_update, patch(
+            "update_versions.git_create_branch"
+        ) as mock_branch:
             rc = self._call_main(["--dry-run"])
 
         assert rc == 1
@@ -924,9 +1040,13 @@ class TestMain:
         mock_branch.assert_not_called()
 
     def test_component_flag_limits_scan(self, capsys):
-        with patch("update_versions.scan_ansible", return_value=self._up_to_date()) as mock_a, \
-             patch("update_versions.scan_terraform", return_value=[]) as mock_tf, \
-             patch("update_versions.scan_k8s", return_value=[]) as mock_k8s:
+        with patch(
+            "update_versions.scan_ansible", return_value=self._up_to_date()
+        ) as mock_a, patch(
+            "update_versions.scan_terraform", return_value=[]
+        ) as mock_tf, patch(
+            "update_versions.scan_k8s", return_value=[]
+        ) as mock_k8s:
             self._call_main(["--component", "ansible"])
 
         mock_a.assert_called_once()
@@ -934,13 +1054,19 @@ class TestMain:
         mock_k8s.assert_not_called()
 
     def test_skip_git_flag(self, capsys):
-        with patch("update_versions.scan_ansible", return_value=self._outdated()), \
-             patch("update_versions.scan_terraform", return_value=[]), \
-             patch("update_versions.scan_k8s", return_value=[]), \
-             patch("update_versions.update_ansible_requirements"), \
-             patch("update_versions.run_lint", return_value=[]), \
-             patch("update_versions.git_create_branch") as mock_branch, \
-             patch("update_versions.git_stage_files") as mock_stage:
+        with patch(
+            "update_versions.scan_ansible", return_value=self._outdated()
+        ), patch("update_versions.scan_terraform", return_value=[]), patch(
+            "update_versions.scan_k8s", return_value=[]
+        ), patch(
+            "update_versions.update_ansible_requirements"
+        ), patch(
+            "update_versions.run_lint", return_value=[]
+        ), patch(
+            "update_versions.git_create_branch"
+        ) as mock_branch, patch(
+            "update_versions.git_stage_files"
+        ) as mock_stage:
             self._call_main(["--skip-git"])
 
         mock_branch.assert_not_called()

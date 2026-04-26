@@ -68,7 +68,6 @@ all:
           # Storage configuration
           storage_path: /mnt/storage
           media_path: /mnt/storage/data
-          ***_path: /mnt/storage/***
 
     # ── AWS instances (managed by Terraform, discovered dynamically) ────────
     # Use: ansible-playbook -i terraform_inventory_aws.py playbook.yml

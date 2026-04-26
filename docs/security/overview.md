@@ -14,7 +14,6 @@ What we're protecting against:
 
 | Threat | Mitigation |
 |---|---|
-| Torrent traffic exposing the home IP | *** runs through *** WireGuard with killswitch ([`../services/***.md`](../services/***.md)) |
 | Public internet attack on the cluster | Zero public ingress. SSH/k3s API only via Tailscale or AWS SSM ([`../architecture/networking.md`](../architecture/networking.md)) |
 | Container escape | Non-root containers, dropped capabilities, allowPrivilegeEscalation: false everywhere except where it's a hard requirement |
 | Stolen Git access | SSH deploy key (read-only) + 2FA on GitHub + branch protection on `develop` |
@@ -25,7 +24,6 @@ What we're **not** protecting against:
 
 - Insider threat from the (sole) operator
 - Loss of the SOPS age private key (catastrophic — backup is the only mitigation)
-- Sophisticated supply-chain attack against *** / Tailscale / GitHub themselves
 
 ---
 
@@ -35,8 +33,6 @@ What we're **not** protecting against:
 
 - **Zero public ingress** — `infra/aws/modules/network` security group has no `0.0.0.0/0` rule
 - **All traffic encrypted** — Tailscale (WireGuard) for operator access, ts.net TLS for app ingress
-- ***** VPN + killswitch** for torrent traffic specifically
-- **NetworkPolicies** scope monitoring egress and *** traffic — see [`network-policies.md`](network-policies.md)
 
 ### Identity
 
@@ -48,11 +44,8 @@ What we're **not** protecting against:
 ### Workload
 
 - **All containers run non-root** except where functionally required:
-  - `***` (*** VPN sidecar) — needs root for `iptables` + tun device. Mitigated: scoped capability `NET_ADMIN` only, `allowPrivilegeEscalation: false`
-- **Capabilities dropped** in every container except those that need specific ones (NET_BIND_SERVICE for AdGuard's port 53, NET_ADMIN for ***)
 - **`allowPrivilegeEscalation: false`** enforced cluster-wide via the [`security_context.rego`](../../k8s/policies/security_context.rego) policy
 - **Resource limits required** on every container via [`resource_limits.rego`](../../k8s/policies/resource_limits.rego)
-- **Read-only root filesystem** where possible (otel-collector, *** init)
 
 ### Secrets
 
@@ -76,7 +69,6 @@ What we're **not** protecting against:
 | Standard | Item | Status |
 |---|---|---|
 | CIS Kubernetes Benchmark 5.2.1 | No privileged containers | ✅ Cluster-wide; verified by `make validate-k8s-policies` |
-| CIS K8s 5.2.6 | No root containers | ✅ Except *** (documented) |
 | CIS K8s 5.2.7 | `allowPrivilegeEscalation: false` | ✅ Enforced by policy |
 | CIS K8s 5.2.9 | Drop capabilities | ✅ All drop ALL except documented exceptions |
 | AWS Well-Architected (Sec) | Least privilege IAM | ✅ |
@@ -102,7 +94,6 @@ See [`fixes-backlog.md`](fixes-backlog.md) for the full list. Highlights:
 | Scenario | Where to look |
 |---|---|
 | Cluster suddenly unreachable | [`../runbooks/control-plane-recovery.md`](../runbooks/control-plane-recovery.md) or [`../runbooks/tailscale-logged-out.md`](../runbooks/tailscale-logged-out.md) |
-| *** leaks IP (killswitch failed) | Should be impossible — verify with the killswitch test in [`../runbooks/***-vpn-failure.md#verification`](../runbooks/***-vpn-failure.md#verification) |
 | Suspicious Tailscale device appeared | Tailscale admin → revoke → rotate auth keys → re-run gateway role: `make ansible-router` |
 | GitHub credential leak | Rotate SOPS age key (see [`../operations/sops-setup.md#rotate-the-age-key`](../operations/sops-setup.md#rotate-the-age-key)), regenerate ArgoCD deploy key, force-rotate Tailscale OAuth client |
 
@@ -113,5 +104,4 @@ See [`fixes-backlog.md`](fixes-backlog.md) for the full list. Highlights:
 - **Audit history (chronological record):** [`audit-history.md`](audit-history.md)
 - **Open security work:** [`fixes-backlog.md`](fixes-backlog.md)
 - **NetworkPolicy detail:** [`network-policies.md`](network-policies.md)
-- **Latest deep review:** [`../reviews/2026-01-28-***-security.md`](../reviews/2026-01-28-***-security.md)
 - **Secrets architecture:** [`../architecture/secrets-management.md`](../architecture/secrets-management.md)

@@ -28,7 +28,6 @@ Pod runs as `nobody:nogroup` (UID/GID 65534):
 
 - LAN router (Opal OpenWrt) hands out `192.168.8.X` (the rasp-pi-03 LAN IP) as DNS server via DHCP
 - AdGuard upstreams to Cloudflare DoH (`https://1.1.1.1/dns-query`) by default; configurable in the UI
-- *** is in the same namespace because *** ↔ AdGuard share namespace boundaries; *** itself doesn't depend on AdGuard
 
 ## Operations
 
@@ -69,10 +68,8 @@ ssh rasp-pi-03 -- ss -tlnp | grep :53
 If empty, the pod didn't get `hostNetwork` privileges or the node has port 53 already bound.
 
 ### Filter lists not updating
-UI → Filters → Update. If the request times out, check egress from the namespace (the *** NetworkPolicy doesn't apply here, but a future default-deny in `adguard` would block this).
 
 ## Related
 
 - **Networking model:** [`../architecture/networking.md`](../architecture/networking.md)
-- **DNS / ***:** [`***.md`](***.md)
 - **All app ingress hostnames:** [`../reference/tailnet-services.md`](../reference/tailnet-services.md)

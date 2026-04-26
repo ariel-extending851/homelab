@@ -197,15 +197,11 @@ After `terraform apply` + `make ansible-deploy`, run the post-deployment checks.
 make smoke-test
 ```
 
-Runs [`bin/smoke_test.py`](../../bin/smoke_test.py): 20+ HTTP checks against every deployed app. Exit codes: `0` pass, `2` minor issues, `1` fail. Apps covered: adguard, blackbox, ***, golink, grafana, ***, kube-state-metrics, loki, node-exporter, otel-collector, prometheus, ***, ***, ***, searxng, ***.
-
 ### E2E post-deploy (~10 min)
 
 ```bash
 make test-e2e-post-deploy
 ```
-
-Runs [`bin/tests/e2e_post_deploy.bats`](../../bin/tests/e2e_post_deploy.bats): 40+ Bats test cases covering connectivity, ingress reachability, observability stack, GitOps sync state, and cross-app integration (e.g., *** ↔ *** API key handshake).
 
 ### Other verification targets
 

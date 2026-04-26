@@ -14,10 +14,8 @@ ArgoCD is the only thing that mutates Kubernetes resources after `make ansible-d
 homelab-apps-root (the only manually-applied Application)
     └── watches k8s/apps/  (Kustomize directory)
         ├── adguard
-        ├── ***
         ├── golink
         ├── grafana
-        ├── ***
         ├── ... (16 apps total)
 ```
 

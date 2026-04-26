@@ -39,7 +39,6 @@ compactor:
 Promtail config lives with the otel-collector setup — it scrapes:
 - All container logs in `/var/log/pods/*/*.log`
 - Per-pod labels (namespace, app, container)
-- Custom parsers per app (e.g., *** log lines have a level prefix)
 
 ## Operations
 
@@ -56,11 +55,7 @@ Direct UI: `https://loki.tail57bf10.ts.net` (mostly for `/ready` health endpoint
 # Errors only across all namespaces
 {} |~ "(?i)(error|fail|exception)"
 
-# *** VPN-related logs
-{namespace="media", container="***"} |~ "(?i)(handshake|wireguard|unreachable)"
-
 # Logs from a specific pod
-{pod="***-abc123"}
 ```
 
 ### Restart

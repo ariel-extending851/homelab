@@ -195,7 +195,6 @@ spec:
 1. Copies `apps-root.yaml` to k3s server
 2. Applies via `kubernetes.core.k8s` module
 3. Waits for Sync status
-4. Monitors critical apps (***, ***, etc.)
 
 ---
 
@@ -271,7 +270,6 @@ spec:
 - Verify ArgoCD is installed
 - Apply apps-root.yaml
 - Wait for Sync status
-- Monitor critical apps (***, ***, ***, ***)
 - Check for unhealthy applications
 - Display all application statuses
 ```
@@ -486,11 +484,7 @@ kubectl get applications -n argocd -o json | \
 
 ## 🔮 Future Enhancements (Phase 3 - Optional)
 
-### 1. *** Operational Playbooks
-
 **Migrate bash scripts to Ansible:**
-- `***-config-manager.sh` → playbook
-- `***-vpn-repair.sh` → playbook
 
 **Benefit:** Operational tasks also automated
 
@@ -498,7 +492,6 @@ kubectl get applications -n argocd -o json | \
 
 **Auto-create PVs:**
 - Media storage PV on rasp-pi-04
-- *** PV on rasp-pi-04
 - Backup storage
 
 **Benefit:** Fully declarative storage setup

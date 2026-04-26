@@ -47,6 +47,7 @@ RESET = "\033[0m"
 
 # ── Data models ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class VersionUpdate:
     name: str
@@ -72,14 +73,18 @@ ANSIBLE_COLLECTIONS: list[tuple[str, str]] = [
 # (namespace, provider_name, list_of_tf_files_relative_to_repo_root)
 
 TF_PROVIDERS: list[tuple[str, str, list[str]]] = [
-    ("hashicorp", "aws", [
-        "infra/aws/main.tf",
-        "infra/aws-backend/main.tf",
-        "infra/aws-oidc/versions.tf",
-        "infra/aws/modules/compute/versions.tf",
-        "infra/aws/modules/network/versions.tf",
-        "infra/aws/modules/scheduler/versions.tf",
-    ]),
+    (
+        "hashicorp",
+        "aws",
+        [
+            "infra/aws/main.tf",
+            "infra/aws-backend/main.tf",
+            "infra/aws-oidc/versions.tf",
+            "infra/aws/modules/compute/versions.tf",
+            "infra/aws/modules/network/versions.tf",
+            "infra/aws/modules/scheduler/versions.tf",
+        ],
+    ),
     ("carlpett", "sops", ["infra/aws/main.tf"]),
     ("tailscale", "tailscale", ["infra/aws/main.tf"]),
     ("hashicorp", "random", ["infra/aws-backend/main.tf"]),
@@ -89,11 +94,12 @@ TF_PROVIDERS: list[tuple[str, str, list[str]]] = [
 
 # ── Kubernetes image specs ────────────────────────────────────────────────────
 
+
 @dataclass
 class ImageSpec:
-    image_ref: str          # full ref as it appears in YAML, e.g. "grafana/grafana:10.2.3"
-    registry: str           # "dockerhub" | "quay" | "github_releases"
-    lookup: str             # repo path used for API calls
+    image_ref: str  # full ref as it appears in YAML, e.g. "grafana/grafana:10.2.3"
+    registry: str  # "dockerhub" | "quay" | "github_releases"
+    lookup: str  # repo path used for API calls
     tag_pattern: str = r"^v?\d+\.\d+(\.\d+)*$"
     skip: bool = False
     skip_reason: str = ""
@@ -101,59 +107,72 @@ class ImageSpec:
 
 K8S_IMAGES: list[ImageSpec] = [
     # ── Observability stack ──────────────────────────────────────────────────
-    ImageSpec("grafana/grafana:10.2.3",                   "dockerhub", "grafana/grafana"),
-    ImageSpec("prom/prometheus:v2.45.0",                  "dockerhub", "prom/prometheus"),
-    ImageSpec("grafana/loki:2.9.2",                       "dockerhub", "grafana/loki"),
-    ImageSpec("quay.io/prometheus/blackbox-exporter:v0.24.0", "quay",  "prometheus/blackbox-exporter"),
-    ImageSpec("quay.io/prometheus/node-exporter:v1.7.0",  "quay",      "prometheus/node-exporter"),
-    ImageSpec("registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2",
-              "github_releases", "kubernetes/kube-state-metrics"),
-    ImageSpec("otel/opentelemetry-collector-contrib:0.102.0", "dockerhub",
-              "otel/opentelemetry-collector-contrib"),
+    ImageSpec("grafana/grafana:10.2.3", "dockerhub", "grafana/grafana"),
+    ImageSpec("prom/prometheus:v2.45.0", "dockerhub", "prom/prometheus"),
+    ImageSpec("grafana/loki:2.9.2", "dockerhub", "grafana/loki"),
+    ImageSpec(
+        "quay.io/prometheus/blackbox-exporter:v0.24.0",
+        "quay",
+        "prometheus/blackbox-exporter",
+    ),
+    ImageSpec(
+        "quay.io/prometheus/node-exporter:v1.7.0", "quay", "prometheus/node-exporter"
+    ),
+    ImageSpec(
+        "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2",
+        "github_releases",
+        "kubernetes/kube-state-metrics",
+    ),
+    ImageSpec(
+        "otel/opentelemetry-collector-contrib:0.102.0",
+        "dockerhub",
+        "otel/opentelemetry-collector-contrib",
+    ),
     # ── Apps ─────────────────────────────────────────────────────────────────
-    ImageSpec("adguard/adguardhome:v0.107.71",            "dockerhub", "adguard/adguardhome"),
-    ImageSpec("***/***:10.10.3",                "dockerhub", "***/***"),
-    ImageSpec("qmcgaw/***:v3.38.0",                   "dockerhub", "qmcgaw/***"),
-    ImageSpec("ghcr.io/***/***:v3.4.2", "github_releases",
-              "***/***"),
-    # ── Media stack (linuxserver images) ─────────────────────────────────────
-    ImageSpec("lscr.io/linuxserver/***:2.3.5.5327-ls142", "dockerhub",
-              "linuxserver/***", tag_pattern=r"^\d+\.\d+\.\d+[\.\d]*-ls\d+$"),
-    ImageSpec("lscr.io/linuxserver/***:5.0.3",    "dockerhub",
-              "linuxserver/***", tag_pattern=r"^\d+\.\d+(\.\d+)*(-[a-z0-9]+-ls\d+)?$"),
-    ImageSpec("lscr.io/linuxserver/***:5.19.3",        "dockerhub",
-              "linuxserver/***",      tag_pattern=r"^\d+\.\d+(\.\d+)*(-[a-z0-9]+-ls\d+)?$"),
-    ImageSpec("lscr.io/linuxserver/***:4.0.13",        "dockerhub",
-              "linuxserver/***",      tag_pattern=r"^\d+\.\d+(\.\d+)*(-[a-z0-9]+-ls\d+)?$"),
+    ImageSpec("adguard/adguardhome:v0.107.71", "dockerhub", "adguard/adguardhome"),
     # ── Utility base images ───────────────────────────────────────────────────
-    ImageSpec("busybox:1.36",                             "dockerhub", "library/busybox"),
+    ImageSpec("busybox:1.36", "dockerhub", "library/busybox"),
     # ── Skipped: digest-pinned, rolling, or utility images ───────────────────
     ImageSpec(
         "ghcr.io/tailscale/golink:main@sha256:ba5303fefc041cf9f11f960a90c3e16ca922dad8140ef43f704670f5c55f581b",
-        "github_releases", "tailscale/golink",
-        skip=True, skip_reason="digest-pinned — update manually",
+        "github_releases",
+        "tailscale/golink",
+        skip=True,
+        skip_reason="digest-pinned — update manually",
     ),
     ImageSpec(
         "searxng/searxng:2026.2.14-39ac4d438",
-        "dockerhub", "searxng/searxng",
-        skip=True, skip_reason="rolling date+commit tags — update manually",
+        "dockerhub",
+        "searxng/searxng",
+        skip=True,
+        skip_reason="rolling date+commit tags — update manually",
     ),
     ImageSpec(
-        "alpine:3.19", "dockerhub", "library/alpine",
-        skip=True, skip_reason="utility init-container — pin manually",
+        "alpine:3.19",
+        "dockerhub",
+        "library/alpine",
+        skip=True,
+        skip_reason="utility init-container — pin manually",
     ),
     ImageSpec(
-        "alpine/k8s:1.28.2", "dockerhub", "alpine/k8s",
-        skip=True, skip_reason="utility cronjob image — pin manually",
+        "alpine/k8s:1.28.2",
+        "dockerhub",
+        "alpine/k8s",
+        skip=True,
+        skip_reason="utility cronjob image — pin manually",
     ),
     ImageSpec(
-        "curlimages/curl:8.5.0", "dockerhub", "curlimages/curl",
-        skip=True, skip_reason="utility job image — pin manually",
+        "curlimages/curl:8.5.0",
+        "dockerhub",
+        "curlimages/curl",
+        skip=True,
+        skip_reason="utility job image — pin manually",
     ),
 ]
 
 
 # ── HTTP helper ───────────────────────────────────────────────────────────────
+
 
 def fetch_json(url: str, timeout: int = 15) -> dict | None:
     try:
@@ -197,7 +216,9 @@ def _version_key(tag: str) -> tuple[int, ...]:
     ls_num = int(ls_match.group(1)) if ls_match else 0
     # Take the leading numeric portion (stops at first non-digit/dot)
     numeric_part = re.split(r"[^0-9.]", raw)[0].strip(".")
-    parts: tuple[int, ...] = tuple(int(p) for p in numeric_part.split(".") if p.isdigit())
+    parts: tuple[int, ...] = tuple(
+        int(p) for p in numeric_part.split(".") if p.isdigit()
+    )
     return parts + (ls_num,)
 
 
@@ -218,6 +239,7 @@ def _best_tag(tags: list[str], pattern: str) -> str:
 
 
 # ── Terraform constraint helpers ──────────────────────────────────────────────
+
 
 def constraint_needs_update(constraint: str, latest_version: str) -> tuple[bool, str]:
     """
@@ -256,6 +278,7 @@ def constraint_needs_update(constraint: str, latest_version: str) -> tuple[bool,
 
 # ── Ansible Galaxy ────────────────────────────────────────────────────────────
 
+
 def fetch_galaxy_version(namespace: str, name: str) -> str:
     url = (
         "https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/"
@@ -286,18 +309,26 @@ def scan_ansible(repo_root: Path) -> list[VersionUpdate]:
             latest = fetch_galaxy_version(namespace, name)
             current_ver = re.sub(r"[>=<~^]", "", constraint).strip() or "0.0.0"
             outdated = is_newer(latest, current_ver)
-            updates.append(VersionUpdate(
-                name=f"ansible/{fqcn}",
-                current=constraint,
-                latest=f">={latest}",
-                outdated=outdated,
-                files=[req_file],
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=f"ansible/{fqcn}",
+                    current=constraint,
+                    latest=f">={latest}",
+                    outdated=outdated,
+                    files=[req_file],
+                )
+            )
         except Exception as exc:
-            updates.append(VersionUpdate(
-                name=f"ansible/{fqcn}", current=constraint, latest="",
-                outdated=False, files=[req_file], error=str(exc),
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=f"ansible/{fqcn}",
+                    current=constraint,
+                    latest="",
+                    outdated=False,
+                    files=[req_file],
+                    error=str(exc),
+                )
+            )
     return updates
 
 
@@ -319,6 +350,7 @@ def update_ansible_requirements(updates: list[VersionUpdate], repo_root: Path) -
 
 # ── Terraform Registry ────────────────────────────────────────────────────────
 
+
 def fetch_tf_provider_version(namespace: str, provider: str) -> str:
     url = f"https://registry.terraform.io/v1/providers/{namespace}/{provider}"
     data = fetch_json(url)
@@ -326,7 +358,9 @@ def fetch_tf_provider_version(namespace: str, provider: str) -> str:
         raise RuntimeError(f"Terraform Registry unreachable for {namespace}/{provider}")
     version = data.get("version")
     if not version:
-        raise RuntimeError(f"No version in Terraform Registry response for {namespace}/{provider}")
+        raise RuntimeError(
+            f"No version in Terraform Registry response for {namespace}/{provider}"
+        )
     return version
 
 
@@ -368,18 +402,30 @@ def scan_terraform(repo_root: Path) -> list[VersionUpdate]:
         try:
             latest = fetch_tf_provider_version(namespace, provider)
             needs_update, new_constraint = constraint_needs_update(constraint, latest)
-            updates.append(VersionUpdate(
-                name=f"terraform/{key}",
-                current=constraint or "(not found)",
-                latest=new_constraint if needs_update else f"{latest} (within {constraint})",
-                outdated=needs_update,
-                files=files,
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=f"terraform/{key}",
+                    current=constraint or "(not found)",
+                    latest=(
+                        new_constraint
+                        if needs_update
+                        else f"{latest} (within {constraint})"
+                    ),
+                    outdated=needs_update,
+                    files=files,
+                )
+            )
         except Exception as exc:
-            updates.append(VersionUpdate(
-                name=f"terraform/{key}", current=constraint, latest="",
-                outdated=False, files=files, error=str(exc),
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=f"terraform/{key}",
+                    current=constraint,
+                    latest="",
+                    outdated=False,
+                    files=files,
+                    error=str(exc),
+                )
+            )
     return updates
 
 
@@ -400,6 +446,7 @@ def update_terraform_files(updates: list[VersionUpdate], repo_root: Path) -> Non
 
 
 # ── Container registries ──────────────────────────────────────────────────────
+
 
 def fetch_dockerhub_latest(repo: str, tag_pattern: str) -> str:
     tags: list[str] = []
@@ -480,36 +527,54 @@ def scan_k8s(repo_root: Path) -> list[VersionUpdate]:
         cur = _current_tag(spec.image_ref)
 
         if spec.skip:
-            updates.append(VersionUpdate(
-                name=name, current=cur, latest="", outdated=False,
-                skip_reason=spec.skip_reason,
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=name,
+                    current=cur,
+                    latest="",
+                    outdated=False,
+                    skip_reason=spec.skip_reason,
+                )
+            )
             continue
 
         files = ref_to_files.get(spec.image_ref, [])
         try:
             latest = _latest_tag_for(spec)
             outdated = is_newer(latest, cur)
-            updates.append(VersionUpdate(
-                name=name, current=cur, latest=latest,
-                outdated=outdated, files=files,
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=name,
+                    current=cur,
+                    latest=latest,
+                    outdated=outdated,
+                    files=files,
+                )
+            )
         except Exception as exc:
-            updates.append(VersionUpdate(
-                name=name, current=cur, latest="",
-                outdated=False, files=files, error=str(exc),
-            ))
+            updates.append(
+                VersionUpdate(
+                    name=name,
+                    current=cur,
+                    latest="",
+                    outdated=False,
+                    files=files,
+                    error=str(exc),
+                )
+            )
     return updates
 
 
 def update_k8s_manifests(updates: list[VersionUpdate], repo_root: Path) -> None:
     # Build lookup: image name (no tag) → (spec, update)
-    spec_by_name: dict[str, ImageSpec] = {_image_name(s.image_ref): s for s in K8S_IMAGES}
+    spec_by_name: dict[str, ImageSpec] = {
+        _image_name(s.image_ref): s for s in K8S_IMAGES
+    }
 
     for u in updates:
         if not u.outdated:
             continue
-        image_name = u.name[len("k8s/"):]  # strip "k8s/" prefix
+        image_name = u.name[len("k8s/") :]  # strip "k8s/" prefix
         spec = spec_by_name.get(image_name)
         if not spec:
             continue
@@ -523,16 +588,24 @@ def update_k8s_manifests(updates: list[VersionUpdate], repo_root: Path) -> None:
 
 # ── Git helpers ───────────────────────────────────────────────────────────────
 
-def _git(args: list[str], repo_root: Path, check: bool = True) -> subprocess.CompletedProcess:
+
+def _git(
+    args: list[str], repo_root: Path, check: bool = True
+) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git", *args], cwd=repo_root,
-        capture_output=True, text=True, check=check,
+        ["git", *args],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=check,
     )
 
 
 def git_create_branch(branch_name: str, repo_root: Path) -> bool:
     # Switch if branch already exists (idempotent re-runs on the same day)
-    exists = _git(["show-ref", "--quiet", f"refs/heads/{branch_name}"], repo_root, check=False)
+    exists = _git(
+        ["show-ref", "--quiet", f"refs/heads/{branch_name}"], repo_root, check=False
+    )
     if exists.returncode == 0:
         result = _git(["checkout", branch_name], repo_root, check=False)
     else:
@@ -550,6 +623,7 @@ def git_stage_files(paths: list[Path], repo_root: Path) -> None:
 
 # ── Linting ───────────────────────────────────────────────────────────────────
 
+
 def run_lint(repo_root: Path) -> list[str]:
     results: list[str] = []
 
@@ -557,7 +631,9 @@ def run_lint(repo_root: Path) -> list[str]:
     if shutil.which("kustomize"):
         r = subprocess.run(
             ["kustomize", "build", "k8s/apps"],
-            cwd=repo_root, capture_output=True, text=True,
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
         )
         if r.returncode == 0:
             results.append(f"{GREEN}PASS{RESET} kustomize build k8s/apps")
@@ -588,7 +664,9 @@ def run_lint(repo_root: Path) -> list[str]:
                 continue
             r = subprocess.run(
                 ["terraform", "fmt", "-check", "-diff"],
-                cwd=d, capture_output=True, text=True,
+                cwd=d,
+                capture_output=True,
+                text=True,
             )
             label = tf_dir
             if r.returncode == 0:
@@ -608,7 +686,9 @@ def run_lint(repo_root: Path) -> list[str]:
     if shutil.which("yamllint"):
         r = subprocess.run(
             ["yamllint", "ansible/requirements.yml"],
-            cwd=repo_root, capture_output=True, text=True,
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
         )
         if r.returncode == 0:
             results.append(f"{GREEN}PASS{RESET} yamllint ansible/requirements.yml")
@@ -624,6 +704,7 @@ def run_lint(repo_root: Path) -> list[str]:
 
 
 # ── Report ────────────────────────────────────────────────────────────────────
+
 
 def _print_section(title: str, updates: list[VersionUpdate]) -> None:
     print(f"\n{BOLD}{title}{RESET}")
@@ -661,11 +742,15 @@ def print_report(
 
     print()
     if outdated:
-        print(f"{BOLD}Summary:{RESET} {RED}{len(outdated)} outdated component(s){RESET}")
+        print(
+            f"{BOLD}Summary:{RESET} {RED}{len(outdated)} outdated component(s){RESET}"
+        )
         for u in outdated:
             print(f"  • {u.name}: {u.current} → {u.latest}")
     else:
-        print(f"{BOLD}Summary:{RESET} {GREEN}All tracked components are up-to-date.{RESET}")
+        print(
+            f"{BOLD}Summary:{RESET} {GREEN}All tracked components are up-to-date.{RESET}"
+        )
 
     if errors:
         print(
@@ -688,25 +773,30 @@ def print_report(
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Report outdated versions without modifying any files.",
     )
     parser.add_argument(
-        "--skip-lint", action="store_true",
+        "--skip-lint",
+        action="store_true",
         help="Skip post-update linting.",
     )
     parser.add_argument(
-        "--skip-git", action="store_true",
+        "--skip-git",
+        action="store_true",
         help="Skip branch creation and git staging.",
     )
     parser.add_argument(
-        "--component", choices=["ansible", "terraform", "k8s"],
+        "--component",
+        choices=["ansible", "terraform", "k8s"],
         help="Limit scan to a single component (default: all).",
     )
     args = parser.parse_args()
@@ -749,13 +839,9 @@ def main() -> int:
                 [u for u in ansible_updates if u.outdated], REPO_ROOT
             )
         if tf_updates:
-            update_terraform_files(
-                [u for u in tf_updates if u.outdated], REPO_ROOT
-            )
+            update_terraform_files([u for u in tf_updates if u.outdated], REPO_ROOT)
         if k8s_updates:
-            update_k8s_manifests(
-                [u for u in k8s_updates if u.outdated], REPO_ROOT
-            )
+            update_k8s_manifests([u for u in k8s_updates if u.outdated], REPO_ROOT)
 
         if not args.skip_lint:
             print("Running lint checks…")
@@ -769,8 +855,12 @@ def main() -> int:
             git_stage_files(changed, REPO_ROOT)
 
     return print_report(
-        ansible_updates, tf_updates, k8s_updates,
-        lint_results, branch, args.dry_run,
+        ansible_updates,
+        tf_updates,
+        k8s_updates,
+        lint_results,
+        branch,
+        args.dry_run,
     )
 
 

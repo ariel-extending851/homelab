@@ -51,7 +51,6 @@ See the **[Services index](services/README.md)** for the full matrix of all 16 d
 |---|---|
 | [Control plane recovery](runbooks/control-plane-recovery.md) | 🔴 Critical |
 | [Tailscale logged out](runbooks/tailscale-logged-out.md) | 🟡 Warning |
-| [*** VPN failure](runbooks/***-vpn-failure.md) | 🟡 Warning |
 | [Grafana dashboards broken](runbooks/grafana-dashboards.md) | 🟢 Info |
 
 See [Runbooks index](runbooks/README.md).
@@ -72,7 +71,6 @@ Lower-severity issues that don't need an on-call response.
 | [Audit history](security/audit-history.md) | Chronological record of audits |
 | [Network policies](security/network-policies.md) | NET_ADMIN usage and NetworkPolicy design |
 | [Fixes backlog](security/fixes-backlog.md) | Open security action items |
-| [Latest review (2026-01-28)](reviews/2026-01-28-***-security.md) | *** security review |
 
 ## 🤝 Contributing
 

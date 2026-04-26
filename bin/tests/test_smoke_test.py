@@ -183,7 +183,6 @@ def test_smoke_exits_2_when_only_a_couple_apps_fail(capsys):
         key = " ".join(cmd[1:])
         if "get deployment grafana -n monitoring" in key and "readyReplicas" in key:
             return _proc(0, "0")
-        if "get deployment *** -n ***" in key and "readyReplicas" in key:
             return _proc(0, "0")
         return _build_kubectl_fake()(cmd, *args, **kwargs)
 
@@ -479,14 +478,12 @@ def test_check_pod_health_detects_imagepullbackoff(capsys):
     overrides = {
         "get pods -A --no-headers": _proc(
             0,
-            "media  ***-xyz  0/1  ImagePullBackOff  0  2m\n",
         )
     }
     with patch("smoke_test.subprocess.run", side_effect=_build_kubectl_fake(overrides)):
         st.check_pod_health()
     out = capsys.readouterr().out
     assert "failure state" in out
-    assert "***-xyz" in out
     assert "ImagePullBackOff" in out
 
 

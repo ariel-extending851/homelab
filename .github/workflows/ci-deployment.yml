@@ -184,7 +184,7 @@ jobs:
         env:
           KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
         run: |
-          for ns in argocd monitoring adguard *** media searxng golink otel-collector; do
+          for ns in argocd monitoring adguard searxng golink otel-collector; do
             kubectl get namespace "$ns" >/dev/null 2>&1 || {
               echo "❌ Namespace not found: $ns"
               exit 1

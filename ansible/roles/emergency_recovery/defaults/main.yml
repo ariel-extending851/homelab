@@ -6,26 +6,14 @@ k8s_api_timeout: 60
 k8s_api_retries: 5
 
 # Tailscale proxy services to recover
-tailscale_proxy_services:
-  - ***
-  - ***
-  - ***
+tailscale_proxy_services: []
 
 # Recovery wait times (seconds)
 recovery_wait_time: 60
 pod_ready_timeout: 120
 
 # Health check endpoints
-health_check_endpoints:
-  ***:
-    url: "https://***.{{ tailscale_network }}"
-    expected_codes: [200, 302]
-  ***:
-    url: "https://***-1.{{ tailscale_network }}"
-    expected_codes: [200, 302]
-  ***:
-    url: "https://***.{{ tailscale_network }}"
-    expected_codes: [200, 302]
+health_check_endpoints: {}
 
 # Namespace for Tailscale proxies
 tailscale_namespace: tailscale

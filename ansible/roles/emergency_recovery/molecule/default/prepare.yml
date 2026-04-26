@@ -36,17 +36,11 @@
             echo "NAME                 STATUS   ROLES           AGE   VERSION"
             echo "k3s-emergency-test   Ready    control-plane   1m    v1.34.3+k3s1"
           elif [[ "$args" == *"get pods"* && "$args" == *"-o name"* ]]; then
-            echo "pod/ts-***-ingress-0"
-            echo "pod/ts-***-ingress-0"
           elif [[ "$args" == *"get pods"* ]]; then
             echo "NAME                      READY   STATUS    RESTARTS   AGE"
-            echo "ts-***-ingress-0       1/1     Running   0          1m"
-            echo "ts-***-ingress-0     1/1     Running   0          1m"
           elif [[ "$args" == *"delete statefulset"* ]]; then
             echo "statefulset.apps/$(echo "$args" | grep -oP 'ts-\S+'  | head -1) deleted"
           elif [[ "$args" == *"wait --for=condition=Ready"* ]]; then
-            echo "pod/ts-***-ingress-0 condition met"
-            echo "pod/ts-***-ingress-0 condition met"
           fi
           exit 0
 

@@ -69,7 +69,6 @@ Rollback an ArgoCD application to a previous healthy revision.
 
 ```bash
 /rollback                      # List applications
-/rollback ***             # Rollback specific app
 ```
 
 ---
@@ -82,7 +81,6 @@ Verify deployment health after ArgoCD sync completes.
 
 ```bash
 /deploy-verify                 # Check all apps
-/deploy-verify ***        # Check specific app
 ```
 
 ---

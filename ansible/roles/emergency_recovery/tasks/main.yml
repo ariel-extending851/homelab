@@ -47,7 +47,6 @@
 
 - name: Get current Tailscale proxy pod status
   ansible.builtin.shell: |
-    kubectl get pods -n {{ tailscale_namespace }} -o wide | grep -E "(***|***|***)" || echo "No proxies found"
   environment: "{{ kubeconfig_env }}"
   register: current_proxy_status
   changed_when: false
@@ -82,7 +81,6 @@
 
 - name: Wait for Tailscale operator to recreate pods
   ansible.builtin.shell: |
-    kubectl get pods -n {{ tailscale_namespace }} -o name 2>/dev/null | grep -E "(***|***)" | wc -l
   environment: "{{ kubeconfig_env }}"
   register: pod_count
   until: pod_count.stdout | int >= 2

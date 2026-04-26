@@ -22,7 +22,6 @@ graph TD
 
     subgraph Applications
         K -- ArgoCD syncs --> M[k8s/apps/ in git]
-        M -- 16 apps --> N[adguard, ***, ***, ...]
     end
 
     style A fill:#e6ffed

@@ -54,7 +54,6 @@ The k3s control plane (k3s-server-1 on AWS) is **completely offline**, not just 
 ❌ kubectl commands - All failing
 ❌ Control plane - Unreachable
 ❌ Cluster management - Impossible
-❌ ***/*** access - Via Tailscale (proxy issue + control plane down)
 
 ## Recovery Required
 
@@ -120,7 +119,6 @@ Once k3s-server-1 is back:
 
 1. **Kubernetes API will return** (within 1-2 minutes)
 2. **kubectl will work again**
-3. **Then we can execute the fix for ***/*****
 4. **The proxy migration recovery script will run automatically**
 
 ## Current Recommendations
@@ -138,8 +136,6 @@ Once k3s-server-1 is back:
    cd /var/mnt/nvme/repos/repos/homelab
    ./scripts/emergency-recovery.sh
    ```
-
-5. **Verify ***/*** are accessible**
 
 ## Prevention for Future
 
@@ -170,7 +166,6 @@ This incident reveals the cluster has a **single point of failure**:
 - [ ] Restart k3s service or reboot instance
 - [ ] Wait for Kubernetes API to return
 - [ ] Execute emergency recovery script
-- [ ] Verify ***/*** accessibility
 
 ---
 

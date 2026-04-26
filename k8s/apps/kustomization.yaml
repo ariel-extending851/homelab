@@ -7,7 +7,6 @@ kind: Kustomization
 
   # Applications
 
-  # Media Stack
 resources:
 - ./prometheus
 - ./grafana
@@ -19,11 +18,3 @@ resources:
 - ./searxng
 - ./golink
 - ./adguard
-- ./***
-- ./***/network-policy.yaml
-- ./***
-- ./***
-- ./***
-- ./***
-- ./***
-- ./***

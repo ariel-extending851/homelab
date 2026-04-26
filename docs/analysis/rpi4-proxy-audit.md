@@ -8,9 +8,6 @@
 
 | Proxy | Target App | Target Node | Should Stay? | Reason |
 |-------|-----------|-------------|--------------|---------|
-| ts-***-ingress | *** | rasp-pi-04 | ✅ YES | Same node as app |
-| ts-***-ingress | *** | rasp-pi-04 | ✅ YES | Same node as app |
-| ts-***-ingress | *** | rasp-pi-04 | ✅ YES | Same node as app |
 | ts-adguard-ingress | AdGuard | rasp-pi-03 | ❌ MOVE | App is on RPi 3 |
 | ts-golink-ingress | GoLink | rasp-pi-03 | ❌ MOVE | App is on RPi 3 |
 | ts-grafana-ingress | Grafana | k3s-server-1 | ❌ MOVE | App is on AWS |
@@ -21,15 +18,11 @@
 **Current Impact on RPi 4:**
 - 9 proxies × ~100MB RAM = ~900MB RAM consumed
 - 9 proxies × CPU overhead = significant CPU cycles
-- **Plus:** ***, ***, ***, ***, *** competing for resources
 
 #### rasp-pi-03 (RPi 3) - 3 PROXIES
 
 | Proxy | Target App | Target Node | Status |
 |-------|-----------|-------------|--------|
-| ts-***-ingress | *** | rasp-pi-04 | ⚠️ CROSS-NODE (inefficient) |
-| ts-***-ingress | *** | rasp-pi-04 | ⚠️ CROSS-NODE (inefficient) |
-| ts-***-ingress | *** | rasp-pi-04 | ⚠️ CROSS-NODE (inefficient) |
 
 **Issue:** These 3 proxies should be on RPi 4 (where the apps are), not RPi 3.
 
@@ -48,7 +41,6 @@ Apps on this node:
 Apps on this node:
 - Loki
 - SearXNG
-- ***
 
 **Capacity:** Can host 3-4 proxies
 
@@ -76,11 +68,6 @@ Apps on this node:
 
 **Move these proxies TO rasp-pi-04:**
 
-1. **ts-***-ingress** → rasp-pi-04 (*** is on RPi 4)
-2. **ts-***-ingress** → rasp-pi-04 (*** is on RPi 4)
-
-**Note:** ts-***-ingress on RPi 3 can stay or move - *** is on RPi 4, but keeping one proxy on RPi 3 is fine for balance.
-
 ---
 
 ## Target Distribution After Optimization
@@ -89,11 +76,6 @@ Apps on this node:
 
 | Proxy | Target App | Notes |
 |-------|-----------|-------|
-| ts-***-ingress | *** | Main download app |
-| ts-***-ingress | *** | Movie management |
-| ts-***-ingress | *** | Media server |
-| ts-***-ingress | *** | Indexer manager |
-| ts-***-ingress | *** | TV show management |
 
 **Benefit:** All media-related proxies on same node as apps = efficient local traffic
 
@@ -103,7 +85,6 @@ Apps on this node:
 |-------|-----------|-------|
 | ts-adguard-ingress | AdGuard | DNS filtering |
 | ts-golink-ingress | GoLink | URL shortener |
-| ts-***-ingress-2 | *** | Backup/secondary (optional) |
 
 ### k3s-server-1 (AWS) - 2 PROXIES
 
@@ -145,8 +126,6 @@ kubectl delete pod -n tailscale ts-prometheus-ingress-xxx-0
 kubectl delete pod -n tailscale ts-searxng-ingress-xxx-0
 
 # Delete proxies that should move TO rasp-pi-04
-kubectl delete pod -n tailscale ts-***-ingress-xxx-0
-kubectl delete pod -n tailscale ts-***-ingress-xxx-0
 ```
 
 **Risk:** New pods may land on same nodes if we don't control scheduling.
@@ -222,7 +201,6 @@ kubectl uncordon rasp-pi-04
 echo ""
 echo "Step 5: Deleting proxies that should move TO RPi 4..."
 # These are currently on wrong nodes
-kubectl delete pod -n tailscale $(kubectl get pods -n tailscale -o name | grep -E "(***|***)-ingress")
 
 echo ""
 echo "Step 6: Final state..."

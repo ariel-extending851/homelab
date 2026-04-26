@@ -59,15 +59,10 @@ git push origin develop
 
 ```bash
 # Check pod distribution
-kubectl get pods -A -o wide | grep -E "(grafana|prometheus|***|***)"
 
 # Expected distribution:
 # grafana-xxx        → k3s-agent-2
 # prometheus-xxx     → k3s-agent-2
-# ***-xxx         → rasp-pi-04
-# ***-xxx         → rasp-pi-04
-# ***-xxx       → rasp-pi-04
-# ***-xxx    → rasp-pi-04
 ```
 
 ### Step 4: Test Lambda Scheduler
@@ -161,7 +156,6 @@ kubectl config set-cluster default --insecure-skip-tls-verify=false
 - **Stop:** Every day at 9:00 PM BRT (12:00 AM UTC next day)
 
 **Services running 24/7 (on Raspberry Pis):**
-- ***, ***, ***, ***, ***
 
 **Services that stop at night (on AWS):**
 - Prometheus, Grafana, Loki, Searxng

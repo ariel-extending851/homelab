@@ -14,7 +14,6 @@
 - RPi 4 has **9 Tailscale proxies** (overloaded)
 - **6 of these** are for apps NOT on RPi 4 (inefficient)
 - Current RAM usage: ~900MB just for proxies
-- Plus ***, ***, ***, ***, *** = severe overload
 
 ### 3. Created Proxy Audit
 **Location:** `docs/rpi4-proxy-audit.md`
@@ -53,8 +52,6 @@
 - **App Stability:** Reduced crashes during heavy operations
 
 ### Combined Impact
-- ***/*** response time: 10+ sec → 3-5 sec
-- *** response time: 5+ sec → 1-2 sec
 - RPi 4 load average: 4.0+ → 3.0-3.5
 
 ---
@@ -99,7 +96,6 @@ sudo /tmp/optimize-swap.sh
 
 ### Phase 3: *arr App Optimization (Optional - This Week)
 
-***** Settings:**
 ```
 Settings → Tasks:
 - Refresh Series: Daily → Weekly
@@ -107,14 +103,12 @@ Settings → Tasks:
 - Rss Sync: 15 min → 30 min
 ```
 
-***** Settings:**
 ```
 Settings → Tasks:
 - Refresh Movie: Daily → Weekly
 - Update Movie Info: Hourly → Daily
 ```
 
-***** Settings:**
 ```
 Settings → Apps:
 - Sync interval: 5 min → 60 min
@@ -124,9 +118,6 @@ Settings → Apps:
 
 ```bash
 # Vacuum databases to improve performance
-kubectl exec -it deploy/*** -- /bin/sh -c "sqlite3 /config/***.db 'VACUUM;'"
-kubectl exec -it deploy/*** -- /bin/sh -c "sqlite3 /config/***.db 'VACUUM;'"
-kubectl exec -it deploy/*** -- /bin/sh -c "sqlite3 /config/***.db 'VACUUM;'"
 ```
 
 ---
@@ -137,11 +128,6 @@ kubectl exec -it deploy/*** -- /bin/sh -c "sqlite3 /config/***.db 'VACUUM;'"
 ```
 rasp-pi-04 (RPi 4):
 ├── 9 Tailscale proxies (900MB RAM)
-├── *** (1-2GB RAM when transcoding)
-├── *** (300-500MB)
-├── *** (300-500MB)
-├── *** (100-200MB)
-└── *** (200-400MB)
 
 Result: Severe overload, CPU throttling, slow response times
 ```
@@ -150,11 +136,6 @@ Result: Severe overload, CPU throttling, slow response times
 ```
 rasp-pi-04 (RPi 4):
 ├── 5 Tailscale proxies (500MB RAM) ← Reduced
-├── *** (1-2GB RAM)
-├── *** (300-500MB) ← Optimized settings
-├── *** (300-500MB) ← Optimized settings
-├── *** (100-200MB) ← Optimized settings
-└── *** (200-400MB)
 
 Result: Balanced load, faster response times
 ```
@@ -207,7 +188,6 @@ ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "sudo swapoff /swapfile && sudo rm /swap
 ### During Execution
 - [ ] Run proxy migration script
 - [ ] Verify proxy distribution with `kubectl get pods -n tailscale -o wide`
-- [ ] Test critical endpoints (Grafana, ***, etc.)
 
 ### After Migration
 - [ ] Run swap optimization on RPi 4

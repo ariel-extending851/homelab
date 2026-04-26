@@ -48,20 +48,14 @@ setup() {
 declare -a APPS=(
   "adguard:adguard"
   "blackbox:monitoring"
-  "***:adguard"
   "golink:golink"
   "grafana:monitoring"
-  "***:***"
   "kube-state-metrics:monitoring"
   "loki:monitoring"
   "node-exporter:monitoring"
   "otel-collector:otel-collector"
   "prometheus:monitoring"
-  "***:media"
-  "***:media"
-  "***:media"
   "searxng:searxng"
-  "***:media"
 )
 
 @test "E2E: adguard deployment is Ready" {
@@ -79,8 +73,6 @@ declare -a APPS=(
   [ "${READY}" -ge 1 ]
 }
 
-@test "E2E: *** deployment is Ready" {
-  READY=$(kubectl get deploy *** -n *** -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
@@ -94,8 +86,6 @@ declare -a APPS=(
   [ "${READY}" -ge 1 ]
 }
 
-@test "E2E: *** deployment is Ready" {
-  READY=$(kubectl get deploy *** -n media -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
@@ -113,8 +103,6 @@ declare -a APPS=(
   [ "$PHASE" == "Bound" ]
 }
 
-@test "E2E: *** PVC is mounted" {
-  PHASE=$(kubectl get pvc -n *** -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "")
   [ "$PHASE" == "Bound" ]
 }
 
@@ -218,8 +206,6 @@ declare -a APPS=(
   SERVICES=(
     "grafana:monitoring:3000"
     "prometheus:monitoring:9090"
-    "***:***:8096"
-    "***:media:9696"
     "searxng:searxng:8080"
   )
 

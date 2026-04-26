@@ -296,7 +296,6 @@ kubectl get pods -n argocd
 # Check applications
 kubectl get applications -n argocd
 
-# Expected: apps-root and all child apps (***, ***, etc.)
 ```
 
 ### 3. Access ArgoCD UI
@@ -327,7 +326,6 @@ kubectl get pods -n media
 kubectl get ingress -A
 
 # Test app access (if Tailscale configured)
-curl -I https://***.tail57bf10.ts.net
 ```
 
 ---

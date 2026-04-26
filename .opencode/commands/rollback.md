@@ -104,7 +104,6 @@ Update `.opencode/memory.md` with rollback details:
 
 ```bash
 /rollback                      # List applications
-/rollback ***             # Rollback specific app
 /rollback homelab-apps-root    # Rollback root app (dangerous!)
 ```
 

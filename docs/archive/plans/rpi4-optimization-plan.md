@@ -2,8 +2,6 @@
 
 ## Executive Summary
 
-**Decision:** Keep *arr stack (***, ***, ***, ***) on RPi 4 due to piracy concerns with AWS.
-
 **Goal:** Optimize RPi 4 performance by:
 1. Moving Tailscale proxies to AWS nodes
 2. Reducing *arr app resource consumption
@@ -19,11 +17,6 @@
 
 | App | CPU Limit | Memory | Impact |
 |-----|-----------|---------|---------|
-| *** | 2000m | 1-2 GB | High (media transcoding) |
-| *** | 2000m | 300-500MB | High (background scanning) |
-| *** | 2000m | 300-500MB | High (background scanning) |
-| *** | 500m | 100-200MB | Medium |
-| *** | 1000m | 200-400MB | High (during downloads) |
 | Tailscale Proxies (6x) | Shared | ~100MB each | Medium |
 
 **Total Load:** Severely overloaded
@@ -32,8 +25,6 @@
 
 **Primary Bottlenecks:**
 1. **6 Tailscale proxies** consuming CPU/memory for ingress
-2. ***** transcoding** competing with *arr apps
-3. **Background library scans** in ***/*** running constantly
 4. **Swap thrashing** due to memory pressure
 
 ---
@@ -63,8 +54,6 @@
 
 ### Phase 2: Optimize *arr App Settings (Medium Impact)
 
-#### *** Optimizations
-
 **Disable Unnecessary Features:**
 ```
 Settings → Media Management → File Management:
@@ -90,17 +79,11 @@ Tasks (System → Tasks):
 
 **Database Maintenance:**
 ```bash
-# Exec into *** pod
-kubectl exec -it deploy/*** -- /bin/sh
 
 # Vacuum database (reduces size, improves performance)
 cd /config
-sqlite3 ***.db "VACUUM;"
 ```
 
-#### *** Optimizations
-
-Similar to ***:
 ```
 Settings → Media Management:
 - [ ] Automatically rename movies (disable if not needed)
@@ -109,8 +92,6 @@ Settings → Tasks:
 - Refresh Movie: Daily → Weekly
 - Update Movie Info: Hourly → Daily
 ```
-
-#### *** Optimizations
 
 ```
 Settings → Indexers:
@@ -208,7 +189,6 @@ kubelet-arg:
 #### Review Current Limits
 
 ```yaml
-# Current *** limits (may be too high)
 resources:
   limits:
     cpu: 2000m
@@ -233,8 +213,6 @@ resources:
 
 **Add Priority Classes:**
 ```yaml
-# Make *** higher priority than *arr apps
-priorityClassName: high-priority  # For ***
 
 priorityClassName: medium-priority  # For *arr apps
 ```
@@ -249,9 +227,6 @@ priorityClassName: medium-priority  # For *arr apps
 3. Increase swap to 2GB
 
 ### Short Term (This Week)
-4. Optimize *** settings (disable scans, increase intervals)
-5. Optimize *** settings
-6. Optimize *** settings
 
 ### Medium Term (Next Week)
 7. Vacuum databases
@@ -266,9 +241,6 @@ priorityClassName: medium-priority  # For *arr apps
 |--------|--------|-------|-------------|
 | RPi 4 Load Average | 4.0+ | 2.0-2.5 | 40-50% |
 | Available RAM | <500MB | 1-1.5GB | 2-3x |
-| *** Response Time | 10+ sec | 3-5 sec | 60% |
-| *** Response Time | 10+ sec | 3-5 sec | 60% |
-| *** Response Time | 5+ sec | 1-2 sec | 70% |
 
 ---
 
@@ -291,10 +263,8 @@ Track improvements with:
 ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "uptime && free -m && top -bn1 | head -20"
 
 # Pod resource usage
-kubectl top pods -n default -l "app in (***, ***, ***)"
 
 # Response times
-curl -w "@curl-format.txt" -o /dev/null -s https://***.tail57bf10.ts.net
 ```
 
 ---

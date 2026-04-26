@@ -44,8 +44,6 @@ provisioner:
         tailscale_namespace: tailscale
         tailscale_network: molecule.test
         tailscale_proxy_services:
-          - ***
-          - ***
 
 scenario:
   test_sequence:

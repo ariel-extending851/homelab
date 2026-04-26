@@ -129,7 +129,6 @@ fi
 *Note: HTTP health endpoint checks are not implemented in initial version. Can be added later if needed.*
 
 Potential endpoints to check:
-- ***: `http://***.media.svc:8096/health`
 - Grafana: `http://grafana.monitoring.svc:3000/api/health`
 - Prometheus: `http://prometheus.monitoring.svc:9090/-/healthy`
 
@@ -139,7 +138,6 @@ Potential endpoints to check:
 
 ```bash
 /deploy-verify                  # Check homelab-apps-root (all apps)
-/deploy-verify ***         # Check specific app
 /deploy-verify prometheus       # Check monitoring stack
 ```
 

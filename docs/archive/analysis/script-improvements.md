@@ -193,7 +193,6 @@ Before running in production, test:
 4. **Verify endpoints:**
    ```bash
    curl https://grafana.tail57bf10.ts.net
-   curl https://***.tail57bf10.ts.net
    # etc...
    ```
 

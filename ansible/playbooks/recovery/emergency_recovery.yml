@@ -9,7 +9,6 @@
 # What it does:
 #   1. Verifies Kubernetes API is available
 #   2. Checks current Tailscale proxy pod status
-#   3. Deletes failing StatefulSets (***, ***, ***)
 #   4. Waits for Tailscale operator to recreate them
 #   5. Verifies pods are Ready
 #   6. Tests endpoint accessibility
