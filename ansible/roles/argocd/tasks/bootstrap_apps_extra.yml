@@ -1,0 +1,68 @@
+---
+# Bootstrap a second ArgoCD Application from a private repo.
+# No-op when argocd_extra_repo_url is not set.
+
+- name: Render extra root Application manifest
+  ansible.builtin.template:
+    src: apps-extra-root.yaml.j2
+    dest: /tmp/apps-extra-root.yaml
+    mode: '0644'
+  when:
+    - argocd_extra_repo_url is defined
+    - not ansible_check_mode
+
+- name: Apply extra root Application
+  ansible.builtin.command: kubectl apply -f /tmp/apps-extra-root.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: extra_app_apply
+  changed_when: "'created' in extra_app_apply.stdout or 'configured' in extra_app_apply.stdout"
+  when:
+    - argocd_extra_repo_url is defined
+    - not ansible_check_mode
+
+- name: Wait for extra root Application to sync
+  ansible.builtin.command: >
+    kubectl wait application/{{ argocd_extra_app_name }}
+    -n {{ argocd_namespace }}
+    --for=jsonpath='{.status.sync.status}'=Synced
+    --timeout=300s
+  environment: "{{ kubeconfig_env }}"
+  register: extra_app_wait
+  changed_when: false
+  failed_when: false
+  when:
+    - argocd_extra_repo_url is defined
+    - not ansible_check_mode
+    - extra_app_apply is defined
+    - extra_app_apply is changed
+
+- name: Remove temp extra app manifest
+  ansible.builtin.file:
+    path: /tmp/apps-extra-root.yaml
+    state: absent
+  when:
+    - argocd_extra_repo_url is defined
+    - not ansible_check_mode
+
+- name: Display extra root sync status
+  ansible.builtin.command: >
+    kubectl get application {{ argocd_extra_app_name }}
+    -n {{ argocd_namespace }}
+    -o jsonpath='{.status.sync.status}/{.status.health.status}'
+  environment: "{{ kubeconfig_env }}"
+  register: extra_app_status
+  changed_when: false
+  failed_when: false
+  when:
+    - argocd_extra_repo_url is defined
+    - not ansible_check_mode
+  tags:
+    - validate
+
+- name: Print extra root status
+  ansible.builtin.debug:
+    msg: "{{ argocd_extra_app_name }} status: {{ extra_app_status.stdout | default('skipped') }}"
+  when:
+    - argocd_extra_repo_url is defined
+  tags:
+    - validate
