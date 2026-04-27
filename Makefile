@@ -251,6 +251,16 @@ setup-ci-deps-conftest: ## Install conftest via mise (version pinned in .mise.to
 	sudo ln -sf "$$(mise which conftest)" /usr/local/bin/conftest 2>/dev/null || true; \
 	conftest --version && echo "✅ conftest installed"
 
+setup-ci-deps-trivy: ## Install trivy via mise (version pinned in .mise.toml)
+	@echo "🔧 Setting up trivy for CI..."
+	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	if ! command -v mise >/dev/null 2>&1; then \
+		curl https://mise.jdx.dev/install.sh | sh; \
+	fi; \
+	mise install trivy; \
+	sudo ln -sf "$$(mise which trivy)" /usr/local/bin/trivy 2>/dev/null || true; \
+	trivy --version && echo "✅ trivy installed"
+
 setup-ci-deps-all: ## Install ALL CI dependencies (Makefile as source of truth for CI)
 	@echo "🔨 Installing ALL CI/CD dependencies via Makefile..."
 	@make setup-ci-deps-terraform
@@ -262,6 +272,7 @@ setup-ci-deps-all: ## Install ALL CI dependencies (Makefile as source of truth f
 	@make setup-ci-deps-kubeconform
 	@make setup-ci-deps-age
 	@make setup-ci-deps-conftest
+	@make setup-ci-deps-trivy
 	@make setup-ci-deps-molecule
 	@make setup-ci-deps-arm64
 	@echo "✅ All CI/CD dependencies installed"
@@ -752,6 +763,20 @@ test-k8s-policy-enforcement: ## Alias: use conftest directly — run: conftest t
 	@conftest test k8s/apps/ --policy k8s/policies/
 	@echo "  ✓ OPA policy enforcement passed."
 
+test-trivy: setup-ci-deps-trivy setup-ci-deps-python ## Trivy image scan in advisory mode (reports CVEs, does not fail build)
+	@echo "🔍 Running Trivy image scan (advisory mode) on cluster manifests..."
+	@command -v trivy >/dev/null 2>&1 || (echo "❌ trivy not found. Install via: make setup-ci-deps-trivy"; exit 1)
+	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
+	@python3 bin/trivy_scan.py
+	@echo "  ✓ Trivy image scan completed (advisory)."
+
+test-trivy-strict: setup-ci-deps-trivy setup-ci-deps-python ## Trivy strict mode — fails build on any HIGH/CRITICAL fixable CVE
+	@echo "🔍 Running Trivy image scan (strict mode)..."
+	@command -v trivy >/dev/null 2>&1 || (echo "❌ trivy not found. Install via: make setup-ci-deps-trivy"; exit 1)
+	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
+	@python3 bin/trivy_scan.py --strict
+	@echo "  ✓ Trivy strict scan passed."
+
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 
 test-dr-execution: ## Run disaster recovery role as real execution in Molecule test environment
@@ -821,6 +846,7 @@ test-offline-required: ## Week 1 profile: required offline suites only (fast, bl
 	@make test-security
 	@make test-contracts
 	@make validate-k8s-policies-critical
+	@make test-trivy
 	@make test-shell
 	@make test-python-ci
 	@make test-templates

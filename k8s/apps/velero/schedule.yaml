@@ -1,0 +1,25 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  # 11:00 BRT (14:00 UTC) — runs after the AWS scheduler boots the cluster
+  # at 10:00 BRT and before the cluster shuts down at 21:00 BRT.
+  schedule: "0 14 * * *"
+  template:
+    includedNamespaces:
+      - adguard
+      - argocd
+      - golink
+      - grafana
+      - kube-system
+      - loki
+      - monitoring
+      - otel-collector
+      - prometheus
+      - tailscale
+      - velero
+    ttl: 336h0m0s   # retain 14 days
+    storageLocation: default
+    snapshotMoveData: false

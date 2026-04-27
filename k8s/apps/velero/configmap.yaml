@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-config
+  namespace: velero
+data:
+  # AWS region used by the BackupStorageLocation below.
+  aws-region: "us-east-1"
+  # S3 bucket name (provisioned by infra/aws — see velero_backup_bucket var).
+  s3-bucket: "homelab-velero-backups"
+---
+# BackupStorageLocation — points Velero at the S3 bucket for backup storage.
+# CRDs are installed by Velero's chart/install command separately; this manifest
+# becomes valid after the velero.io/v1 CRDs land in the cluster.
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  default: true
+  objectStorage:
+    bucket: homelab-velero-backups
+    prefix: cluster-backups
+  config:
+    region: us-east-1
+    s3ForcePathStyle: "false"
+  credential:
+    name: velero-aws-credentials
+    key: cloud

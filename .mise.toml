@@ -14,6 +14,7 @@ tflint = "latest"
 kubeconform = "0.7.0"
 age = "1.2.1"
 conftest = "0.57.0"
+trivy = "0.70.0"
 
 # Local Testing (LocalStack)
 localstack = "4.13.1"
