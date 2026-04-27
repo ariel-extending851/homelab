@@ -777,6 +777,16 @@ test-trivy-strict: setup-ci-deps-trivy setup-ci-deps-python ## Trivy strict mode
 	@python3 bin/trivy_scan.py --strict
 	@echo "  ✓ Trivy strict scan passed."
 
+velero-bootstrap-secret: ## Inject Velero AWS credentials from terraform outputs into SOPS-encrypted secret (idempotent)
+	@echo "🔐 Bootstrapping Velero AWS credentials from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/velero_bootstrap_secret.py
+	@echo "  ✓ Velero secret updated. Commit + push to trigger ArgoCD sync:"
+	@echo "    git add k8s/apps/velero/secret.yaml"
+	@echo "    git commit -S -m 'chore(velero): bootstrap AWS creds'"
+	@echo "    git push"
+
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 
 test-dr-execution: ## Run disaster recovery role as real execution in Molecule test environment
