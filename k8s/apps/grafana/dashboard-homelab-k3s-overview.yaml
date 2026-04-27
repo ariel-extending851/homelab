@@ -1371,7 +1371,7 @@ data:
                 "type": "loki",
                 "uid": "loki"
               },
-              "expr": "{exporter=\"OTLP\", namespace=~\"node-exporter|otel-collector|kube-system|adguard|argocd|monitoring|blackbox|golink|grafana|kube-state-metrics|loki|tailscale|prometheus|searxng\"} | json | line_format \"{{.body}}\"",
+              "expr": "{exporter=\"OTLP\", namespace=~\"node-exporter|otel-collector|kube-system|adguard|argocd|monitoring|blackbox|golink|grafana|kube-state-metrics|loki|tailscale|prometheus\"} | json | line_format \"{{.body}}\"",
               "refId": "A"
             }
           ],

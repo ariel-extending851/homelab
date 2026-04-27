@@ -24,7 +24,6 @@ APPS = [
     ("node-exporter", "monitoring"),
     ("otel-collector", "otel-collector"),
     ("prometheus", "monitoring"),
-    ("searxng", "searxng"),
 ]
 
 REQUIRED_NAMESPACES = ["argocd", "monitoring", "adguard"]

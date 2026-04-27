@@ -35,7 +35,6 @@ Source of truth: [`ansible/group_vars/all.yml`](../../ansible/group_vars/all.yml
 | `otel-collector` | OpenTelemetry collector (pipes logs to Loki) |
 | `grafana` | Grafana |
 | `loki` | Loki |
-| `searxng` | SearXNG (own namespace, sidecar pattern) |
 | `golink` | GoLink |
 | `adguard` | AdGuard Home |
 | `kube-system` | k3s system components |
@@ -60,7 +59,6 @@ Hardware-aware scheduling via `nodeSelector` / `nodeAffinity` in each app's `dep
 | Prometheus | k3s-agent-2 (AWS) | TSDB storage IO |
 | Loki | k3s-agent-2 (AWS) | Log write IO |
 | AdGuard | rasp-pi-03 | hostNetwork on stable LAN IP |
-| SearXNG | rasp-pi-03 | Pinned for tailscale sidecar identity |
 | Blackbox | k3s-server (AWS) | Lightweight; saves Pi resources |
 | OTEL Collector / node-exporter | All nodes | DaemonSet (host-level metrics/logs) |
 | kube-state-metrics | Any | Stateless metric exporter |
@@ -109,7 +107,6 @@ kubectl apply -k k8s/apps/grafana/
 
 # 6. The rest (independent)
 kubectl apply -k k8s/apps/adguard/
-kubectl apply -k k8s/apps/searxng/
 kubectl apply -k k8s/apps/golink/
 ```
 

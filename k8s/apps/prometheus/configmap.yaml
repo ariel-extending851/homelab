@@ -23,25 +23,6 @@ data:
             labels:
               cluster: 'k3s-home'
 
-      # OTEL Collector discovery
-      - job_name: 'otel-collector'
-        kubernetes_sd_configs:
-        - role: pod
-          namespaces:
-            names:
-              - otel-collector
-        relabel_configs:
-        - source_labels: [__meta_kubernetes_pod_label_app]
-          regex: opentelemetry
-          action: keep
-        - source_labels: [__meta_kubernetes_pod_ip]
-          regex: (.*)
-          replacement: $1:8889
-          target_label: __address__
-        - source_labels: [__meta_kubernetes_pod_node_name]
-          target_label: instance
-          action: replace
-
       - job_name: 'node-exporter'
         kubernetes_sd_configs:
           - role: endpoints

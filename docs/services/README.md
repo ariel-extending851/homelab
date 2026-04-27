@@ -17,7 +17,6 @@ Index of every application deployed to the k3s cluster. Each row links to the ca
 | node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `monitoring` | DaemonSet | — |
 | OTEL Collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | any | — |
 | Prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `monitoring` | any | <https://prometheus.tail57bf10.ts.net> |
-| SearXNG | [searxng.md](searxng.md) | `media` | rasp-pi-03 | <https://searxng.tail57bf10.ts.net> |
 | Tailscale Operator | [tailscale-operator.md](tailscale-operator.md) | `tailscale` | system | (controller) |
 
 Sources verified against `ls k8s/apps/` and ingress hostnames from each app's `ingress.yaml`.

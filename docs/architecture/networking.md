@@ -68,7 +68,7 @@ To use, label the `Service`: `tailscale.com/proxy-class: high-bandwidth`.
 
 Earlier analysis ([`docs/analysis/rpi4-proxy-audit.md`](../analysis/rpi4-proxy-audit.md)) noted that running every Tailscale proxy pod on a single Pi causes load imbalance. Current placement strategy:
 
-- **rasp-pi-03** (1 GB RPi 3): hosts only lightweight proxies (SearXNG and the monitoring sidecars)
+- **rasp-pi-03** (1 GB RPi 3): hosts AdGuard (LAN DNS via hostNetwork) and lightweight monitoring sidecars; otel-collector excluded due to RAM pressure
 - **AWS nodes**: host the rest
 
 Placement is driven by `nodeSelector` / `nodeAffinity` in each app's `deployment.yaml`.
