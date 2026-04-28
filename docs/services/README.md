@@ -18,5 +18,6 @@ Index of every application deployed to the k3s cluster. Each row links to the ca
 | OTEL Collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | any | — |
 | Prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `monitoring` | any | <https://prometheus.tail57bf10.ts.net> |
 | Tailscale Operator | [tailscale-operator.md](tailscale-operator.md) | `tailscale` | system | (controller) |
+| Velero | [velero.md](velero.md) | `velero` | controller: any · node-agent: DaemonSet (Pi3 excluded) | — |
 
 Sources verified against `ls k8s/apps/` and ingress hostnames from each app's `ingress.yaml`.

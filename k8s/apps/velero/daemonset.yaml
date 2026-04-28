@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-agent
+  namespace: velero
+  labels:
+    app: velero
+    component: node-agent
+spec:
+  selector:
+    matchLabels:
+      app: velero
+      component: node-agent
+  template:
+    metadata:
+      labels:
+        app: velero
+        component: node-agent
+    spec:
+      serviceAccountName: velero
+
+      # Skip rasp-pi-03 (1GB Pi3 — too tight for the restic uploader).
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - rasp-pi-03
+
+      containers:
+        - name: node-agent
+          image: velero/velero:v1.14.1
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - /velero
+          args:
+            - node-agent
+            - server
+            - --metrics-address=0.0.0.0:8085
+
+          env:
+            - name: VELERO_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /credentials/cloud
+
+          ports:
+            - name: metrics
+              containerPort: 8085
+              protocol: TCP
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            # restic uploader needs to read pod volumes via /var/lib/kubelet/pods,
+            # which on most distros is owned by root. Run as root with capabilities
+            # dropped — privilege escalation still blocked.
+            runAsUser: 0
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "200Mi"
+
+          readinessProbe:
+            tcpSocket:
+              port: 8085
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+          volumeMounts:
+            - name: cloud-credentials
+              mountPath: /credentials
+              readOnly: true
+            - name: host-pods
+              mountPath: /host_pods
+              mountPropagation: HostToContainer
+            - name: scratch
+              mountPath: /scratch
+
+      volumes:
+        - name: cloud-credentials
+          secret:
+            secretName: velero-aws-credentials
+        - name: host-pods
+          hostPath:
+            path: /var/lib/kubelet/pods
+        - name: scratch
+          emptyDir: {}

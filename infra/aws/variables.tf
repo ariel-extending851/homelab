@@ -120,6 +120,12 @@ variable "ssm_s3_bucket" {
   default     = "homelab-ssm-transfer-bucket"
 }
 
+variable "velero_backup_bucket" {
+  description = "S3 bucket name for Velero cluster backups. Versioned, encrypted, lifecycle-tiered (Standard → IA → Glacier → expire 365d)."
+  type        = string
+  default     = "homelab-velero-backups"
+}
+
 variable "localstack_test" {
   description = "Enable LocalStack testing mode (yes/no). When 'yes', uses mock secrets instead of SOPS."
   type        = string

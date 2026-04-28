@@ -17,3 +17,4 @@ resources:
 - ./otel-collector
 - ./golink
 - ./adguard
+- ./velero

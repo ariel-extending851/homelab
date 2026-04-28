@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app: velero
+    component: server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: velero
+      component: server
+  template:
+    metadata:
+      labels:
+        app: velero
+        component: server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: /metrics
+    spec:
+      serviceAccountName: velero
+      restartPolicy: Always
+      containers:
+        - name: velero
+          image: velero/velero:v1.14.1
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - /velero
+          args:
+            - server
+            - --features=
+            - --uploader-type=restic
+            - --metrics-address=0.0.0.0:8085
+            - --backup-sync-period=2m0s
+            - --fs-backup-timeout=4h
+            - --default-backup-storage-location=default
+
+          env:
+            - name: VELERO_SCRATCH_DIR
+              value: /scratch
+            - name: VELERO_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /credentials/cloud
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: velero-config
+                  key: aws-region
+
+          ports:
+            - name: metrics
+              containerPort: 8085
+              protocol: TCP
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "150Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          readinessProbe:
+            tcpSocket:
+              port: 8085
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+            - name: cloud-credentials
+              mountPath: /credentials
+              readOnly: true
+
+      volumes:
+        - name: scratch
+          emptyDir: {}
+        - name: cloud-credentials
+          secret:
+            secretName: velero-aws-credentials

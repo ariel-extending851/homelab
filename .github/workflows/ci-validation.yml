@@ -9,6 +9,11 @@ on:
     - cron: "15 3 * * *"
   workflow_dispatch:
 
+# Default permissions for all jobs. Individual jobs can widen via
+# their own `permissions:` block — none currently need more than read.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -367,6 +372,47 @@ jobs:
       - name: Run Security Guardrail Tests
         run: make test-security
 
+  trivy-image-scan:
+    name: "Security: Trivy Image Scan (HIGH/CRITICAL)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-trivy-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-trivy-
+
+      - name: Restore Trivy Vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Setup Trivy + Python via Makefile
+        run: |
+          make setup-ci-deps-trivy
+          make setup-ci-deps-kustomize
+          make setup-ci-deps-python
+
+      - name: Run Trivy Image Scan
+        run: make test-trivy
+
+      - name: Upload Trivy Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: .qa/trivy/
+          retention-days: 14
+
   disaster-recovery-tests:
     name: "Disaster Recovery: Readiness Tests"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -651,7 +697,7 @@ jobs:
   pipeline-gate-pr:
     name: Pipeline Gate
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name != 'schedule'
     steps:
       - name: Validate Required Job Outcomes
@@ -665,6 +711,7 @@ jobs:
             'disaster-recovery-execution',
             'molecule',
             'policy-as-code-critical',
+            'trivy-image-scan',
             'arm64-validation',
             'sops-validation',
             'qa-audit-evidence',
@@ -689,7 +736,7 @@ jobs:
   pipeline-gate-nightly:
     name: Pipeline Gate (Nightly)
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name == 'schedule'
     steps:
       - name: Validate Nightly Required Outcomes
@@ -704,6 +751,7 @@ jobs:
             'k8s-dry-run',
             'shellcheck',
             'security',
+            'trivy-image-scan',
             'policy-as-code-critical',
             'disaster-recovery-tests',
             'disaster-recovery-execution',
