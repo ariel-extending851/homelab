@@ -8,18 +8,7 @@ metadata:
 data:
   otel-collector-config: |
     receivers:
-      hostmetrics:
-        collection_interval: 30s
-        root_path: /hostfs
-        scrapers:
-          cpu:
-          memory:
-          load:
-          filesystem:
-          network:
-          paging:
-
-      # Collect LOGS from containers
+      # Container logs from /var/log/pods (host metrics handled by node-exporter)
       filelog:
         include:
           - /var/log/pods/*/*/*.log
@@ -48,8 +37,7 @@ data:
             - k8s.node.name
             - k8s.container.name
 
-      # CRITICAL FIX: Copy resource attributes to log record attributes
-      # This enables Loki to index them as labels (10x faster queries)
+      # Promote resource attributes to log attributes so Loki indexes them as labels
       transform/loki:
         error_mode: ignore
         log_statements:
@@ -64,13 +52,6 @@ data:
               - set(attributes["loki.attribute.labels"], "namespace,pod,container")
 
     exporters:
-      prometheus:
-        endpoint: "0.0.0.0:8889"
-        resource_to_telemetry_conversion:
-          enabled: true
-
-      # Send logs to Loki
-      # Labels are automatically promoted from log record attributes
       loki:
         endpoint: "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
         timeout: 30s
@@ -82,12 +63,7 @@ data:
     service:
       extensions: [health_check]
       pipelines:
-        metrics:
-          receivers: [hostmetrics]
-          processors: [k8sattributes, batch]
-          exporters: [prometheus]
         logs:
           receivers: [filelog]
-          # CRITICAL: Add attributes/loki processor to promote labels
           processors: [k8sattributes, transform/loki, batch]
           exporters: [loki]

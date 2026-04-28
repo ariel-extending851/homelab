@@ -4,9 +4,6 @@
 # Localhost URLs — sample/doc references, not real endpoints
 ^https?://localhost(:[0-9]+)?(/.*)?$
 
-# Internal Tailscale hostnames (not reachable from CI)
-https://searxng
-
 # GitHub settings pages (require authentication)
 https://github.com/ariel-extending851/homelab/settings
 
