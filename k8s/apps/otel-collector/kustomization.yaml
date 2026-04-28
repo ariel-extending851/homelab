@@ -8,5 +8,4 @@ resources:
 - rbac.yaml
 - configmap.yaml
 - daemonset.yaml
-- service.yaml
 - pdb.yaml

@@ -40,10 +40,10 @@ setup() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# APPLICATION HEALTH (17 apps)
+# APPLICATION HEALTH
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Parametrized app tests (17 apps for reference/documentation)
+# Parametrized app tests (for reference/documentation)
 # shellcheck disable=SC2034
 declare -a APPS=(
   "adguard:adguard"
@@ -55,7 +55,6 @@ declare -a APPS=(
   "node-exporter:monitoring"
   "otel-collector:otel-collector"
   "prometheus:monitoring"
-  "searxng:searxng"
 )
 
 @test "E2E: adguard deployment is Ready" {
@@ -206,7 +205,6 @@ declare -a APPS=(
   SERVICES=(
     "grafana:monitoring:3000"
     "prometheus:monitoring:9090"
-    "searxng:searxng:8080"
   )
 
   script=""
