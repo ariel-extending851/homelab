@@ -141,13 +141,6 @@ K8S_IMAGES: list[ImageSpec] = [
         skip_reason="digest-pinned — update manually",
     ),
     ImageSpec(
-        "searxng/searxng:2026.2.14-39ac4d438",
-        "dockerhub",
-        "searxng/searxng",
-        skip=True,
-        skip_reason="rolling date+commit tags — update manually",
-    ),
-    ImageSpec(
         "alpine:3.19",
         "dockerhub",
         "library/alpine",

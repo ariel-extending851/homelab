@@ -15,7 +15,6 @@ resources:
 - ./kube-state-metrics
 - ./node-exporter
 - ./otel-collector
-- ./searxng
 - ./golink
 - ./adguard
 - ./velero

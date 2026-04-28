@@ -63,6 +63,7 @@ Source: [`bin/velero_bootstrap_secret.py`](../../bin/velero_bootstrap_secret.py)
 # See the helper script comment block at top of k8s/apps/velero/crds.yaml
 ```
 
+
 ## Operations
 
 ### Trigger an ad-hoc backup

@@ -79,7 +79,7 @@ graph TB
 |---|---|---|---|---|
 | k3s-server (dynamic) | Control plane | EC2 t3.medium spot | AWS us-east-1 | Provisioned by `infra/aws/`; joins tailnet via auth key |
 | k3s-agent (dynamic) | Worker | EC2 t3.small spot | AWS us-east-1 | Same lifecycle as server |
-| rasp-pi-03 | Worker, low-memory | RPi 3 · 4 cores · 1 GB | Home LAN | SearXNG, monitoring sidecars |
+| rasp-pi-03 | Worker, low-memory | RPi 3 · 4 cores · 1 GB | Home LAN | AdGuard (LAN DNS), monitoring sidecars |
 
 The AWS pair runs only between **10:00 and 21:00 America/Sao_Paulo** by default (scheduler Lambda). RPi nodes are always on. Cost detail: [`../operations/cost-and-scheduling.md`](../operations/cost-and-scheduling.md).
 

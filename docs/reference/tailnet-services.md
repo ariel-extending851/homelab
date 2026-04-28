@@ -17,7 +17,6 @@ Every `*.tail57bf10.ts.net` hostname currently served by the cluster, and what i
 | <https://grafana.tail57bf10.ts.net> | Grafana (high-bandwidth ProxyClass) | [grafana.md](../services/grafana.md) |
 | <https://loki.tail57bf10.ts.net> | Loki (`/ready` health endpoint) | [loki.md](../services/loki.md) |
 | <https://prometheus.tail57bf10.ts.net> | Prometheus UI (`/targets`, debug) | [monitoring-stack.md](../services/monitoring-stack.md#prometheus) |
-| <https://searxng.tail57bf10.ts.net> | SearXNG (Tailscale sidecar pattern) | [searxng.md](../services/searxng.md) |
 
 ---
 
@@ -31,7 +30,6 @@ These are nodes that joined the tailnet directly (not through the operator):
 | `k3s-agent-2` | AWS EC2 t3.small, worker |
 | `rasp-pi-03` | RPi 3, low-memory worker |
 | `rasp-pi-04` | RPi 4, storage-heavy worker |
-| `searxng` | SearXNG pod (joined via Tailscale sidecar — legacy pattern) |
 | `golink` | GoLink pod (joined via embedded `tsnet` — own auth key) |
 | `pc-tower` | Workstation (Fedora) |
 | `opal-gateway` | Home router |
@@ -45,7 +43,6 @@ The Tailscale operator also creates one `ts-<ingress-name>` device per Ingress f
 | Hostname source | Mechanism |
 |---|---|
 | `<app>.tail57bf10.ts.net` for app ingresses | Tailscale Kubernetes operator picks the `host` field from the Ingress and creates a tailnet device with that name. See [`../services/tailscale-operator.md`](../services/tailscale-operator.md). |
-| `searxng` | Per-pod Tailscale sidecar (`TS_HOSTNAME=searxng`). Legacy pattern. |
 | `golink` | Embedded `tsnet` instance with `hostname: golink`. |
 
 If you add a new app with a Tailscale Ingress, the operator picks up the `host` automatically — no manual tailnet config needed.
