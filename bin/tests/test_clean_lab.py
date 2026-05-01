@@ -6,7 +6,9 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / "infra" / "aws" / "scripts")
+)
 
 import clean_lab  # noqa: E402
 

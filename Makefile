@@ -877,12 +877,12 @@ test-shell: ## No-op: scripts migrated to Python (covered by make test-python)
 
 test-terraform: setup-ci-deps-python ## Run Terraform validation tests (syntax, security, outputs, best practices)
 	@echo "🧪 Running Terraform infrastructure tests..."
-	@python3 -m pytest infra/aws/tests/test_terraform_infrastructure.py -v
+	@python3 -m pytest bin/tests/test_terraform_infrastructure.py -v
 	@echo "  ✓ Terraform infrastructure tests passed."
 
 test-security: setup-ci-deps-python ## Run security guardrail tests (SOPS, policy scope, secret leakage checks)
 	@echo "🔐 Running security guardrail tests..."
-	@python3 -m pytest ansible/tests/test_security_guardrails.py ansible/tests/test_k8s_supply_chain.py ansible/tests/test_k8s_policy_coverage.py -v
+	@python3 -m pytest bin/tests/test_security_guardrails.py bin/tests/test_k8s_supply_chain.py bin/tests/test_k8s_policy_coverage.py -v
 	@echo "  ✓ Security guardrail tests passed."
 
 test-security-runtime: test-security ## Alias: runtime security is covered by test-security
@@ -890,12 +890,12 @@ test-security-runtime: test-security ## Alias: runtime security is covered by te
 
 test-security-supply-chain: setup-ci-deps-python ## Run image supply-chain guardrail tests (offline/static)
 	@echo "🔗 Running image supply-chain tests..."
-	@python3 -m pytest ansible/tests/test_k8s_supply_chain.py -v
+	@python3 -m pytest bin/tests/test_k8s_supply_chain.py -v
 	@echo "  ✓ Image supply-chain tests passed."
 
 test-k8s-policy-coverage: setup-ci-deps-python ## Run Kubernetes policy coverage tests (offline/static)
 	@echo "📐 Running Kubernetes policy coverage tests..."
-	@python3 -m pytest ansible/tests/test_k8s_policy_coverage.py -v
+	@python3 -m pytest bin/tests/test_k8s_policy_coverage.py -v
 	@echo "  ✓ Kubernetes policy coverage tests passed."
 
 test-k8s-policy-enforcement: ## Alias: use conftest directly — run: conftest test k8s/apps/ --policy k8s/policies/
@@ -937,14 +937,14 @@ test-dr-execution: ## Run disaster recovery role as real execution in Molecule t
 
 test-python: setup-ci-deps-python ## Run Python unit tests for inventory script and Lambda scheduler with coverage (requires pytest-cov)
 	@echo "🧪 Running Python unit tests with coverage..."
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
+	@python3 -m pytest bin/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
 	  --cov \
 	  --cov-report=term-missing
 	@echo "  ✓ Python unit tests passed with coverage."
 
 test-python-ci: setup-ci-deps-python ## Run Python tests for CI with coverage artifacts and fail-under threshold
 	@echo "🧪 Running Python CI tests with coverage artifacts..."
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
+	@python3 -m pytest bin/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
 	  --cov \
 	  --cov-report=html \
 	  --cov-report=xml \
@@ -954,7 +954,7 @@ test-python-ci: setup-ci-deps-python ## Run Python tests for CI with coverage ar
 
 test-python-coverage: setup-ci-deps-python ## Generate HTML coverage report for Python tests (opens htmlcov/index.html)
 	@echo "📊 Generating detailed coverage report..."
-	@python3 -m pytest ansible/tests/ infra/aws/modules/scheduler/lambda_src/tests/ infra/aws/scripts/tests/ bin/tests/ -v \
+	@python3 -m pytest bin/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \
 	  --cov \
 	  --cov-report=html \
 	  --cov-report=term-missing
