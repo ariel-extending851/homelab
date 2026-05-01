@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: velero
 
 resources:
+  - crds.yaml
   - namespace.yaml
   - rbac.yaml
   - configmap.yaml
