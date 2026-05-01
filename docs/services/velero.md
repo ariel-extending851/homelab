@@ -1,8 +1,9 @@
 # Velero — Cluster Backup & Disaster Recovery
 
-> **Status:** Stub (manifests committed, not yet deployed)
-> **Last reviewed:** 2026-04-27
+> **Status:** Active (deployed via ArgoCD apps-root)
+> **Last reviewed:** 2026-05-01
 > **Owner:** @ariel-extending851
+> **Operations runbook:** [`../operations/backup-and-restore.md`](../operations/backup-and-restore.md)
 
 Cluster-state backup operator. Snapshots K8s resources (Deployments, ConfigMaps, Secrets, etc.) and PVCs, uploads to S3. Complements `ansible/roles/emergency_recovery` (which rebuilds *nodes*) by recovering *cluster state* after data loss.
 
@@ -62,7 +63,6 @@ Source: [`bin/velero_bootstrap_secret.py`](../../bin/velero_bootstrap_secret.py)
 # Fetch each CRD from the upstream tag, concatenate, inject sync-wave annotation
 # See the helper script comment block at top of k8s/apps/velero/crds.yaml
 ```
-
 
 ## Operations
 

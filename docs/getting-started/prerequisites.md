@@ -23,7 +23,7 @@ make setup-ci-deps-all   # verifies + installs anything missing (pytest-cov, bot
 
 This installs: `terraform`, `tflint`, `sops`, `age`, `kubectl`, `kustomize`, `kubeconform`, `ansible-core`, `ansible-lint`, `molecule`, `pytest`, `bats`, `localstack`, `awscli`, `jq`, `conftest`, plus a few helpers.
 
-If you don't use mise, you'll need at minimum: `terraform >= 1.5`, `ansible >= 2.16`, `aws` CLI, `kubectl`, `sops`, `age`. Versions in `.mise.toml` are the source of truth.
+If you don't use mise, you'll need at minimum: `terraform >= 1.5`, `ansible >= 2.16`, `aws` CLI, `kubectl`, `sops`, `age`. **Always check [`.mise.toml`](../../.mise.toml) for the exact pinned versions** — that file is the single source of truth and what CI installs.
 
 ---
 

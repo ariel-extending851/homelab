@@ -1,12 +1,12 @@
 # Makefile Targets
 
-> **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Status:** Active (curated, not exhaustive)
+> **Last reviewed:** 2026-05-01
 > **Owner:** @ariel-extending851
 
-Reference for every target in the root [`Makefile`](../../Makefile). For detailed workflow guides see [`../operations/`](../operations/).
+Curated reference for the most-used targets in the root [`Makefile`](../../Makefile). For detailed workflow guides see [`../operations/`](../operations/).
 
-Run `make help` to see this list with the live inline `## comments`.
+> **Canonical source:** `make help` lists every documented target (entries with `## ...` comments) directly from the Makefile. The Makefile has more targets than fit cleanly in this doc; prefer `make help | less` when looking for a specific one.
 
 ---
 
