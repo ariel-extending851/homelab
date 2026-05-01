@@ -40,7 +40,7 @@ spec:
 
       containers:
         - name: falco
-          image: falcosecurity/falco-no-driver:0.43.1
+          image: falcosecurity/falco:0.43.1
           imagePullPolicy: IfNotPresent
           args:
             - /usr/bin/falco
@@ -49,7 +49,10 @@ spec:
           securityContext:
             # eBPF program load requires CAP_BPF + CAP_PERFMON + CAP_SYS_RESOURCE;
             # privileged=true is the simplest cross-distro way to grant them.
+            # allowPrivilegeEscalation=false is independently enforced by k8s
+            # admission policy and adds defense-in-depth even when privileged.
             privileged: true
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 8765
               name: metrics
