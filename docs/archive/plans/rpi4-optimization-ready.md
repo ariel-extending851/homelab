@@ -1,3 +1,5 @@
+> **Archived 2026-05-01:** This plan was never executed as written. Superseded by the 2026-04 cluster refactor (commit `39b0e67`, which removed the *arr / SearXNG media stack and rebalanced workloads). RPi tuning that *was* executed is captured in the live `ansible/roles/rpi_optimization` role. Kept here for historical context only — do **not** treat as actionable.
+
 # RPi 4 Optimization - Implementation Ready
 
 ## ✅ What We Accomplished

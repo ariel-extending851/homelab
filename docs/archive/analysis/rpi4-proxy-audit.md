@@ -1,3 +1,5 @@
+> **Archived 2026-05-01:** Snapshot from 2025-02-14. Stale — references SearXNG (removed in commit `39b0e67`) and a `migrate-proxies.sh` script that was never committed. Tailscale proxy placement now follows app `nodeSelector`/`nodeAffinity` declared in each `k8s/apps/<name>/deployment.yaml`. Kept as historical context only.
+
 # RPi 4 Tailscale Proxy Audit & Optimization Plan
 
 ## Current State Analysis

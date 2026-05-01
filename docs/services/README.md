@@ -13,8 +13,8 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 |---|---|---|---|
 | AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> |
 | blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — |
-| cilium | — | `—` | — |
-| falco | — | `falco` | — |
+| Cilium | [cilium.md](cilium.md) | `—` | — |
+| Falco | [falco.md](falco.md) | `falco` | — |
 | GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> |
 | Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> |
 | kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — |

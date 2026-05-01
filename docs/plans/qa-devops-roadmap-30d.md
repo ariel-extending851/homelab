@@ -1,5 +1,14 @@
 # QA DevOps Test Maturity Roadmap (30 Days)
 
+## Status as of 2026-05-01
+
+| Week | Theme | Status | Evidence |
+|---|---|---|---|
+| Week 1 | Test profiles + scorecard | ✅ Done | `make test-offline-required`, `test-offline-extended`, `test-live-required`, `qa-scorecard`, `qa-flake-report`, `qa-audit` all in Makefile |
+| Week 2 | DR / rollback execution | ❌ Deferred | `test-dr-drill` and `test-rollback-critical` were never wired up. `test-dr-execution` exists (Molecule scenario) but is a different scope. Decision: track in [`../security/fixes-backlog.md`](../security/fixes-backlog.md) instead of this roadmap. |
+| Week 3 | Security runtime + supply chain | ✅ Done | `test-security-runtime`, `test-security-supply-chain` shipped; Falco runtime + Trivy CI gate active |
+| Week 4 | E2E confidence + flake dashboard | ⏳ Partial | `test-e2e-post-deploy` shipped; flake dashboard not built — keep tracking via `qa-flake-report` JSON output for now |
+
 ## Executive Summary
 
 Current state is strong for offline validation and static guardrails, with evidence-based audits already in place.

@@ -1,10 +1,10 @@
 # AWS Infrastructure
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-01
 > **Owner:** @ariel-extending851
 
-Terraform-managed AWS infrastructure for the k3s control plane and one worker. Three modules: `network`, `compute`, `scheduler`. Plus an SSM transfer bucket and OIDC bootstrap.
+Terraform-managed AWS infrastructure for the k3s control plane and one worker. Four modules: `network`, `compute`, `scheduler`, `audit`. Plus an SSM transfer bucket and OIDC bootstrap.
 
 ---
 
@@ -15,6 +15,7 @@ Terraform-managed AWS infrastructure for the k3s control plane and one worker. T
 | `network` | [`infra/aws/modules/network`](../../infra/aws/modules/network) | Default VPC, subnets, security group |
 | `compute` | [`infra/aws/modules/compute`](../../infra/aws/modules/compute) | EC2 spot instances, IAM, SSH key, launch templates |
 | `scheduler` | [`infra/aws/modules/scheduler`](../../infra/aws/modules/scheduler) | Lambda + EventBridge for start/stop schedule |
+| `audit` | [`infra/aws/modules/audit`](../../infra/aws/modules/audit) | CloudTrail (management events) + GuardDuty (regional detector); cost-bounded < $5/mo |
 | `aws-backend` (separate) | [`infra/aws-backend`](../../infra/aws-backend) | One-time bootstrap of S3 state bucket |
 | `aws-oidc` (separate) | [`infra/aws-oidc`](../../infra/aws-oidc) | OIDC provider + IAM role for GitHub Actions |
 
@@ -104,6 +105,18 @@ Lambda + EventBridge that issue `StartInstances` / `StopInstances` calls on a da
 - **Outputs:** `lambda_function_url`, `manual_start_command`, `manual_stop_command`, `manual_status_command`, `schedule_summary`
 
 Disabled by setting `enable_scheduling = false` (or implicitly when `localstack_test = "yes"`). Cost impact analysis: [`../operations/cost-and-scheduling.md`](../operations/cost-and-scheduling.md).
+
+---
+
+## Audit Module
+
+Forensic trail + threat detection, intentionally minimal to stay under ~$5/month at homelab volume.
+
+- **CloudTrail** — single trail, **management events only**, single-region. Multi-region trails and S3 data events are deliberately disabled (cost). Logs land in a dedicated S3 bucket with versioning, AES256, public-access blocked, and lifecycle: Standard → IA (30d) → Glacier (90d) → expire (365d). `force_destroy=false` to prevent accidental deletion of evidentiary logs.
+- **GuardDuty** — single regional detector with default 6h finding-publishing frequency. After the 30-day free trial expects $0.50–$2/month.
+- **Out of scope by design:** AWS Config, Security Hub, Macie, multi-region trails, EventBridge fan-out — all priced beyond the homelab cost envelope.
+
+Source: [`infra/aws/modules/audit/main.tf`](../../infra/aws/modules/audit/main.tf). Reviewed in CI by `make plan-audit` (Terraform plan diff fed through Infracost gate — see [`../operations/cost-controls.md`](../operations/cost-controls.md)).
 
 ---
 
