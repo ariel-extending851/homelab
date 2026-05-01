@@ -21,34 +21,48 @@ Cluster-state backup operator. Snapshots K8s resources (Deployments, ConfigMaps,
 
 Velero needs to reify *any* CRD that may exist in the cluster (now or later) for a complete backup. Enumerating resources risks silent backup gaps. The `velero` ClusterRole is on the `wildcard_allowed_clusterroles` allowlist in [`k8s/policies/rbac_safety.rego`](../../k8s/policies/rbac_safety.rego); see [`k8s/policies/README.md`](../../k8s/policies/README.md) for the justification record.
 
-## Bootstrap (one-time, post-`terraform apply`)
+## Bootstrap (post-`make deploy`)
+
+CRDs are vendored in [`crds.yaml`](../../k8s/apps/velero/crds.yaml) with `argocd.argoproj.io/sync-wave: "-2"` — ArgoCD applies them before any `BackupStorageLocation` / `Schedule` resource. AWS credentials are injected via a single idempotent Make target after Terraform creates the IAM user.
 
 ```bash
-# 1. Apply Terraform (creates bucket + IAM user + access key)
-make terraform-apply
+# 1. Full deploy: AWS infra + k3s + ArgoCD + apps (Velero CRDs ship with the manifests)
+make deploy
 
-# 2. Read credentials from outputs
-ACCESS_KEY=$(terraform -chdir=infra/aws output -raw velero_aws_access_key_id)
-SECRET_KEY=$(terraform -chdir=infra/aws output -raw velero_aws_secret_access_key)
+# 2. Inject AWS credentials into the SOPS Secret (idempotent — safe to re-run)
+make velero-bootstrap-secret
 
-# 3. Patch the Velero secret manifest with real creds, then SOPS-encrypt
-cat > /tmp/velero-cloud.txt <<EOF
-[default]
-aws_access_key_id = ${ACCESS_KEY}
-aws_secret_access_key = ${SECRET_KEY}
-EOF
+# 3. Commit + push so ArgoCD syncs the patched secret
+git add k8s/apps/velero/secret.yaml
+git commit -S -m "chore(velero): bootstrap AWS creds"
+git push
 
-# Edit k8s/apps/velero/secret.yaml: replace the `cloud:` stringData value with /tmp/velero-cloud.txt
-sops --encrypt --in-place k8s/apps/velero/secret.yaml
-
-# 4. Install Velero CRDs (one-time, before ArgoCD syncs the schedule resource)
-kubectl apply -f https://github.com/vmware-tanzu/velero/releases/download/v1.14.1/velero-crds-v1.14.1.yaml
-
-# 5. ArgoCD picks up the manifests on next sync; verify:
+# 4. Verify (ArgoCD picks up automatically within ~3 min)
 kubectl get pods -n velero
 kubectl get backupstoragelocation -n velero
 kubectl get schedule -n velero
 ```
+
+**Idempotency**: `make velero-bootstrap-secret` reads the current `terraform output` and re-encrypts in place. Run it again whenever Terraform recreates the IAM access key (rotation, cluster rebuild) — the diff in `secret.yaml` will reflect the new credential.
+
+### What the target does
+
+1. `terraform output -raw velero_aws_access_key_id`
+2. `terraform output -raw velero_aws_secret_access_key`
+3. `sops --decrypt k8s/apps/velero/secret.yaml` → tempfile `mode=0o600`
+4. Patch the `stringData.cloud` block with the new INI credentials
+5. `sops --encrypt --in-place` the tempfile, then atomic `os.replace` over the original
+6. Tempfile unlinked in `try/finally` — plaintext never persists
+
+Source: [`bin/velero_bootstrap_secret.py`](../../bin/velero_bootstrap_secret.py).
+
+### CRD refresh (rare — when bumping Velero version)
+
+```bash
+# Fetch each CRD from the upstream tag, concatenate, inject sync-wave annotation
+# See the helper script comment block at top of k8s/apps/velero/crds.yaml
+```
+
 
 ## Operations
 
