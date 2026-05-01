@@ -263,6 +263,16 @@ make test-molecule-rpi
 
 Detail and ARM64 matrix: [`testing.md#molecule`](testing.md#molecule).
 
+### Idempotency check
+
+Beyond Molecule's per-scenario idempotence assertion, the playbook is exercised end-to-end by:
+
+```bash
+make test-ansible-idempotency
+```
+
+This runs `site.yml` twice against the test target and asserts the second run reports zero `changed` tasks. Backed by [`bin/check_molecule_idempotence.py`](../../bin/check_molecule_idempotence.py). New roles added via `make new-role` inherit an idempotency assertion in their Molecule scenario.
+
 ---
 
 ## Related

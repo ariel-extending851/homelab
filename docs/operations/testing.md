@@ -157,7 +157,10 @@ LocalStack mocks AWS APIs. Use it to validate Terraform module structure, variab
 ### Quick start
 
 ```bash
-docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm localstack/localstack:3.8.1
+# Use the version pinned in .mise.toml (single source of truth)
+LOCALSTACK_VERSION=$(awk -F'"' '/^localstack/ {print $2; exit}' .mise.toml)
+docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm \
+  localstack/localstack:"${LOCALSTACK_VERSION}"
 sleep 15
 cd infra/aws
 python3 scripts/validate_localstack.py
@@ -202,6 +205,39 @@ make smoke-test
 ```bash
 make test-e2e-post-deploy
 ```
+
+### Observability gate (~3 min)
+
+ArgoCD `Synced + Healthy` is necessary but not sufficient — a pod can flap into CrashLoopBackOff seconds after sync, or a Deployment can satisfy `availableReplicas` while a sidecar is OOMing. The observability gate runs *after* `validate-argocd-synced` and queries Prometheus directly for the silent-failure signals:
+
+- `kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}`
+- `kube_deployment_status_replicas_unavailable`
+- `kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}`
+
+```bash
+# CI port-forwards Prometheus first; locally do the same:
+kubectl port-forward -n prometheus svc/prometheus 9090:9090 &
+PROMETHEUS_URL=http://localhost:9090 OBSERVATION_WINDOW=300 \
+  python3 bin/post_deploy_observability_gate.py
+```
+
+Source: [`bin/post_deploy_observability_gate.py`](../../bin/post_deploy_observability_gate.py). Exit non-zero blocks the deploy in `ci-deployment.yml`.
+
+### Velero restore drill (~5 min)
+
+```bash
+make test-velero-restore   # backup → delete → restore → integrity check
+```
+
+Full procedure: [`backup-and-restore.md`](backup-and-restore.md).
+
+### Ansible idempotency (~3–6 min)
+
+```bash
+make test-ansible-idempotency
+```
+
+Runs `site.yml` twice and asserts the second run is fully idempotent (zero `changed` tasks). Backed by [`bin/check_molecule_idempotence.py`](../../bin/check_molecule_idempotence.py); also runs at the end of every Molecule scenario.
 
 ### Other verification targets
 
