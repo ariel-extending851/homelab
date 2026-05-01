@@ -126,6 +126,12 @@ variable "velero_backup_bucket" {
   default     = "homelab-velero-backups"
 }
 
+variable "audit_trail_bucket" {
+  description = "S3 bucket name for CloudTrail audit logs. Versioned, encrypted, lifecycle-tiered (Standard → IA → Glacier → expire 365d). Globally unique."
+  type        = string
+  default     = "homelab-audit-trail"
+}
+
 variable "localstack_test" {
   description = "Enable LocalStack testing mode (yes/no). When 'yes', uses mock secrets instead of SOPS."
   type        = string

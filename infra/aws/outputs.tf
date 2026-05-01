@@ -108,3 +108,19 @@ output "velero_aws_secret_access_key" {
   value       = aws_iam_access_key.velero.secret
   sensitive   = true
 }
+
+# Audit Outputs (CloudTrail + GuardDuty)
+output "audit_trail_name" {
+  description = "Name of the CloudTrail audit trail (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.audit[0].trail_name : ""
+}
+
+output "audit_trail_bucket_name" {
+  description = "S3 bucket holding CloudTrail logs (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.audit[0].trail_bucket_name : ""
+}
+
+output "guardduty_detector_id" {
+  description = "ID of the GuardDuty detector (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.audit[0].guardduty_detector_id : ""
+}

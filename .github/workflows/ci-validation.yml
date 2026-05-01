@@ -53,6 +53,73 @@ jobs:
       - name: Run Terraform Guardrail Tests
         run: make test-terraform
 
+  terraform-cost-gate:
+    name: "Terraform: Infracost PR Gate"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+      MAX_COST_DELTA: "5"
+    steps:
+      - name: Skip if PR carries 'cost-approved' label
+        id: label-check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const skip = labels.includes('cost-approved');
+            core.setOutput('skip', skip ? 'true' : 'false');
+            if (skip) core.notice('cost-approved label set — Infracost gate skipped');
+
+      - name: Checkout PR ref
+        if: steps.label-check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore Mise Cache
+        if: steps.label-check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-terraform-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-terraform-
+
+      - name: Setup Terraform dependencies via Makefile
+        if: steps.label-check.outputs.skip != 'true'
+        run: make setup-ci-deps-terraform
+
+      - name: Generate baseline (base ref)
+        if: steps.label-check.outputs.skip != 'true'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          git worktree add /tmp/base-tree "origin/$BASE_REF"
+          BASELINE_OUT=/tmp/infracost-base.json make -C /tmp/base-tree terraform-cost-baseline
+
+      - name: Diff and gate
+        if: steps.label-check.outputs.skip != 'true'
+        run: BASELINE_JSON=/tmp/infracost-base.json make terraform-cost-diff
+
+      - name: Comment cost diff on PR
+        if: steps.label-check.outputs.skip != 'true' && always()
+        run: |
+          if [ -f /tmp/infracost-diff.json ]; then
+            ${MISE_EXEC:-mise exec --} infracost comment github \
+              --path /tmp/infracost-diff.json \
+              --repo "${GITHUB_REPOSITORY}" \
+              --pull-request "${{ github.event.pull_request.number }}" \
+              --github-token "${{ secrets.GITHUB_TOKEN }}" \
+              --behavior update || echo "infracost comment failed (non-fatal)"
+          fi
+
   yaml-lint:
     name: "YAML: Lint + K8s Schemas"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -110,8 +177,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML for idempotence checker
+        run: python3 -m pip install --quiet pyyaml
+
       - name: Validate New Roles Have Molecule Structure
         run: make validate-ansible-structure
+
+      - name: Validate Ansible Idempotence Coverage
+        run: make test-ansible-idempotency
 
   molecule:
     name: "Ansible: Molecule Role Tests"
@@ -143,6 +221,9 @@ jobs:
 
       - name: Run Ansible Syntax Validation
         run: make validate-ansible
+
+      - name: Run Ansible Lint (yamllint + ansible-lint)
+        run: make test-molecule-lint
 
       - name: Run Molecule Role Tests
         run: make test-molecule
@@ -290,6 +371,29 @@ jobs:
       - name: Run SOPS Secret Structure Validation
         run: make test-contracts
 
+  lint-workflows:
+    name: "Workflows: actionlint + zizmor"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-workflow-lint-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-workflow-lint-
+
+      - name: Setup Workflow Lint Dependencies via Makefile
+        run: make setup-ci-deps-workflow-lint
+
+      - name: Run actionlint + zizmor (HIGH severity)
+        run: make lint-workflows
+
   shellcheck:
     name: ShellCheck
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -376,7 +480,7 @@ jobs:
         run: make test-security
 
   trivy-image-scan:
-    name: "Security: Trivy Image Scan (HIGH/CRITICAL)"
+    name: "Security: Trivy Image Scan (strict, HIGH/CRITICAL blocks)"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -405,8 +509,8 @@ jobs:
           make setup-ci-deps-kustomize
           make setup-ci-deps-python
 
-      - name: Run Trivy Image Scan
-        run: make test-trivy
+      - name: Run Trivy Image Scan (strict — fails on HIGH/CRITICAL fixable CVE)
+        run: make test-trivy-strict
 
       - name: Upload Trivy Reports
         if: always()
@@ -479,6 +583,9 @@ jobs:
 
       - name: Run Critical Policy Gate
         run: make validate-k8s-policies-critical
+
+      - name: Run OPA Policy Unit Tests (conftest verify on *_test.rego)
+        run: make test-k8s-policies-rego
 
   k8s-dry-run:
     name: "Kubernetes: Dry-Run (kind)"
@@ -700,7 +807,7 @@ jobs:
   pipeline-gate-pr:
     name: Pipeline Gate
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name != 'schedule'
     steps:
       - name: Validate Required Job Outcomes
@@ -739,7 +846,7 @@ jobs:
   pipeline-gate-nightly:
     name: Pipeline Gate (Nightly)
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name == 'schedule'
     steps:
       - name: Validate Nightly Required Outcomes
@@ -767,6 +874,7 @@ jobs:
             'qa-audit-evidence',
             'offline-required-profile',
             'nightly-e2e-live',
+            'lint-workflows',
           }
 
           failed = []

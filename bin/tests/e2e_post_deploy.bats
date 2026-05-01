@@ -229,3 +229,23 @@ declare -a APPS=(
     return 1
   fi
 }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DISASTER RECOVERY (Velero backup readiness)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@test "E2E: Velero deployment is Ready" {
+  ready=$(kubectl get deployment velero -n velero \
+    -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)
+  [ "${ready:-0}" -ge 1 ]
+}
+
+@test "E2E: Velero daily-backup schedule exists" {
+  kubectl get schedule.velero.io daily-backup -n velero >/dev/null
+}
+
+@test "E2E: Velero BackupStorageLocation is Available" {
+  phase=$(kubectl get backupstoragelocation.velero.io default -n velero \
+    -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+  [ "$phase" = "Available" ]
+}

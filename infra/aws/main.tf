@@ -300,6 +300,20 @@ resource "aws_iam_user_policy" "velero_backup_access" {
 }
 
 # ==============================================================================
+# Audit Module — CloudTrail + GuardDuty
+# ==============================================================================
+# Cost envelope <$5/month: management events only, single-region trail,
+# GuardDuty SIX_HOURS cadence. See infra/aws/modules/audit/main.tf.
+# Skipped under LocalStack (provider lacks CloudTrail/GuardDuty support).
+module "audit" {
+  source = "./modules/audit"
+  count  = var.localstack_test == "no" ? 1 : 0
+
+  aws_region        = var.aws_region
+  trail_bucket_name = var.audit_trail_bucket
+}
+
+# ==============================================================================
 # Scheduler Module - Automated Instance Start/Stop
 # ==============================================================================
 module "scheduler" {

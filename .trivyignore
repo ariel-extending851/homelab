@@ -1,0 +1,10 @@
+# Trivy CVE allowlist — managed via PR review.
+#
+# Format: one CVE ID per line (e.g., CVE-2024-12345). Optional inline comment.
+# Trivy auto-detects this file at repo root when scans are run from CWD.
+#
+# Process for adding an exception (see docs/runbooks/trivy-exceptions.md):
+#   1. Open a PR adding the CVE ID with: # CVE-YYYY-NNNN <image> — <reason> — review-by: YYYY-MM-DD
+#   2. Get review from a second engineer (security-relevant change)
+#   3. Set a review-by date <= 90 days out
+#   4. Re-evaluate on the review-by date; remove if upstream patched

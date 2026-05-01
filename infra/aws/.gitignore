@@ -6,6 +6,7 @@
 *.tfvars
 !terraform.tfvars.example
 !testing/terraform.tfvars.localstack
+!staging.tfvars
 .terraformrc
 terraform.rc
 crash.log

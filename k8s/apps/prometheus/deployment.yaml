@@ -9,6 +9,10 @@ metadata:
     checkov.io/skip1: CKV_K8S_15=Image Pull Policy is an accepted exception
     checkov.io/skip2: CKV_K8S_43=Image digest is an accepted exception
 spec:
+  # Single-replica + RWO PVC by design (cost envelope). No PDB attached:
+  # see docs/runbooks/observability-availability.md for the trade-off and
+  # the HA path (Thanos sidecar or 2-replica) if downtime ever stops being
+  # acceptable.
   replicas: 1
   strategy:
     type: Recreate
