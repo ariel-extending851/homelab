@@ -21,6 +21,10 @@ concurrency:
 env:
   MISE_CACHE_DIR: ~/.cache/mise
   MISE_FETCH_TIMEOUT: 300
+  # mise calls the GitHub API to resolve tool versions; pass the auto-generated
+  # token so unauthenticated rate limits (60/h per IP, shared across runners)
+  # don't sporadically break setup-ci-deps-* targets.
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   terraform:
