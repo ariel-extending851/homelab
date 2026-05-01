@@ -87,6 +87,51 @@ data:
           - target_label: __address__
             replacement: blackbox-exporter.blackbox.svc.cluster.local:9115
 
+      - job_name: 'cilium-agent'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - kube-system
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_k8s_app]
+            regex: 'cilium'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: '9962'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
+            action: replace
+
+      - job_name: 'cilium-operator'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - kube-system
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_io_cilium_app]
+            regex: 'operator'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            regex: '9963'
+            action: keep
+
+      - job_name: 'falco'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - falco
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_endpoints_name]
+            regex: 'falco'
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
+            action: replace
+
   rules.yml: |
     groups:
       - name: critical-infrastructure

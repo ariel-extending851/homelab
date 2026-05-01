@@ -1,0 +1,69 @@
+---
+# Flip K3s CNI on a single node. Use --limit <node> and -e enable_cilium_cni=true|false.
+#
+# Surgical: just re-renders /etc/rancher/k3s/config.yaml from the existing role
+# templates and restarts the right service. Does NOT re-run the full k3s role,
+# which avoids re-running install/firewall/SOPS bootstrap tasks during a CNI flip.
+#
+# Driven by `make cilium-flip-node NODE=...` and `make cilium-flip-rollback NODE=...`.
+
+- name: Flip CNI on K3s server node
+  hosts: k3s_server
+  become: yes
+  gather_facts: yes
+  vars:
+    k3s_control_node: true
+  vars_files:
+    - ../roles/k3s/defaults/main.yml
+  pre_tasks:
+    - name: Require enable_cilium_cni to be set explicitly
+      ansible.builtin.assert:
+        that:
+          - enable_cilium_cni is defined
+        fail_msg: "Pass -e enable_cilium_cni=true|false explicitly."
+  tasks:
+    - name: Re-render server config from k3s role template
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/k3s/templates/server-config.yaml.j2"
+        dest: "{{ k3s_config_dir }}/config.yaml"
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart k3s server
+  handlers:
+    - name: Restart k3s server
+      ansible.builtin.systemd:
+        name: "{{ k3s_service_name }}"
+        state: restarted
+        daemon_reload: true
+
+- name: Flip CNI on K3s agent node
+  hosts: k3s_agent
+  become: yes
+  gather_facts: yes
+  vars:
+    k3s_control_node: false
+    k3s_tailscale_ip: "{{ node_ip | default('') }}"
+  vars_files:
+    - ../roles/k3s/defaults/main.yml
+  pre_tasks:
+    - name: Require enable_cilium_cni to be set explicitly
+      ansible.builtin.assert:
+        that:
+          - enable_cilium_cni is defined
+        fail_msg: "Pass -e enable_cilium_cni=true|false explicitly."
+  tasks:
+    - name: Re-render agent config from k3s role template
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/k3s/templates/agent-config.yaml.j2"
+        dest: "{{ k3s_config_dir }}/config.yaml"
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart k3s agent
+  handlers:
+    - name: Restart k3s agent
+      ansible.builtin.systemd:
+        name: "{{ k3s_agent_service_name }}"
+        state: restarted
+        daemon_reload: true

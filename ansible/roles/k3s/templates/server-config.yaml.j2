@@ -20,14 +20,18 @@ disable:
 {% endfor %}
 {% endif %}
 
+{% if (enable_cilium_cni | default(false)) in [true, "true"] %}
+flannel-backend: none
+{% else %}
 flannel-backend: "{{ k3s_server_config.flannel_backend | default('vxlan') }}"
+{% endif %}
 
 {% if k3s_server_config.disable_cloud_controller | default(true) %}
 disable-cloud-controller: true
 {% endif %}
 
-{% if not k3s_server_config.disable_network_policy | default(false) %}
-disable-network-policy: false
+{% if ((enable_cilium_cni | default(false)) in [true, "true"]) or ((k3s_server_config.disable_network_policy | default(false)) in [true, "true"]) %}
+disable-network-policy: true
 {% endif %}
 
 {% if k3s_enable_etcd_snapshots %}
