@@ -35,14 +35,17 @@ PROD_WAIT_TIMER_MIN = 5
 
 
 def gh_api(args, input_str=None):
-    """Run `gh api <args>` and return stdout. Raise on non-zero exit."""
-    return subprocess.run(
+    """Run `gh api <args>` and return stdout. Raise on non-zero exit with stderr surfaced."""
+    res = subprocess.run(
         ["gh", "api", *args],
-        check=True,
         capture_output=True,
         text=True,
         input=input_str,
-    ).stdout
+    )
+    if res.returncode != 0:
+        msg = (res.stderr or res.stdout or "").strip()
+        raise RuntimeError(f"gh api {' '.join(args)} failed: {msg}")
+    return res.stdout
 
 
 def repo_slug():
@@ -160,18 +163,20 @@ def main(argv=None):
 
     print()
     print("Verification:")
-    out = gh_api(
-        [
-            f"repos/{slug}/environments",
-            "-q",
+    raw = gh_api([f"repos/{slug}/environments"])
+    data = json.loads(raw)
+    for env in data.get("environments", []):
+        rules = env.get("protection_rules", [])
+        wait = next((r["wait_timer"] for r in rules if r["type"] == "wait_timer"), 0)
+        n_reviewers = next(
             (
-                '.environments[] | "  ✓ \\(.name)  '
-                'wait_timer=\\(.protection_rules | map(select(.type==\\"wait_timer\\")) | .[0].wait_timer // 0)  '
-                'reviewers=\\(.protection_rules | map(select(.type==\\"required_reviewers\\")) | .[0].reviewers // [] | length)"'
+                len(r.get("reviewers", []))
+                for r in rules
+                if r["type"] == "required_reviewers"
             ),
-        ]
-    )
-    print(out, end="")
+            0,
+        )
+        print(f"  ✓ {env['name']:<22} wait_timer={wait}  reviewers={n_reviewers}")
     return 0
 
 

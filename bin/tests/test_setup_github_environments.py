@@ -89,7 +89,7 @@ def test_main_creates_three_environments_in_order(monkeypatch, capsys):
         put_calls.append((slug, name, body))
 
     monkeypatch.setattr(g, "put_env", fake_put)
-    monkeypatch.setattr(g, "gh_api", lambda *a, **k: "")
+    monkeypatch.setattr(g, "gh_api", lambda *a, **k: '{"environments": []}')
 
     rc = g.main([])
 
@@ -112,7 +112,7 @@ def test_main_uses_explicit_reviewers_flag(monkeypatch):
     monkeypatch.setattr(
         g, "put_env", lambda slug, name, body: put_calls.append((name, body))
     )
-    monkeypatch.setattr(g, "gh_api", lambda *a, **k: "")
+    monkeypatch.setattr(g, "gh_api", lambda *a, **k: '{"environments": []}')
 
     g.main(["--reviewers", "bob,carol"])
 
