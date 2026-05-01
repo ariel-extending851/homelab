@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ app_name }}-ingress
+  namespace: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: {{ app_name }}-service
+      port:
+        number: {{ container_port }}
+  tls:
+    - hosts:
+        - {{ ingress_hostname }}

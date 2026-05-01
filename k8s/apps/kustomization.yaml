@@ -18,3 +18,5 @@ resources:
 - ./golink
 - ./adguard
 - ./velero
+- ./cilium
+- ./falco

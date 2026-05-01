@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco
+  labels:
+    app: falco
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  template:
+    metadata:
+      labels:
+        app: falco
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      priorityClassName: system-node-critical
+
+      # Skip rasp-pi-03 — 1GB RAM Pi3 cannot accommodate Falco's 100-200Mi
+      # steady plus syscall-storm bursts above the 512Mi eviction-soft floor.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - rasp-pi-03
+
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+
+      containers:
+        - name: falco
+          image: falcosecurity/falco:0.43.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - /usr/bin/falco
+            - --modern-bpf
+            - -pk
+          securityContext:
+            # Modern eBPF needs CAP_BPF + CAP_PERFMON for program load,
+            # CAP_SYS_PTRACE / CAP_SYS_RESOURCE for syscall introspection,
+            # CAP_SYS_ADMIN for /sys/kernel/debug access, and CAP_DAC_READ_SEARCH
+            # / CAP_SYS_CHROOT to read the host /proc, /etc, /usr mounts.
+            # k8s rejects privileged=true with allowPrivilegeEscalation=false,
+            # so we run unprivileged with explicit caps.
+            privileged: false
+            allowPrivilegeEscalation: false
+            runAsUser: 0
+            capabilities:
+              drop: [ALL]
+              add:
+                - BPF
+                - PERFMON
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - SYS_ADMIN
+                - DAC_READ_SEARCH
+                - SYS_CHROOT
+          ports:
+            - containerPort: 8765
+              name: metrics
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /host/run/k3s/containerd/containerd.sock
+              name: containerd-socket
+            - mountPath: /host/dev
+              name: dev-fs
+              readOnly: true
+            - mountPath: /host/proc
+              name: proc-fs
+              readOnly: true
+            - mountPath: /host/etc
+              name: etc-fs
+              readOnly: true
+            - mountPath: /host/usr
+              name: usr-fs
+              readOnly: true
+            - mountPath: /sys/kernel/debug
+              name: debugfs
+            - mountPath: /etc/falco
+              name: falco-config
+
+      volumes:
+        - name: containerd-socket
+          hostPath:
+            path: /run/k3s/containerd/containerd.sock
+            type: Socket
+        - name: dev-fs
+          hostPath:
+            path: /dev
+        - name: proc-fs
+          hostPath:
+            path: /proc
+        - name: etc-fs
+          hostPath:
+            path: /etc
+        - name: usr-fs
+          hostPath:
+            path: /usr
+        - name: debugfs
+          hostPath:
+            path: /sys/kernel/debug
+        - name: falco-config
+          configMap:
+            name: falco-config

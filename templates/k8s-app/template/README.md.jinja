@@ -1,0 +1,41 @@
+# {{ app_name }}
+
+> **Status:** Draft
+> **Last reviewed:** {{ today }}
+> **Owner:** {{ owner }}
+
+{{ description }}
+
+---
+
+## Manifests
+
+This directory contains the Kustomize bundle for the `{{ app_name }}` application.
+ArgoCD syncs it as part of the App-of-Apps tree (see `k8s/gitops/apps-root.yaml`).
+
+| Resource | File | Purpose |
+|---|---|---|
+| Namespace | `namespace.yaml` | Isolates the app's resources |
+| Deployment | `deployment.yaml` | Runs the container with resource limits |
+| Service | `service.yaml` | ClusterIP, exposes port {{ container_port }} |
+{% if needs_ingress %}
+| Ingress | `ingress.yaml` | Tailscale ingress at `{{ ingress_hostname }}` |
+{% endif %}
+{% if needs_pvc %}
+| PVC | `pvc.yaml` | {{ pvc_size }} persistent storage |
+{% endif %}
+
+## Resource budget
+
+| Dimension | Request | Limit |
+|---|---|---|
+| CPU | `{{ cpu_request }}` | `{{ cpu_limit }}` |
+| Memory | `{{ memory_request }}` | `{{ memory_limit }}` |
+
+Limits chosen to fit the cluster headroom (see [`docs/operations/resource-limits.md`](../../../docs/operations/resource-limits.md)).
+{% if target_node != 'any' %}
+
+## Placement
+
+Pinned to **{{ target_node }}** via `nodeSelector`. Reason: hardware constraint or singleton resource.
+{% endif %}

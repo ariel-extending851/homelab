@@ -27,7 +27,8 @@
 		terraform-cost-baseline terraform-cost-diff \
 		homelab install-cli \
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
-		terraform-staging-destroy terraform-prod-select
+		terraform-staging-destroy terraform-prod-select \
+		cilium-flip-status cilium-flip-node cilium-flip-rollback
 
 # Default target
 .DEFAULT_GOAL := help
@@ -400,6 +401,90 @@ validate-argocd-synced: ## Wait for ArgoCD root app to reach Synced + Healthy (u
 	}
 	@echo "✅ ArgoCD root app is Synced + Healthy"
 
+##@ Cilium Migration (Phase B — per-node Flannel→Cilium cutover)
+
+cilium-flip-status: ## Show per-node CNI state (Flannel vs Cilium)
+	@echo "🌐 Per-node CNI state:"
+	@printf "%-20s | %-7s | %-32s | %s\n" "NODE" "CNI" "CILIUM_POD" "READY"
+	@printf "%-20s-+-%-7s-+-%-32s-+-%s\n" "--------------------" "-------" "--------------------------------" "------"
+	@kubectl get nodes -o name 2>/dev/null | sed 's|node/||' | while read node; do \
+	  cilium_pod=$$(kubectl -n kube-system get pod -l k8s-app=cilium --field-selector spec.nodeName=$$node -o name 2>/dev/null | head -1 | sed 's|pod/||'); \
+	  if [ -n "$$cilium_pod" ]; then \
+	    ready=$$(kubectl -n kube-system get pod $$cilium_pod -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null); \
+	    printf "%-20s | %-7s | %-32s | %s\n" "$$node" "Cilium" "$$cilium_pod" "$$ready"; \
+	  else \
+	    printf "%-20s | %-7s | %-32s | %s\n" "$$node" "Flannel" "(none)" "n/a"; \
+	  fi; \
+	done
+
+cilium-flip-node: ## Flip ONE node from Flannel to Cilium (NODE=<name>; order: rasp-pi-04, t3.small agent, rasp-pi-03, server last)
+	@if [ -z "$(NODE)" ]; then echo "❌ NODE=<name> is required. Recommended order: rasp-pi-04 → t3.small agent → rasp-pi-03 → t3.medium server."; exit 1; fi
+	@echo "🔄 Flipping $(NODE) from Flannel to Cilium..."
+	@kubectl get node $(NODE) -o name >/dev/null 2>&1 || { echo "❌ Node $(NODE) not found in cluster."; exit 1; }
+	@echo "  • Verifying Cilium ArgoCD app is Synced..."
+	@kubectl wait --for=jsonpath='{.status.sync.status}'=Synced app/cilium -n argocd --timeout=60s 2>/dev/null || { \
+	  echo "❌ Cilium ArgoCD app not Synced. Add ./cilium to k8s/apps/kustomization.yaml and let ArgoCD sync first."; \
+	  exit 1; \
+	}
+	@echo "  • Draining $(NODE) (timeout 5min)..."
+	@kubectl drain $(NODE) --ignore-daemonsets --delete-emptydir-data --timeout=300s || { \
+	  echo "❌ Drain failed; node remains cordoned for inspection."; \
+	  exit 1; \
+	}
+	@echo "  • Re-rendering K3s config on $(NODE) with enable_cilium_cni=true..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook \
+		-i inventory/production.yml \
+		-i terraform_inventory_aws.py \
+		playbooks/cilium-flip.yml \
+		--limit $(NODE) \
+		-e enable_cilium_cni=true || { \
+	  echo "❌ Ansible flip failed; node remains cordoned. Inspect /etc/rancher/k3s/config.yaml on $(NODE)."; \
+	  exit 1; \
+	}
+	@echo "  • Waiting for Cilium pod on $(NODE) to be Ready (timeout 5min)..."
+	@kubectl -n kube-system wait pod \
+		-l k8s-app=cilium \
+		--field-selector spec.nodeName=$(NODE) \
+		--for=condition=Ready --timeout=300s || { \
+	  echo "❌ Cilium pod on $(NODE) did not become Ready."; \
+	  kubectl -n kube-system get pod -l k8s-app=cilium --field-selector spec.nodeName=$(NODE) -o wide; \
+	  kubectl -n kube-system logs -l k8s-app=cilium --field-selector spec.nodeName=$(NODE) --tail=50 || true; \
+	  echo "Node remains cordoned. Run 'make cilium-flip-rollback NODE=$(NODE)' to revert."; \
+	  exit 1; \
+	}
+	@echo "  • Uncordoning $(NODE)..."
+	@kubectl uncordon $(NODE)
+	@echo "✅ $(NODE) is now on Cilium. Run 'make cilium-flip-status' to inspect cluster state."
+
+cilium-flip-rollback: ## Roll ONE node back to Flannel (NODE=<name>); for clean cluster-wide rollback also delete the Cilium ArgoCD app
+	@if [ -z "$(NODE)" ]; then echo "❌ NODE=<name> is required."; exit 1; fi
+	@echo "↩️  Rolling $(NODE) back from Cilium to Flannel..."
+	@kubectl get node $(NODE) -o name >/dev/null 2>&1 || { echo "❌ Node $(NODE) not found."; exit 1; }
+	@echo "  • Draining $(NODE) (timeout 5min)..."
+	@kubectl drain $(NODE) --ignore-daemonsets --delete-emptydir-data --timeout=300s || { \
+	  echo "❌ Drain failed; node remains cordoned."; \
+	  exit 1; \
+	}
+	@echo "  • Re-rendering K3s config on $(NODE) with enable_cilium_cni=false..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook \
+		-i inventory/production.yml \
+		-i terraform_inventory_aws.py \
+		playbooks/cilium-flip.yml \
+		--limit $(NODE) \
+		-e enable_cilium_cni=false || { \
+	  echo "❌ Ansible rollback failed; node remains cordoned."; \
+	  exit 1; \
+	}
+	@echo "  • Waiting for $(NODE) to report Ready after K3s restart (timeout 3min)..."
+	@kubectl wait node/$(NODE) --for=condition=Ready --timeout=180s || { \
+	  echo "❌ $(NODE) did not become Ready after rollback."; \
+	  kubectl describe node $(NODE) | tail -40; \
+	  exit 1; \
+	}
+	@echo "  • Uncordoning $(NODE)..."
+	@kubectl uncordon $(NODE)
+	@echo "✅ $(NODE) is back on Flannel. Note: the Cilium DaemonSet pod will keep restarting on this node until you remove the Cilium ArgoCD app or add a node-affinity exclusion."
+
 ##@ Status & Monitoring
 
 status: ## Show overall infrastructure status
@@ -629,8 +714,17 @@ test-ansible-idempotency: ## Verify all Molecule scenarios test idempotence (wit
 		--exceptions $(ANSIBLE_DIR)/.molecule-idempotence-exceptions.yml \
 		--strict
 
-new-role: ## Create new Ansible role from template: make new-role ROLE=my_role
+new-role: ## Create new Ansible role from Copier template: make new-role ROLE=my_role
 	@python3 bin/create_ansible_role.py $(ROLE)
+
+new-app: ## Scaffold new k8s app from Copier template: make new-app APP=my-app
+	@python3 bin/create_homelab_app.py $(APP)
+
+generate-catalog: ## Regenerate the service catalog table in docs/services/README.md
+	@python3 bin/generate_service_catalog.py
+
+check-catalog: ## Fail if docs/services/README.md is out of sync with k8s/apps/
+	@python3 bin/generate_service_catalog.py --check
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 
@@ -821,6 +915,16 @@ test-trivy-strict: setup-ci-deps-trivy setup-ci-deps-python ## Trivy strict mode
 	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
 	@python3 bin/trivy_scan.py --strict
 	@echo "  ✓ Trivy strict scan passed."
+
+velero-bootstrap-secret: ## Inject Velero AWS credentials from terraform outputs into SOPS-encrypted secret (idempotent)
+	@echo "🔐 Bootstrapping Velero AWS credentials from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/velero_bootstrap_secret.py
+	@echo "  ✓ Velero secret updated. Commit + push to trigger ArgoCD sync:"
+	@echo "    git add k8s/apps/velero/secret.yaml"
+	@echo "    git commit -S -m 'chore(velero): bootstrap AWS creds'"
+	@echo "    git push"
 
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 

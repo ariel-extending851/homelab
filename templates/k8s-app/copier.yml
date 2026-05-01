@@ -1,0 +1,133 @@
+_subdirectory: template
+_envops:
+  trim_blocks: true
+  lstrip_blocks: true
+  keep_trailing_newline: true
+
+_answers_file: .copier-answers.k8s-app.yml
+
+# Optional files generated only when conditions are met.
+_skip_if_exists: []
+_exclude:
+  - "copier.yml"
+  - "*.pyc"
+  - "__pycache__"
+
+# ──────────────────────────────────────────────────────────────────────
+# Identity
+# ──────────────────────────────────────────────────────────────────────
+
+app_name:
+  type: str
+  help: |
+    App name in kebab-case (lowercase + hyphens).
+    Per docs/CONVENTIONS.md §1.3, the `hl-` prefix may be omitted for
+    application-specific resources within a dedicated namespace
+    (e.g. `adguard`, `grafana`). Use it only if the app spans multiple
+    namespaces or maps to cloud resources.
+  validator: >-
+    {% if not (app_name | regex_search('^[a-z][a-z0-9-]*$')) %}
+    Invalid app name: must match ^[a-z][a-z0-9-]*$ (kebab-case)
+    {% endif %}
+
+description:
+  type: str
+  help: One-sentence purpose statement (used in doc header).
+  default: "TODO: describe what {{ app_name }} does"
+
+owner:
+  type: str
+  help: Doc owner handle (per CONVENTIONS.md §5).
+  default: "@ariel-extending851"
+
+today:
+  type: str
+  help: Today's date for the doc header (YYYY-MM-DD).
+  default: ""
+  when: false
+
+# ──────────────────────────────────────────────────────────────────────
+# Container
+# ──────────────────────────────────────────────────────────────────────
+
+image:
+  type: str
+  help: Container image (e.g. `nginx:1.27`).
+  default: "nginx:latest"
+
+container_port:
+  type: int
+  help: Port the container listens on (HTTP).
+  default: 8080
+
+# ──────────────────────────────────────────────────────────────────────
+# Compliance: resource limits (CONVENTIONS implicit; defaults conservative)
+# ──────────────────────────────────────────────────────────────────────
+
+cpu_request:
+  type: str
+  help: CPU request (matches existing patterns — Prom 100m, Grafana 100m).
+  default: "100m"
+
+cpu_limit:
+  type: str
+  help: CPU limit. Conservative cap; raise only if profiling shows need.
+  default: "500m"
+
+memory_request:
+  type: str
+  help: Memory request (Mi/Gi). Defaults match Grafana 128Mi pattern.
+  default: "128Mi"
+
+memory_limit:
+  type: str
+  help: Memory limit. Hard cap to protect cluster headroom (~10% per resource-limits.md).
+  default: "256Mi"
+
+# ──────────────────────────────────────────────────────────────────────
+# Placement
+# ──────────────────────────────────────────────────────────────────────
+
+target_node:
+  type: str
+  help: |
+    Where this app should run. RPi3 has only 1 GB RAM — pick `rpi3-only`
+    only if you've sized the limits accordingly (memory_limit <= 200Mi).
+  choices:
+    any: any
+    rpi4-only: rpi4-only
+    rpi3-only: rpi3-only
+    ec2-only: ec2-only
+  default: any
+
+# ──────────────────────────────────────────────────────────────────────
+# Networking
+# ──────────────────────────────────────────────────────────────────────
+
+needs_ingress:
+  type: bool
+  help: Expose via Tailscale ingress (https://<app>.tail57bf10.ts.net)?
+  default: true
+
+ingress_hostname:
+  type: str
+  help: Tailscale hostname (without scheme).
+  default: "{{ app_name }}.tail57bf10.ts.net"
+  when: "{{ needs_ingress }}"
+
+needs_pvc:
+  type: bool
+  help: Provision a PersistentVolumeClaim for app data?
+  default: false
+
+pvc_size:
+  type: str
+  help: PVC size (e.g. 1Gi, 5Gi).
+  default: "1Gi"
+  when: "{{ needs_pvc }}"
+
+# ──────────────────────────────────────────────────────────────────────
+# Post-generation: tasks to run after rendering. The wrapper script
+# `bin/create_homelab_app.py` performs follow-ups (kustomization registration,
+# kubeconform validation) so they run identically in CI and locally.
+# ──────────────────────────────────────────────────────────────────────

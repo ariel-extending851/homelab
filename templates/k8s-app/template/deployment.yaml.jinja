@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}
+  namespace: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ app_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}
+    spec:
+      {% if target_node == 'rpi3-only' %}
+      nodeSelector:
+        kubernetes.io/hostname: rasp-pi-03
+      tolerations:
+        - key: "low-memory"
+          operator: "Exists"
+      {% elif target_node == 'rpi4-only' %}
+      nodeSelector:
+        kubernetes.io/hostname: rasp-pi-04
+      {% elif target_node == 'ec2-only' %}
+      nodeSelector:
+        node-role.homelab/platform: ec2
+      {% endif %}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+        - name: {{ app_name }}
+          image: {{ image }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "{{ cpu_request }}"
+              memory: "{{ memory_request }}"
+            limits:
+              cpu: "{{ cpu_limit }}"
+              memory: "{{ memory_limit }}"
+          ports:
+            - containerPort: {{ container_port }}
+              name: http
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: {{ container_port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: {{ container_port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {% if needs_pvc %}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {% endif %}
+      {% if needs_pvc %}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ app_name }}-pvc
+      {% endif %}

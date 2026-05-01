@@ -1,7 +1,7 @@
 ---
 # Converge: apply the role to test container
 
-- name: Converge — apply [ROLE_NAME] role
+- name: Converge — apply {{ role_name }} role
   hosts: all
   become: true
   gather_facts: true
@@ -16,4 +16,4 @@
     #     mode: '0755'
 
   roles:
-    - role: [ROLE_NAME]
+    - role: {{ role_name }}

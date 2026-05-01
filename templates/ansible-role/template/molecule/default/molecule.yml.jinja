@@ -5,7 +5,7 @@ driver:
   name: docker
 
 platforms:
-  - name: "[ROLE_NAME]-test"
+  - name: "{{ role_name }}-test"
     image: debian:bookworm-slim
     pre_build_image: true
     command: /bin/bash -c "sleep infinity"
@@ -23,7 +23,7 @@ provisioner:
     hosts:
       all:
         hosts:
-          "[ROLE_NAME]-test":
+          "{{ role_name }}-test":
     group_vars:
       all:
         # Docker containers run as root; no sudo needed

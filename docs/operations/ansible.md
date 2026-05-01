@@ -38,7 +38,7 @@ There are **6 roles** under [`ansible/roles/`](../../ansible/roles/). All have M
 | [`rpi_optimization`](../../ansible/roles/rpi_optimization) | Tune kernel params, swap, CPU governor, I/O scheduler on Raspberry Pi nodes | `rpi_swap_size`, `rpi_cpu_governor` |
 | [`emergency_recovery`](../../ansible/roles/emergency_recovery) | Failover scenarios and recovery guardrails (used by `recovery/emergency_recovery.yml`) | — |
 
-Templates for new roles live in [`ansible/roles/.template/`](../../ansible/roles/.template/). See [`../contributing/role-template.md`](../contributing/role-template.md) for the checklist.
+The Copier template for new roles lives in [`templates/ansible-role/`](../../templates/ansible-role/) (invoked via `make new-role`). See [`../contributing/role-template.md`](../contributing/role-template.md) for the checklist.
 
 ---
 
