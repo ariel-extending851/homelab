@@ -17,6 +17,11 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 
+# Custom markers — see bin/tests/conftest.py for the --run-live opt-in.
+markers = [
+  "live: requires a live cluster (or external service); skipped unless --run-live is passed",
+]
+
 [tool.coverage.run]
 # Measure branch coverage
 branch = true

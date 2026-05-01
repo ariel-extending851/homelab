@@ -22,7 +22,12 @@
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
-		preflight drift morning-sync update-versions update-versions-dry-run
+		preflight drift morning-sync update-versions update-versions-dry-run \
+		test-ansible-idempotency test-velero-restore \
+		terraform-cost-baseline terraform-cost-diff \
+		homelab install-cli \
+		terraform-staging-init terraform-staging-plan terraform-staging-apply \
+		terraform-staging-destroy terraform-prod-select
 
 # Default target
 .DEFAULT_GOAL := help
@@ -96,6 +101,32 @@ terraform-apply: ## Apply Terraform configuration only
 terraform-output: ## Show Terraform outputs
 	@cd $(TERRAFORM_DIR) && terraform output
 
+##@ Staging Environment (Terraform workspaces)
+
+terraform-staging-init: ## Create or select the 'staging' Terraform workspace
+	@cd $(TERRAFORM_DIR) && terraform workspace select staging 2>/dev/null \
+		|| terraform workspace new staging
+	@echo "✅ Selected workspace: $$(cd $(TERRAFORM_DIR) && terraform workspace show)"
+	@echo "   Read infra/aws/staging.tfvars before running plan/apply."
+
+terraform-staging-plan: ## Plan staging changes (uses staging.tfvars)
+	@cd $(TERRAFORM_DIR) && terraform workspace select staging
+	@cd $(TERRAFORM_DIR) && terraform plan -var-file=staging.tfvars
+
+terraform-staging-apply: ## Apply staging configuration (uses staging.tfvars)
+	@echo "🏗️  Applying staging Terraform — confirm interactively."
+	@cd $(TERRAFORM_DIR) && terraform workspace select staging
+	@cd $(TERRAFORM_DIR) && terraform apply -var-file=staging.tfvars
+
+terraform-staging-destroy: ## Destroy staging environment
+	@echo "💣  Destroying staging — confirm interactively."
+	@cd $(TERRAFORM_DIR) && terraform workspace select staging
+	@cd $(TERRAFORM_DIR) && terraform destroy -var-file=staging.tfvars
+
+terraform-prod-select: ## Switch back to default (prod) workspace
+	@cd $(TERRAFORM_DIR) && terraform workspace select default
+	@echo "✅ Active workspace: $$(cd $(TERRAFORM_DIR) && terraform workspace show)"
+
 terraform-state: ## List Terraform state resources
 	@cd $(TERRAFORM_DIR) && terraform state list
 
@@ -121,11 +152,13 @@ setup-ci-deps-terraform: ## Install Terraform + TFLint + SOPS (for CI)
 	if ! command -v mise >/dev/null 2>&1; then \
 		curl https://mise.jdx.dev/install.sh | sh; \
 	fi; \
-	mise install terraform tflint; \
+	mise install terraform tflint infracost; \
 	mise exec -- terraform version >/dev/null 2>&1 || (echo "❌ terraform not found after install"; exit 1); \
 	mise exec -- tflint --version >/dev/null 2>&1 || (echo "❌ tflint not found after install"; exit 1); \
+	mise exec -- infracost --version >/dev/null 2>&1 || (echo "❌ infracost not found after install"; exit 1); \
 	sudo ln -sf "$$(mise which terraform)" /usr/local/bin/terraform 2>/dev/null || true; \
 	sudo ln -sf "$$(mise which tflint)" /usr/local/bin/tflint 2>/dev/null || true; \
+	sudo ln -sf "$$(mise which infracost)" /usr/local/bin/infracost 2>/dev/null || true; \
 	if ! command -v sops >/dev/null 2>&1; then \
 		curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64; \
 		install -m 0755 sops-v3.9.4.linux.amd64 /usr/local/bin/sops; \
@@ -589,6 +622,13 @@ validate-ansible-structure: ## Validate all Ansible roles have required Molecule
 	done
 	@echo "✅ All Ansible roles have valid Molecule structure"
 
+test-ansible-idempotency: ## Verify all Molecule scenarios test idempotence (with documented exceptions)
+	@echo "🔁 Validating Ansible idempotency coverage..."
+	@python3 bin/check_molecule_idempotence.py \
+		--roles-dir $(ANSIBLE_DIR)/roles \
+		--exceptions $(ANSIBLE_DIR)/.molecule-idempotence-exceptions.yml \
+		--strict
+
 new-role: ## Create new Ansible role from template: make new-role ROLE=my_role
 	@python3 bin/create_ansible_role.py $(ROLE)
 
@@ -695,6 +735,11 @@ TERRAFORM_DIR_AWS   := infra/aws
 smoke-test: ## Post-deploy smoke test — verifies ArgoCD sync, pod health, and namespaces (requires live cluster)
 	@echo "🔍 Running post-deploy smoke tests..."
 	@python3 bin/smoke_test.py
+
+test-velero-restore: ## Validate Velero backup → delete → restore → data integrity (requires live cluster + Velero installed)
+	@echo "🛟  Running Velero restore validation..."
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@python3 -m pytest bin/tests/test_velero_restore_live.py --run-live -v
 
 morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
 	@echo "🌅 Running morning sync health check..."
@@ -926,6 +971,12 @@ validate-k8s-policies: ## OPA/conftest policy checks on all rendered K8s manifes
 
 validate-k8s-policies-critical: validate-k8s-policies ## All 4 OPA policies enforced (blocking gate)
 	@echo "  ✓ Critical K8s policy checks passed."
+
+test-k8s-policies-rego: ## Unit-test the OPA policies themselves (conftest verify on *_test.rego)
+	@echo "🧪 Running OPA policy unit tests (conftest verify)..."
+	@command -v conftest >/dev/null 2>&1 || (echo "❌ conftest not found. Install via: make setup-ci-deps-conftest"; exit 1)
+	@conftest verify --policy k8s/policies/
+	@echo "  ✓ OPA policy unit tests passed."
 
 test-e2e-live-nightly: ## Run mandatory live E2E checks for nightly schedule
 	@echo "🌙 Running nightly live E2E checks (mandatory)..."
@@ -1247,6 +1298,34 @@ show-costs: ## Show estimated costs using the code defaults
 		--usage-file infracost-usage.yml \
 		--terraform-var is_cost_scan=true
 
+terraform-cost-baseline: ## Generate Infracost baseline JSON (writes to BASELINE_OUT, default /tmp/infracost-base.json)
+	@out="$${BASELINE_OUT:-/tmp/infracost-base.json}"; \
+	echo "💰 Generating Infracost baseline → $$out"; \
+	$(MISE_EXEC) infracost breakdown --path $(TERRAFORM_DIR) \
+		--usage-file infracost-usage.yml \
+		--terraform-var is_cost_scan=true \
+		--format json --out-file "$$out"
+
+terraform-cost-diff: ## Compare PR cost vs baseline; fail if |delta| > MAX_COST_DELTA (default 5 USD/month)
+	@baseline="$${BASELINE_JSON:-/tmp/infracost-base.json}"; \
+	max_delta="$${MAX_COST_DELTA:-5}"; \
+	if [ ! -f "$$baseline" ]; then \
+		echo "❌ Baseline not found: $$baseline. Run 'make terraform-cost-baseline' on the base ref first."; exit 1; \
+	fi; \
+	echo "💰 Generating PR cost estimate..."; \
+	$(MISE_EXEC) infracost breakdown --path $(TERRAFORM_DIR) \
+		--usage-file infracost-usage.yml \
+		--terraform-var is_cost_scan=true \
+		--format json --out-file /tmp/infracost-pr.json; \
+	echo "📊 Computing diff vs baseline..."; \
+	$(MISE_EXEC) infracost diff --path /tmp/infracost-pr.json --compare-to "$$baseline" \
+		--format json --out-file /tmp/infracost-diff.json; \
+	$(MISE_EXEC) infracost diff --path /tmp/infracost-pr.json --compare-to "$$baseline"; \
+	python3 bin/infracost_diff_gate.py \
+		--diff /tmp/infracost-diff.json \
+		--max-delta "$$max_delta" \
+		$${GITHUB_STEP_SUMMARY:+--summary "$$GITHUB_STEP_SUMMARY"}
+
 ##@ Pre-deploy diagnostics
 
 preflight: ## Run pre-deploy chain checks (tools/AWS/SOPS/Tailscale/SSH/SSM/kube/git)
@@ -1254,6 +1333,16 @@ preflight: ## Run pre-deploy chain checks (tools/AWS/SOPS/Tailscale/SSH/SSM/kube
 
 drift: ## Detect Terraform / ArgoCD / inventory drift
 	@python3 bin/drift.py
+
+homelab: ## Run the homelab diagnostics CLI (e.g. make homelab ARGS='argocd diagnose root')
+	@python3 bin/homelab.py $(ARGS)
+
+install-cli: ## Symlink bin/homelab.py to ~/.local/bin/homelab for shell-wide use
+	@mkdir -p $$HOME/.local/bin
+	@ln -sf "$(CURDIR)/bin/homelab.py" $$HOME/.local/bin/homelab
+	@chmod +x bin/homelab.py
+	@echo "✅ homelab CLI installed: $$HOME/.local/bin/homelab"
+	@echo "   Make sure $$HOME/.local/bin is on your PATH."
 
 drift-fix: ## Detect drift and auto-apply fixes (terraform refresh + argocd sync) without prompting
 	@python3 bin/drift.py --fix

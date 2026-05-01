@@ -6,6 +6,9 @@ metadata:
   labels:
     app: grafana
 spec:
+  # Single-replica + RWO PVC by design (cost envelope). No PDB attached:
+  # see docs/runbooks/observability-availability.md for the trade-off and
+  # the HA path if downtime ever stops being acceptable.
   replicas: 1
   strategy:
     type: Recreate # Required for PVC with ReadWriteOnce

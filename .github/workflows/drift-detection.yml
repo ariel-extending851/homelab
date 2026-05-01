@@ -1,0 +1,146 @@
+name: Drift Detection — Daily Terraform Plan
+
+# Runs once a day. Detects out-of-band changes to AWS resources by
+# running `terraform plan` against the live state and asserting the diff
+# is empty. Open issue if drift detected so it isn't silently ignored.
+#
+# Why: someone could `aws cli` something into the homelab account, an SSO
+# user could click around the console, or an upstream provider default
+# could shift. Without a scheduled plan we'd notice only on the next
+# deploy, when drift gets reverted (or worse, blocks the deploy).
+#
+# This uses the plan-only OIDC role (no apply permission), so it is safe
+# even if the workflow itself were tampered with.
+
+on:
+  schedule:
+    - cron: "30 7 * * *"  # 07:30 UTC daily (~04:30 BRT)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drift-detection
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Terraform Plan vs Live State
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
+      - name: Configure AWS Credentials (OIDC, plan-only role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-plan
+          aws-region: us-east-1
+
+      - name: Setup CI Dependencies (SOPS)
+        run: make setup-ci-deps-terraform
+
+      - name: Initialize Terraform
+        working-directory: infra/aws
+        run: terraform init
+
+      - name: Detect Drift
+        id: plan
+        working-directory: infra/aws
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          # exit 0 = no diff, 1 = error, 2 = diff present.
+          set +e
+          terraform plan -lock=false -detailed-exitcode -no-color -out=plan.tfplan 2>&1 | tee plan.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          if [ "$rc" -eq 0 ]; then
+            echo "✅ No drift"
+          elif [ "$rc" -eq 2 ]; then
+            echo "⚠️  Drift detected — terraform plan returned exit 2"
+            terraform show -no-color plan.tfplan > plan.txt
+          else
+            echo "❌ terraform plan errored (exit $rc) — investigate"
+            exit "$rc"
+          fi
+
+      - name: Upload Plan Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-plan-${{ github.run_id }}
+          path: |
+            infra/aws/plan.log
+            infra/aws/plan.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Open Issue on Drift
+        if: steps.plan.outputs.exit_code == '2'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '';
+            try {
+              const plan = fs.readFileSync('infra/aws/plan.txt', 'utf8');
+              body = plan.length > 60000 ? plan.slice(0, 60000) + '\n...(truncated)' : plan;
+            } catch { body = '(plan.txt missing — check artifact)'; }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const today = new Date().toISOString().slice(0,10);
+
+            // Reuse a single rolling issue rather than spam — find an open one with the label.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'drift-detection',
+              per_page: 5,
+            });
+
+            const issueBody = [
+              `Daily \`terraform plan\` reported drift on ${today}.`,
+              '',
+              `Run: ${runUrl}`,
+              '',
+              '<details><summary>Plan diff</summary>',
+              '',
+              '```',
+              body,
+              '```',
+              '',
+              '</details>',
+              '',
+              'Triage: was this an intended manual change (commit it back)? Or unintended (revert via the next deploy)?',
+            ].join('\n');
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: issueBody,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Terraform drift detected — ${today}`,
+                body: issueBody,
+                labels: ['drift-detection', 'high-priority'],
+              });
+            }

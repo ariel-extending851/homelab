@@ -1,0 +1,60 @@
+---
+# Molecule scenarios that intentionally skip the `idempotence` step.
+#
+# Adding a scenario here requires a `reason` explaining why a normal
+# idempotence run would produce false failures (e.g., container kernel
+# limitations, pre-created stubs, ignore_errors tasks). CI rejects scenarios
+# that skip idempotence without being listed here.
+#
+# Validated by: bin/check_molecule_idempotence.py
+# CI gate: `make test-ansible-idempotency`
+
+exceptions:
+  - role: rpi_optimization
+    scenario: sysctl
+    reason: >-
+      nf_conntrack_max may not be available in container kernels and is set
+      with ignore_errors, which can cause false idempotence failures.
+
+  - role: rpi_optimization
+    scenario: rpi3
+    reason: >-
+      Container kernel limitations prevent reliable idempotence (aligns
+      with the sysctl scenario rationale).
+
+  - role: argocd
+    scenario: sops
+    reason: >-
+      Pre-created stubs cause "kubeconfig already exists" / "cmp-sops already
+      present" branches that can't be simulated; real idempotence is
+      guaranteed by the shell/when guards in configure_sops.yml.
+
+  - role: k3s
+    scenario: default
+    reason: >-
+      Incompatible with check: true mode (curl/systemd/shell tasks are
+      skipped under check mode, leaving no state to compare).
+
+  - role: k3s
+    scenario: agent
+    reason: >-
+      Pre-created stubs affect which branches run on each iteration; real
+      idempotence is enforced by the install scenario.
+
+  - role: k3s
+    scenario: health
+    reason: >-
+      Health-check scenario runs read-only assertions; idempotence is not
+      meaningful for verification-only playbooks.
+
+  - role: emergency_recovery
+    scenario: default
+    reason: >-
+      Recovery tasks have side effects (file unlinks, systemctl stop) that
+      do not reconcile to a steady state on a second pass.
+
+  - role: .template
+    scenario: default
+    reason: >-
+      Scaffold for new roles; the idempotence step is added when the
+      template is copied into a real role via `make new-role`.

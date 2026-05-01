@@ -170,3 +170,59 @@ data:
             severity: warning
           annotations:
             summary: "DNS Lento: {{ $labels.instance }}"
+
+      # ── deploy / workload health (uses kube-state-metrics) ──────────────
+      # NOTE: These alerts surface in Prometheus + Grafana only — no
+      # Alertmanager is wired yet. Wire one (e.g., Alertmanager → Slack
+      # webhook) before relying on these for paging.
+      - name: deploy-health
+        rules:
+        - alert: PodOOMKilled
+          expr: increase(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[10m]) > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "OOMKilled: {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Container {{ $labels.container }} foi morto por OOM. Aumente memory limits ou investigue leak."
+
+        - alert: DeploymentReplicasUnavailable
+          expr: kube_deployment_status_replicas_unavailable > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Deployment degradado: {{ $labels.namespace }}/{{ $labels.deployment }}"
+            description: "{{ $value }} replica(s) indisponível há mais de 10min — deploy travado ou app falhando."
+
+        - alert: PodNotReady
+          expr: sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod fora de Ready: {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Pod travado em fase não-Running por >15min."
+
+        - alert: PodRestartingFrequently
+          expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Restart loop: {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "Mais de 5 restarts em 15min — não é CrashLoop ainda mas próximo."
+
+      # ── filesystem coverage on all mountpoints (extends LowDiskSpace) ───
+      - name: storage-health
+        rules:
+        - alert: LowDiskSpaceAnyMount
+          expr: |
+            (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+             / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} * 100) < 15
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disco cheio: {{ $labels.instance }} {{ $labels.mountpoint }}"
+            description: "<15% livre em {{ $labels.mountpoint }} — risco de imagem/log/PVC encher."
