@@ -1,0 +1,46 @@
+---
+# Pre-pull Cilium container images on every k3s node before flipping
+# enable_cilium_cni=true. Pulling over Tailscale on the Pis can take 10+ min;
+# doing it ahead of the cutover turns a 30s blip into a 30s blip (instead of
+# a 15min outage).
+- name: Pre-pull Cilium images on all k3s nodes
+  hosts: k3s_server:k3s_agent
+  become: yes
+  gather_facts: yes
+  vars:
+    cilium_version: "v1.19.3"
+    cilium_images:
+      - "quay.io/cilium/cilium:{{ cilium_version }}"
+      - "quay.io/cilium/operator-generic:{{ cilium_version }}"
+  tasks:
+    - name: Confirm k3s containerd socket is present
+      ansible.builtin.stat:
+        path: /run/k3s/containerd/containerd.sock
+      register: k3s_containerd_sock
+
+    - name: Fail if k3s containerd is not running
+      ansible.builtin.fail:
+        msg: "k3s containerd socket missing on {{ inventory_hostname }} — is k3s installed and running?"
+      when: not k3s_containerd_sock.stat.exists
+
+    - name: Pull Cilium images via k3s crictl
+      ansible.builtin.command:
+        cmd: "/usr/local/bin/k3s crictl pull {{ item }}"
+      loop: "{{ cilium_images }}"
+      register: pull_result
+      changed_when: "'Pulled image' in (pull_result.stdout | default(''))"
+      retries: 5
+      delay: 15
+      until: pull_result.rc == 0
+
+    - name: Show pulled images
+      ansible.builtin.command:
+        cmd: "/usr/local/bin/k3s crictl images --quiet"
+      register: image_list
+      changed_when: false
+
+    - name: Verify Cilium images present
+      ansible.builtin.assert:
+        that:
+          - image_list.stdout | length > 0
+        fail_msg: "No images visible to k3s containerd on {{ inventory_hostname }}."

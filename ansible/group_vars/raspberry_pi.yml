@@ -47,7 +47,7 @@ k3s_arm_config:
     - "eviction-hard=memory.available<256Mi"
     - "eviction-soft=memory.available<512Mi"
     - "eviction-soft-grace-period=memory.available=2m"
-    - "system-reserved=memory=256Mi"
+    - "system-reserved=memory=320Mi"
     - "kube-reserved=memory=256Mi"
 
 # Resource limits for system services

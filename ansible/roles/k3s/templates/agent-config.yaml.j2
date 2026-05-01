@@ -10,7 +10,9 @@ node-name: {{ k3s_node_name }}
 # the encrypted overlay network instead of the raw AWS VPC interface.
 {% if k3s_tailscale_ip is defined and k3s_tailscale_ip | length > 0 %}
 node-ip: {{ k3s_tailscale_ip }}
+{% if not (enable_cilium_cni | default(false) | bool) %}
 flannel-iface: tailscale0
+{% endif %}
 {% endif %}
 
 {% if k3s_agent_config.node_label | default([]) | length > 0 %}

@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco
+  labels:
+    app: falco
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  template:
+    metadata:
+      labels:
+        app: falco
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      priorityClassName: system-node-critical
+
+      # Skip rasp-pi-03 — 1GB RAM Pi3 cannot accommodate Falco's 100-200Mi
+      # steady plus syscall-storm bursts above the 512Mi eviction-soft floor.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - rasp-pi-03
+
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+
+      containers:
+        - name: falco
+          image: falcosecurity/falco-no-driver:0.43.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - /usr/bin/falco
+            - --modern-bpf
+            - -pk
+          securityContext:
+            # eBPF program load requires CAP_BPF + CAP_PERFMON + CAP_SYS_RESOURCE;
+            # privileged=true is the simplest cross-distro way to grant them.
+            privileged: true
+          ports:
+            - containerPort: 8765
+              name: metrics
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /host/run/k3s/containerd/containerd.sock
+              name: containerd-socket
+            - mountPath: /host/dev
+              name: dev-fs
+              readOnly: true
+            - mountPath: /host/proc
+              name: proc-fs
+              readOnly: true
+            - mountPath: /host/etc
+              name: etc-fs
+              readOnly: true
+            - mountPath: /host/usr
+              name: usr-fs
+              readOnly: true
+            - mountPath: /sys/kernel/debug
+              name: debugfs
+            - mountPath: /etc/falco
+              name: falco-config
+
+      volumes:
+        - name: containerd-socket
+          hostPath:
+            path: /run/k3s/containerd/containerd.sock
+            type: Socket
+        - name: dev-fs
+          hostPath:
+            path: /dev
+        - name: proc-fs
+          hostPath:
+            path: /proc
+        - name: etc-fs
+          hostPath:
+            path: /etc
+        - name: usr-fs
+          hostPath:
+            path: /usr
+        - name: debugfs
+          hostPath:
+            path: /sys/kernel/debug
+        - name: falco-config
+          configMap:
+            name: falco-config

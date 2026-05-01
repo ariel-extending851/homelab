@@ -52,6 +52,11 @@ k3s_pi_max_pods: 50  # Limit max pods on Pi nodes
 k3s_use_tailscale: true
 k3s_advertise_on_tailscale: true
 
+# CNI selection. When true: K3s starts with --flannel-backend=none and
+# --disable-network-policy=true; Cilium (deployed via ArgoCD app
+# k8s/apps/cilium/) takes over CNI duties. Leave false for the Flannel default.
+enable_cilium_cni: false
+
 # Security settings
 k3s_protect_kernel_defaults: false  # Set to true for production hardening
 k3s_secrets_encryption: false  # Enable secrets encryption at rest
