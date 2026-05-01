@@ -2,12 +2,12 @@
 # Role metadata and dependencies
 
 galaxy_info:
-  role_name: [ROLE_NAME]
+  role_name: {{ role_name }}
   author: homelab
-  description: "[ROLE_NAME] role - add your description here"
+  description: "{{ description }}"
   company: homelab
   license: MIT
-  min_ansible_version: "2.12"
+  min_ansible_version: "{{ min_ansible_version }}"
 
   platforms:
     - name: Debian

@@ -63,7 +63,8 @@ Push fixes as new commits (don't rebase mid-review unless asked). Squash on merg
 Every Ansible role **must** have Molecule tests. CI enforces this.
 
 ```bash
-make new-role ROLE=my_role          # scaffolds from ansible/roles/.template/
+make new-role ROLE=my_role          # scaffolds from templates/ansible-role/ via Copier
+make new-app  APP=my-app            # scaffolds a k8s app from templates/k8s-app/ via Copier
 ```
 
 Then follow the checklist in [`docs/contributing/role-template.md`](docs/contributing/role-template.md) and the full guide in [`docs/contributing/ansible-roles.md`](docs/contributing/ansible-roles.md).

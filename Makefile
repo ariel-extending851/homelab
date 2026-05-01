@@ -674,8 +674,17 @@ validate-ansible-structure: ## Validate all Ansible roles have required Molecule
 	done
 	@echo "✅ All Ansible roles have valid Molecule structure"
 
-new-role: ## Create new Ansible role from template: make new-role ROLE=my_role
+new-role: ## Create new Ansible role from Copier template: make new-role ROLE=my_role
 	@python3 bin/create_ansible_role.py $(ROLE)
+
+new-app: ## Scaffold new k8s app from Copier template: make new-app APP=my-app
+	@python3 bin/create_homelab_app.py $(APP)
+
+generate-catalog: ## Regenerate the service catalog table in docs/services/README.md
+	@python3 bin/generate_service_catalog.py
+
+check-catalog: ## Fail if docs/services/README.md is out of sync with k8s/apps/
+	@python3 bin/generate_service_catalog.py --check
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 
@@ -861,6 +870,16 @@ test-trivy-strict: setup-ci-deps-trivy setup-ci-deps-python ## Trivy strict mode
 	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
 	@python3 bin/trivy_scan.py --strict
 	@echo "  ✓ Trivy strict scan passed."
+
+velero-bootstrap-secret: ## Inject Velero AWS credentials from terraform outputs into SOPS-encrypted secret (idempotent)
+	@echo "🔐 Bootstrapping Velero AWS credentials from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/velero_bootstrap_secret.py
+	@echo "  ✓ Velero secret updated. Commit + push to trigger ArgoCD sync:"
+	@echo "    git add k8s/apps/velero/secret.yaml"
+	@echo "    git commit -S -m 'chore(velero): bootstrap AWS creds'"
+	@echo "    git push"
 
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 

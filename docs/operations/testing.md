@@ -125,7 +125,7 @@ This uses `docker/setup-qemu-action`-equivalent locally. Slow (45 min in CI), bu
 
 ```bash
 make validate-ansible-structure    # confirms every role has molecule/default/
-make new-role ROLE=myrole          # scaffold from ansible/roles/.template/
+make new-role ROLE=myrole          # scaffold from templates/ansible-role/ (Copier)
 ```
 
 ---

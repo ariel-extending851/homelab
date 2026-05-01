@@ -4,39 +4,33 @@
 > **Last reviewed:** 2026-04-23
 > **Owner:** @ariel-extending851
 
-Quick checklist for filling in a new Ansible role from [`ansible/roles/.template/`](../../ansible/roles/.template/). For the full contribution guide see [`ansible-roles.md`](ansible-roles.md).
+Quick checklist for filling in a new Ansible role scaffolded from the [Copier template at `templates/ansible-role/`](../../templates/ansible-role/). For the full contribution guide see [`ansible-roles.md`](ansible-roles.md).
 
 ---
 
 ## Quick Steps
 
-1. **Copy the template:**
+1. **Scaffold the role** (Copier renders the template, so no placeholder substitution is needed):
    ```bash
-   make new-role ROLE=my_new_role           # preferred
-   # or
-   cp -r ansible/roles/.template ansible/roles/my_new_role
+   make new-role ROLE=my_new_role
    ```
+   This calls `copier copy templates/ansible-role/ ansible/roles/my_new_role` under the hood. `copier` is installed via `mise install` (it's pinned in `.mise.toml`).
 
-2. **Replace `[ROLE_NAME]` placeholders.** Files to edit:
-   - `meta/main.yml`
-   - `README.md`
-   - `molecule/default/molecule.yml` (the `hostname` field)
-
-3. **Customize for your role:**
+2. **Customize for your role:**
    - `defaults/main.yml` — declare all variables with defaults + comments
    - `tasks/main.yml` — implement the actual logic
    - `molecule/default/converge.yml` — add `pre_tasks` (stubs, directory creation, mock binaries)
    - `molecule/default/verify.yml` — at least ONE assertion that proves the role ran
    - `molecule/default/molecule.yml` — adjust base image / inventory if needed
 
-4. **Test locally:**
+3. **Test locally:**
    ```bash
    make test-molecule-my_new_role
    # or directly:
    cd ansible/roles/my_new_role && molecule test
    ```
 
-5. **Reference patterns:**
+4. **Reference patterns:**
    - **Simple role:** [`ansible/roles/tailscale/`](../../ansible/roles/tailscale/) — single scenario, basic
    - **Complex role:** [`ansible/roles/k3s/`](../../ansible/roles/k3s/) — 4 scenarios, multi-mode
    - **Cluster install:** [`ansible/roles/argocd/`](../../ansible/roles/argocd/) — for kubectl-using roles
@@ -92,4 +86,4 @@ CI rejects new roles missing `molecule/default/` — there is no "I'll add tests
 
 - **Full contribution guide:** [`ansible-roles.md`](ansible-roles.md)
 - **Test infrastructure:** [`../operations/testing.md`](../operations/testing.md)
-- **The template itself:** [`ansible/roles/.template/`](../../ansible/roles/.template/)
+- **The Copier template:** [`templates/ansible-role/`](../../templates/ansible-role/)
