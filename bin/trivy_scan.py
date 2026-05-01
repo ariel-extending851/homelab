@@ -28,6 +28,7 @@ import yaml
 
 DEFAULT_MANIFESTS_DIR = "k8s/apps"
 DEFAULT_OUTPUT_DIR = ".qa/trivy"
+DEFAULT_ALLOWLIST = ".trivy-image-allowlist.txt"
 BLOCKING_SEVERITIES = {"HIGH", "CRITICAL"}
 
 
@@ -151,27 +152,66 @@ def run_trivy(image: str, output_dir: Path) -> dict:
 # ── orchestration ───────────────────────────────────────────────────────────
 
 
-def scan_all(manifests_dir: str, output_dir: Path) -> tuple[int, list[dict]]:
-    """Render manifests, scan every image, return (exit_code, summaries)."""
+def parse_image_allowlist(text: str) -> set[str]:
+    """Parse an allowlist file: one image ref per non-comment line.
+
+    Lines may have trailing `# comments`. Empty lines + lines starting
+    with `#` are skipped. Returns the set of image refs to skip in
+    strict mode.
+    """
+    allowed: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            allowed.add(line)
+    return allowed
+
+
+def load_allowlist(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    return parse_image_allowlist(path.read_text())
+
+
+def scan_all(
+    manifests_dir: str,
+    output_dir: Path,
+    allowlist: set[str] | None = None,
+) -> tuple[int, list[dict]]:
+    """Render manifests, scan every image, return (exit_code, summaries).
+
+    Images in `allowlist` are still scanned and reported, but their
+    findings do not contribute to the exit code in strict mode. This is
+    the documented escape hatch for known-vulnerable images that are
+    pinned pending a planned upgrade — see .trivy-image-allowlist.txt.
+    """
     rendered = run_kustomize(manifests_dir)
     images = extract_images(rendered)
     if not images:
         print("⚠️  No images found in manifests — nothing to scan.")
         return 0, []
 
+    allowlist = allowlist or set()
     summaries: list[dict] = []
     blocked_any = False
     for image in images:
         print(f"🔍 Scanning {image}...")
         report = run_trivy(image, output_dir)
         summary = summarize_report(image, report)
+        summary["allowlisted"] = image in allowlist
         summaries.append(summary)
         if summary["blocked"]:
-            blocked_any = True
             counts = summary["blocking"]
-            print(
-                f"  ❌ {image}: HIGH={counts['HIGH']} CRITICAL={counts['CRITICAL']} (fix available)"
-            )
+            if summary["allowlisted"]:
+                print(
+                    f"  ⚠️  {image}: HIGH={counts['HIGH']} CRITICAL={counts['CRITICAL']} "
+                    "(allowlisted — see .trivy-image-allowlist.txt)"
+                )
+            else:
+                blocked_any = True
+                print(
+                    f"  ❌ {image}: HIGH={counts['HIGH']} CRITICAL={counts['CRITICAL']} (fix available)"
+                )
         else:
             print(f"  ✅ {image}: clean")
 
@@ -184,6 +224,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifests-dir", default=DEFAULT_MANIFESTS_DIR)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
+        "--allowlist",
+        default=DEFAULT_ALLOWLIST,
+        help=(
+            "Path to a file listing image refs whose findings should not "
+            "fail the build (one ref per line, # comments allowed). "
+            "Findings are still reported, just downgraded to warnings."
+        ),
+    )
+    parser.add_argument(
         "--strict",
         action="store_true",
         help="Exit non-zero on any HIGH/CRITICAL fixable CVE. "
@@ -191,11 +240,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    raw_exit_code, summaries = scan_all(args.manifests_dir, Path(args.output_dir))
-    n_blocked = sum(1 for s in summaries if s["blocked"])
+    allowlist = load_allowlist(Path(args.allowlist))
+    if allowlist:
+        print(f"📋 Image allowlist ({args.allowlist}): {len(allowlist)} entries")
+
+    raw_exit_code, summaries = scan_all(
+        args.manifests_dir, Path(args.output_dir), allowlist=allowlist
+    )
+    n_blocked = sum(1 for s in summaries if s["blocked"] and not s.get("allowlisted"))
+    n_allowlisted = sum(1 for s in summaries if s.get("allowlisted") and s["blocked"])
+    n_clean = sum(1 for s in summaries if not s["blocked"])
     print(
         f"\n📊 Scanned {len(summaries)} image(s); "
-        f"{n_blocked} blocked, {len(summaries) - n_blocked} clean."
+        f"{n_blocked} blocked, {n_allowlisted} allowlisted, {n_clean} clean."
     )
 
     if not args.strict and raw_exit_code != 0:

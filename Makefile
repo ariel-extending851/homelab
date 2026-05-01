@@ -243,9 +243,11 @@ setup-ci-deps-python: ## Install Python test dependencies (pytest, pytest-cov, b
 setup-ci-deps-workflow-lint: ## Install actionlint + zizmor (for CI)
 	@echo "🔧 Setting up workflow linters for CI..."
 	@command -v actionlint >/dev/null 2>&1 || $(MISE_EXEC) actionlint --version >/dev/null 2>&1 \
-	  || (curl -fsSL -o /tmp/actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
+	  || (mkdir -p "$$HOME/.local/bin" \
+	      && curl -fsSL -o /tmp/actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash \
 	      && bash /tmp/actionlint.bash latest "$$HOME/.local/bin" \
-	      && rm -f /tmp/actionlint.bash)
+	      && rm -f /tmp/actionlint.bash \
+	      && echo "$$HOME/.local/bin" >> "$${GITHUB_PATH:-/dev/null}")
 	@command -v zizmor >/dev/null 2>&1 || $(MISE_EXEC) zizmor --version >/dev/null 2>&1 \
 	  || pip install --quiet --break-system-packages zizmor
 	@echo "✅ actionlint + zizmor ready"

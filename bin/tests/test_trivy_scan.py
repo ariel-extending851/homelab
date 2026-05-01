@@ -331,3 +331,73 @@ def test_run_trivy_writes_report_and_returns_parsed(tmp_path):
 
     assert report == expected_report
     assert (tmp_path / "nginx_1.25.json").exists()
+
+
+# ── image allowlist ────────────────────────────────────────────────────────
+
+
+def test_parse_image_allowlist_skips_comments_and_blank_lines():
+    text = "\n".join(
+        [
+            "# heading comment",
+            "",
+            "grafana/grafana:10.2.3   # review-by: 2026-07-30",
+            "  prom/prometheus:v2.45.0",  # leading whitespace tolerated
+            "# trailing comment line",
+            "",
+        ]
+    )
+    parsed = trivy_scan.parse_image_allowlist(text)
+    assert parsed == {"grafana/grafana:10.2.3", "prom/prometheus:v2.45.0"}
+
+
+def test_parse_image_allowlist_empty_input_returns_empty_set():
+    assert trivy_scan.parse_image_allowlist("") == set()
+
+
+def test_load_allowlist_returns_empty_set_when_file_missing(tmp_path):
+    assert trivy_scan.load_allowlist(tmp_path / "nope.txt") == set()
+
+
+def test_load_allowlist_parses_existing_file(tmp_path):
+    f = tmp_path / "allowed.txt"
+    f.write_text("alpha:1\nbeta:2  # comment\n")
+    assert trivy_scan.load_allowlist(f) == {"alpha:1", "beta:2"}
+
+
+def test_scan_all_allowlisted_image_does_not_block(tmp_path):
+    rendered = "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: x\n          image: vulnerable:1.0\n"
+    blocking_report = {
+        "Results": [
+            {
+                "Vulnerabilities": [
+                    {"Severity": "CRITICAL", "FixedVersion": "1.1"},
+                    {"Severity": "HIGH", "FixedVersion": "1.1"},
+                ]
+            }
+        ]
+    }
+    with patch.object(trivy_scan, "run_kustomize", return_value=rendered), patch.object(
+        trivy_scan, "run_trivy", return_value=blocking_report
+    ):
+        rc, summaries = trivy_scan.scan_all(
+            "k8s/apps", tmp_path, allowlist={"vulnerable:1.0"}
+        )
+    assert rc == 0  # allowlisted image does not break the build
+    assert summaries[0]["allowlisted"] is True
+    assert summaries[0]["blocked"] is True  # finding still reported
+
+
+def test_scan_all_non_allowlisted_image_still_blocks(tmp_path):
+    rendered = "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: x\n          image: vulnerable:1.0\n"
+    blocking_report = {
+        "Results": [
+            {"Vulnerabilities": [{"Severity": "CRITICAL", "FixedVersion": "1.1"}]}
+        ]
+    }
+    with patch.object(trivy_scan, "run_kustomize", return_value=rendered), patch.object(
+        trivy_scan, "run_trivy", return_value=blocking_report
+    ):
+        rc, summaries = trivy_scan.scan_all("k8s/apps", tmp_path, allowlist=set())
+    assert rc == 1
+    assert summaries[0].get("allowlisted") is False
