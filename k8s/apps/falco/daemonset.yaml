@@ -47,12 +47,25 @@ spec:
             - --modern-bpf
             - -pk
           securityContext:
-            # eBPF program load requires CAP_BPF + CAP_PERFMON + CAP_SYS_RESOURCE;
-            # privileged=true is the simplest cross-distro way to grant them.
-            # allowPrivilegeEscalation=false is independently enforced by k8s
-            # admission policy and adds defense-in-depth even when privileged.
-            privileged: true
+            # Modern eBPF needs CAP_BPF + CAP_PERFMON for program load,
+            # CAP_SYS_PTRACE / CAP_SYS_RESOURCE for syscall introspection,
+            # CAP_SYS_ADMIN for /sys/kernel/debug access, and CAP_DAC_READ_SEARCH
+            # / CAP_SYS_CHROOT to read the host /proc, /etc, /usr mounts.
+            # k8s rejects privileged=true with allowPrivilegeEscalation=false,
+            # so we run unprivileged with explicit caps.
+            privileged: false
             allowPrivilegeEscalation: false
+            runAsUser: 0
+            capabilities:
+              drop: [ALL]
+              add:
+                - BPF
+                - PERFMON
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - SYS_ADMIN
+                - DAC_READ_SEARCH
+                - SYS_CHROOT
           ports:
             - containerPort: 8765
               name: metrics
