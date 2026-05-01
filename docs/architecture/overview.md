@@ -38,7 +38,7 @@ graph TB
     WS -.->|joins| TS
 
     TS -->|HTTPS via Tailscale ingress| GRAFANA["grafana.tail57bf10.ts.net"]
-    TS -->|...| OTHER["13 more apps"]
+    TS -->|...| OTHER["other apps — see services catalog"]
 
     LAMBDA -->|StartInstances/StopInstances| SERVER
     LAMBDA -->|StartInstances/StopInstances| AGENT
@@ -80,6 +80,7 @@ graph TB
 | k3s-server (dynamic) | Control plane | EC2 t3.medium spot | AWS us-east-1 | Provisioned by `infra/aws/`; joins tailnet via auth key |
 | k3s-agent (dynamic) | Worker | EC2 t3.small spot | AWS us-east-1 | Same lifecycle as server |
 | rasp-pi-03 | Worker, low-memory | RPi 3 · 4 cores · 1 GB | Home LAN | AdGuard (LAN DNS), monitoring sidecars |
+| rasp-pi-04 | Worker, storage | RPi 4 · 4 cores · 8 GB | Home LAN | `storage=media` label; Tailscale ingress proxies |
 
 The AWS pair runs only between **10:00 and 21:00 America/Sao_Paulo** by default (scheduler Lambda). RPi nodes are always on. Cost detail: [`../operations/cost-and-scheduling.md`](../operations/cost-and-scheduling.md).
 

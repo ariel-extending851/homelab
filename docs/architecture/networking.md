@@ -66,7 +66,7 @@ To use, label the `Service`: `tailscale.com/proxy-class: high-bandwidth`.
 
 ## Proxy Distribution Across Raspberry Pis
 
-Earlier analysis ([`docs/analysis/rpi4-proxy-audit.md`](../analysis/rpi4-proxy-audit.md)) noted that running every Tailscale proxy pod on a single Pi causes load imbalance. Current placement strategy:
+Earlier analysis ([`docs/archive/analysis/rpi4-proxy-audit.md`](../archive/analysis/rpi4-proxy-audit.md), archived 2026-05-01) noted that running every Tailscale proxy pod on a single Pi causes load imbalance. Current placement strategy:
 
 - **rasp-pi-03** (1 GB RPi 3): hosts AdGuard (LAN DNS via hostNetwork) and lightweight monitoring sidecars; otel-collector excluded due to RAM pressure
 - **AWS nodes**: host the rest
