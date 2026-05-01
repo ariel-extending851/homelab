@@ -1,0 +1,28 @@
+_subdirectory: template
+_envops:
+  trim_blocks: true
+  lstrip_blocks: true
+  keep_trailing_newline: true
+
+_answers_file: .copier-answers.ansible-role.yml
+
+role_name:
+  type: str
+  help: |
+    Role name (alphanumeric + underscores only — matches existing convention).
+    Per docs/CONVENTIONS.md §1.3, the `hl-` prefix is *not* required for
+    Ansible roles (it applies to cloud / k8s namespace resources).
+  validator: >-
+    {% if not (role_name | regex_search('^[a-zA-Z0-9_]+$')) %}
+    Invalid role name: must match ^[a-zA-Z0-9_]+$
+    {% endif %}
+
+description:
+  type: str
+  help: One-line description of what this role does.
+  default: "{{ role_name }} role - add your description here"
+
+min_ansible_version:
+  type: str
+  help: Minimum Ansible version required.
+  default: "2.12"

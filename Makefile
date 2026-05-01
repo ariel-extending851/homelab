@@ -589,8 +589,17 @@ validate-ansible-structure: ## Validate all Ansible roles have required Molecule
 	done
 	@echo "✅ All Ansible roles have valid Molecule structure"
 
-new-role: ## Create new Ansible role from template: make new-role ROLE=my_role
+new-role: ## Create new Ansible role from Copier template: make new-role ROLE=my_role
 	@python3 bin/create_ansible_role.py $(ROLE)
+
+new-app: ## Scaffold new k8s app from Copier template: make new-app APP=my-app
+	@python3 bin/create_homelab_app.py $(APP)
+
+generate-catalog: ## Regenerate the service catalog table in docs/services/README.md
+	@python3 bin/generate_service_catalog.py
+
+check-catalog: ## Fail if docs/services/README.md is out of sync with k8s/apps/
+	@python3 bin/generate_service_catalog.py --check
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 

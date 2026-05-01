@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Create new Ansible role from template scaffold.
+"""Create new Ansible role from the Copier template at templates/ansible-role/.
 
-Port of scripts/create-ansible-role.sh — preserves validation rules,
-exit codes, placeholder-substitution list, and next-step instructions.
+This is a thin wrapper around `copier copy` that preserves the original CLI
+contract (`make new-role ROLE=name`) so existing muscle memory keeps working.
+The role-name regex and exit codes mirror the previous implementation.
 
 Usage:
   python3 bin/create_ansible_role.py my_new_role
@@ -12,31 +13,35 @@ Usage:
 import argparse
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 ROLE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
-PLACEHOLDER = "[ROLE_NAME]"
-
-# Files inside the generated role that receive [ROLE_NAME] substitution.
-# Mirrors the exact list from the original shell script.
-PLACEHOLDER_FILES = [
-    "meta/main.yml",
-    "README.md",
-    "molecule/default/molecule.yml",
-    "molecule/default/converge.yml",
-    "molecule/default/verify.yml",
-]
+TEMPLATE_SUBPATH = Path("templates") / "ansible-role"
 
 
 def validate_role_name(role_name):
     return bool(role_name) and bool(ROLE_NAME_PATTERN.match(role_name))
 
 
-def create_role(role_name, base_dir):
-    """Create Ansible role scaffold at base_dir/ansible/roles/{role_name}.
+def _resolve_copier(env_override=None):
+    """Locate the copier binary. Prefer mise-managed, fall back to PATH."""
+    if env_override:
+        return env_override
+    found = shutil.which("copier")
+    if found:
+        return found
+    # mise exec fallback — works inside the repo even if PATH isn't fully set up.
+    if shutil.which("mise"):
+        return ["mise", "exec", "--", "copier"]
+    return None
 
-    Returns 0 on success, 1 on validation/state error.
+
+def create_role(role_name, base_dir, copier_runner=None):
+    """Render the Copier template at base_dir/ansible/roles/{role_name}.
+
+    Returns 0 on success, 1 on validation/state error, 2 if copier missing.
     """
     if not role_name:
         print("Usage: create_ansible_role.py <role_name>", file=sys.stderr)
@@ -51,11 +56,8 @@ def create_role(role_name, base_dir):
         return 1
 
     role_path = base_dir / "ansible" / "roles" / role_name
-    # User-facing paths are displayed relative to repo root, matching the
-    # original shell script output ("ansible/roles/<name>") rather than
-    # absolute paths derived from Path.cwd().
     role_display = f"ansible/roles/{role_name}"
-    template_display = "ansible/roles/.template"
+    template_path = base_dir / TEMPLATE_SUBPATH
 
     if role_path.exists():
         print(
@@ -64,27 +66,43 @@ def create_role(role_name, base_dir):
         )
         return 1
 
-    template_path = base_dir / "ansible" / "roles" / ".template"
     if not template_path.is_dir():
-        print(f"❌ Template not found at {template_display}", file=sys.stderr)
+        print(f"❌ Template not found at {TEMPLATE_SUBPATH}", file=sys.stderr)
         print(
             "   Make sure you're running from the repository root",
             file=sys.stderr,
         )
         return 1
 
-    shutil.copytree(template_path, role_path)
+    runner = copier_runner if copier_runner is not None else _resolve_copier()
+    if runner is None:
+        print(
+            "❌ `copier` not found. Run `mise install` (it's in .mise.toml).",
+            file=sys.stderr,
+        )
+        return 2
+
+    cmd = list(runner) if isinstance(runner, list) else [runner]
+    cmd += [
+        "copy",
+        "--defaults",
+        "--data",
+        f"role_name={role_name}",
+        "--vcs-ref=HEAD",
+        "--quiet",
+        str(template_path),
+        str(role_path),
+    ]
+
+    result = subprocess.run(cmd, cwd=base_dir)
+    if result.returncode != 0:
+        print(
+            f"❌ copier failed (exit {result.returncode}). See output above.",
+            file=sys.stderr,
+        )
+        return result.returncode
+
     print(f"✅ Role structure created at {role_display}")
-
-    print("🔄 Updating placeholders...")
-    for relpath in PLACEHOLDER_FILES:
-        target = role_path / relpath
-        if target.is_file():
-            target.write_text(
-                target.read_text(encoding="utf-8").replace(PLACEHOLDER, role_name),
-                encoding="utf-8",
-            )
-
     _print_next_steps(role_name, role_display)
     return 0
 
@@ -122,7 +140,7 @@ def _print_next_steps(role_name, role_path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Create a new Ansible role from the template scaffold.",
+        description="Create a new Ansible role from the Copier template.",
     )
     parser.add_argument(
         "role_name",

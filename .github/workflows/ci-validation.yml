@@ -97,6 +97,9 @@ jobs:
       - name: Run Jinja2 Template Validation via Makefile
         run: make test-templates
 
+      - name: Verify Service Catalog is in sync with k8s/apps/
+        run: make check-catalog
+
   enforce-molecule-tests:
     name: Enforce Molecule Tests
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

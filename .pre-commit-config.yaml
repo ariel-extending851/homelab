@@ -61,6 +61,17 @@ repos:
       - id: markdownlint
         args: ["--config", ".markdownlint.json", "--ignore-path", ".markdownlintignore"]
 
+  # Service catalog drift check
+  - repo: local
+    hooks:
+      - id: service-catalog-sync
+        name: service-catalog-sync
+        description: Verify docs/services/README.md matches k8s/apps/
+        entry: python3 bin/generate_service_catalog.py --check
+        language: system
+        files: ^(k8s/apps/.*|docs/services/README\.md|bin/generate_service_catalog\.py)$
+        pass_filenames: false
+
   # GitHub Actions workflow linting (syntax + security)
   - repo: local
     hooks:
