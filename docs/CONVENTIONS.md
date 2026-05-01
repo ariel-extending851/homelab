@@ -78,4 +78,22 @@ Specialized templates for runbooks and service docs live in [`contributing/doc-s
 
 ## 6. Directory Layout
 
-The canonical doc tree is described in [`docs/README.md`](README.md). New documents go into the appropriate bucket: `getting-started/`, `architecture/`, `operations/`, `services/`, `runbooks/`, `troubleshooting/`, `security/`, `contributing/`, `reference/`, `plans/`, `reviews/`. Anything no longer maintained moves to `archive/` (excluded from CI link-checking).
+### 6.1 Documentation tree
+
+The canonical doc tree is described in [`docs/README.md`](README.md). New documents go into the appropriate bucket: `getting-started/`, `architecture/`, `operations/`, `services/`, `runbooks/`, `security/`, `contributing/`, `reference/`, `plans/`. Anything no longer maintained moves to `archive/` (excluded from CI link-checking).
+
+### 6.2 Code & test placement
+
+| Kind | Location | Notes |
+|---|---|---|
+| Python tests (unit, contract, e2e) | `bin/tests/test_<script>.py`, `bin/tests/*.bats` | One pytest config (`pyproject.toml` `testpaths`); shared `conftest.py` lives here. |
+| Python CLI / orchestrator scripts | `bin/*.py` | Main entry points invoked from Makefile or CI. |
+| Domain-specific Python helpers | `ansible/*.py`, `ansible/scripts/*.py`, `infra/aws/scripts/*.py` | Helpers tightly coupled to a tool's working tree (dynamic inventory, LocalStack validators, etc.). Their tests still live in `bin/tests/`. |
+| Ansible roles | `ansible/roles/<name>/` | Each role MUST include `molecule/default/` co-located with the role — see [`contributing/ansible-roles.md`](contributing/ansible-roles.md). |
+| Ansible playbooks | `ansible/playbooks/` | Subdirs `gitops/`, `maintenance/`, `recovery/` for grouping. |
+| Terraform modules | `infra/aws/modules/<name>/` | Self-contained units. |
+| Terraform native tests | `infra/aws/tests/*.tftest.hcl`, `infra/aws-oidc/tests/*.tftest.hcl` | Use the `terraform test` framework, not pytest. |
+| Lambda packages | `infra/aws/modules/<module>/lambda_src/` with co-located `tests/` | **Exception** to the `bin/tests/` rule: Lambda is a self-contained Python package zipped and deployed as a unit, so tests live next to the code being packaged. |
+| Kubernetes app manifests | `k8s/apps/<app>/` | Folder name matches namespace. |
+| OPA / Conftest policies | `k8s/policies/*.rego` | |
+| Shell scripts | Avoid. | Prefer Python; existing shell logic was migrated in commit `9eecfcc`. |

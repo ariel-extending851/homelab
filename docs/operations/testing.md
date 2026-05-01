@@ -18,6 +18,20 @@ CI runs all layers except the last (which fires on `main` push only — see [`.g
 
 ---
 
+## Where tests live
+
+| Test kind | Location |
+|---|---|
+| Python unit / contract tests for any script in the repo | [`bin/tests/`](../../bin/tests/) (pytest + Bats) — single home, regardless of which top-level dir the script under test lives in |
+| Shared pytest config and `conftest.py` | [`bin/tests/conftest.py`](../../bin/tests/conftest.py) |
+| Terraform native tests (`*.tftest.hcl`) | [`infra/aws/tests/`](../../infra/aws/tests/), [`infra/aws-oidc/tests/`](../../infra/aws-oidc/tests/) — kept next to the module they test |
+| Ansible role tests (Molecule) | `ansible/roles/<role>/molecule/default/` — co-located with the role by Molecule's design |
+| Lambda package tests | [`infra/aws/modules/scheduler/lambda_src/tests/`](../../infra/aws/modules/scheduler/lambda_src/tests/) — **exception** to the `bin/tests/` rule because the Lambda is a self-contained Python package zipped and deployed as a unit |
+
+Discovery is configured via `testpaths` in [`pyproject.toml`](../../pyproject.toml). Adding a new test file under `bin/tests/test_*.py` picks it up automatically.
+
+---
+
 ## Prerequisites
 
 All tools are pinned in [`.mise.toml`](../../.mise.toml). Install them once:

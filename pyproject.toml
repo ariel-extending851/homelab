@@ -6,10 +6,8 @@ description = "Homelab infrastructure-as-code project"
 [tool.pytest.ini_options]
 # Test discovery paths
 testpaths = [
-  "ansible/tests",
   "bin/tests",
   "infra/aws/modules/scheduler/lambda_src/tests",
-  "infra/aws/scripts/tests",
 ]
 
 # Pytest options

@@ -7,7 +7,9 @@ import urllib.error
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[2] / "infra" / "aws" / "scripts")
+)
 
 import validate_localstack as tl  # noqa: E402
 

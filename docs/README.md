@@ -55,14 +55,6 @@ See the **[Services index](services/README.md)** for the full matrix of all 16 d
 
 See [Runbooks index](runbooks/README.md).
 
-## 🔧 Troubleshooting
-
-Lower-severity issues that don't need an on-call response.
-
-| Document | Purpose |
-|---|---|
-| [Torrent P2P debugging](troubleshooting/torrent-p2p.md) | Why peers won't connect through the VPN |
-
 ## 🔒 Security
 
 | Document | Purpose |
@@ -90,14 +82,12 @@ Lower-severity issues that don't need an on-call response.
 | [Tailnet services](reference/tailnet-services.md) | Every `*.tail57bf10.ts.net` hostname |
 | [Glossary](reference/glossary.md) | Project-specific terms |
 
-## 📅 Plans & Reviews
+## 📅 Plans
 
 | Section | Contents |
 |---|---|
 | [Plans](plans/README.md) | Forward-looking, time-boxed initiatives |
-| [Reviews](reviews/) | Date-prefixed audit and review artifacts |
 
 ## 📁 Other directories
 
-- [`analysis/`](analysis/) — one-off analyses still relevant to today's stack
 - [`archive/`](archive/) — unmaintained content; excluded from CI link-checking. See [archive policy](archive/README.md).
