@@ -28,6 +28,7 @@ localstack = "4.13.1"
 "pipx:molecule" = "25.12.0"
 "pipx:ansible-core" = "2.18.0"
 "pipx:pytest" = "9.0.3"
+"pipx:copier" = "9.4.1"
 
 # GitHub Actions workflow linting
 actionlint = "latest"

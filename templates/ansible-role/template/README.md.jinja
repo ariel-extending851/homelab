@@ -1,10 +1,10 @@
-# [ROLE_NAME] Role
+# {{ role_name }} Role
 
-Brief description of what this role does.
+{{ description }}
 
 ## Requirements
 
-- Ansible >= 2.12
+- Ansible >= {{ min_ansible_version }}
 - (List any external requirements: specific packages, services, etc.)
 
 ## Role Variables
@@ -16,7 +16,7 @@ Brief description of what this role does.
 ```yaml
 - hosts: servers
   roles:
-    - role: [ROLE_NAME]
+    - role: {{ role_name }}
       vars:
         example_variable: "custom_value"
 ```
@@ -25,7 +25,7 @@ Brief description of what this role does.
 
 Run Molecule tests locally:
 ```bash
-cd ansible/roles/[ROLE_NAME]
+cd ansible/roles/{{ role_name }}
 molecule test
 ```
 

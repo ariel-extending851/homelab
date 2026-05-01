@@ -13,14 +13,12 @@ For the broader contribution workflow (PR process, branches, code review) see th
 ## Scaffold from Template
 
 ```bash
-# Generator (preferred)
 make new-role ROLE=my_new_role
-
-# Or manual copy
-cp -r ansible/roles/.template ansible/roles/my_new_role
 ```
 
-Both create the same skeleton. The template lives at [`ansible/roles/.template/`](../../ansible/roles/.template/) and includes `defaults/`, `tasks/`, `meta/`, `molecule/default/{molecule.yml,converge.yml,verify.yml}`, `README.md`, and `prepare.yml` (used only with the slim base image).
+This wraps `copier copy templates/ansible-role/ ansible/roles/my_new_role`. Copier renders the role name into `meta/main.yml`, `README.md`, and the Molecule files automatically — no placeholder substitution required. Run `mise install` first if `copier` is missing (it's pinned in `.mise.toml`).
+
+The Copier template at [`templates/ansible-role/`](../../templates/ansible-role/) includes `defaults/`, `tasks/`, `meta/`, `molecule/default/{molecule.yml,converge.yml,verify.yml}`, `README.md`, and `prepare.yml` (used only with the slim base image).
 
 Quick checklist for filling in the template: [`role-template.md`](role-template.md).
 
@@ -50,12 +48,11 @@ Optional:
 
 ## Implement the Role
 
-After scaffolding:
+After scaffolding (Copier renders the template, so the role name and metadata are already filled in):
 
-1. **Replace `[ROLE_NAME]` placeholders** in `meta/main.yml`, `README.md`, and `molecule/default/molecule.yml`.
-2. **Variables** — declare every default in `defaults/main.yml` with a comment explaining what it does.
-3. **Tasks** — implement in `tasks/main.yml`. Follow Ansible best practices: use modules over `command`, set explicit modes/owners on files, mark idempotency-friendly (avoid `changed_when: true` unless intentional).
-4. **Meta** — fill `meta/main.yml` (galaxy_info, dependencies). Galaxy publishing isn't required, but the metadata is used by Molecule.
+1. **Variables** — declare every default in `defaults/main.yml` with a comment explaining what it does.
+2. **Tasks** — implement in `tasks/main.yml`. Follow Ansible best practices: use modules over `command`, set explicit modes/owners on files, mark idempotency-friendly (avoid `changed_when: true` unless intentional).
+3. **Meta** — review `meta/main.yml`. The `role_name`, `description`, and `min_ansible_version` come from the Copier prompts; edit if needed. Galaxy publishing isn't required, but the metadata is used by Molecule.
 
 ---
 
@@ -152,7 +149,7 @@ Common CI failures and fixes:
 
 | Failure | Fix |
 |---|---|
-| `Missing molecule/default/molecule.yml` | Copy from `ansible/roles/.template/` |
+| `Missing molecule/default/molecule.yml` | Re-scaffold from `templates/ansible-role/` via `make new-role` |
 | `Missing converge.yml or verify.yml` | Copy + customize from template |
 | `Molecule test failed — assertion` | Add more `pre_tasks` setup in converge, or fix the assertion |
 | `ansible_become: false not set` | Add to `molecule.yml` under `inventory.group_vars.all` |

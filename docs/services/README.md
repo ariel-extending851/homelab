@@ -6,18 +6,23 @@
 
 Index of every application deployed to the k3s cluster. Each row links to the canonical service doc; manifests are in [`k8s/apps/`](../../k8s/apps/) and synced via ArgoCD.
 
-| App | Doc | Namespace | Node | Ingress |
-|---|---|---|---|---|
-| AdGuard Home | [adguard.md](adguard.md) | `adguard` | rasp-pi-03 | <https://adguard.tail57bf10.ts.net> |
-| Blackbox Exporter | [monitoring-stack.md](monitoring-stack.md#blackbox) | `monitoring` | any | — |
-| GoLink | [golink.md](golink.md) | `golink` | any | <https://golink.tail57bf10.ts.net> |
-| Grafana | [grafana.md](grafana.md) | `grafana` | any | <https://grafana.tail57bf10.ts.net> |
-| kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `monitoring` | any | — |
-| Loki | [loki.md](loki.md) | `loki` | any | <https://loki.tail57bf10.ts.net> |
-| node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `monitoring` | DaemonSet | — |
-| OTEL Collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | any | — |
-| Prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `monitoring` | any | <https://prometheus.tail57bf10.ts.net> |
-| Tailscale Operator | [tailscale-operator.md](tailscale-operator.md) | `tailscale` | system | (controller) |
-| Velero | [velero.md](velero.md) | `velero` | controller: any · node-agent: DaemonSet (Pi3 excluded) | — |
+The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_service_catalog.py`. Run `make generate-catalog` after adding or removing an app; a pre-commit hook fails the build if the file drifts.
 
-Sources verified against `ls k8s/apps/` and ingress hostnames from each app's `ingress.yaml`.
+<!-- catalog:start -->
+| App | Doc | Namespace | Ingress |
+|---|---|---|---|
+| AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> |
+| blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — |
+| GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> |
+| Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> |
+| kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — |
+| Loki | [loki.md](loki.md) | `loki` | <https://loki.tail57bf10.ts.net> |
+| node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `node-exporter` | — |
+| otel-collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | — |
+| prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> |
+| Velero — Cluster Backup & Disaster Recovery | [velero.md](velero.md) | `velero` | — |
+<!-- catalog:end -->
+
+System-only components not deployed under `k8s/apps/` (e.g. Tailscale Operator) are documented separately:
+
+- [Tailscale Operator](tailscale-operator.md) — installed as part of the cluster bootstrap, not a Kustomize app.
