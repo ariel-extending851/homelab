@@ -17,11 +17,13 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 | Falco | [falco.md](falco.md) | `falco` | — | @ariel-extending851 | `any` |
 | GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> | @ariel-extending851 | `any` |
 | Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
+| hl-kyverno | — | `—` | — | @ariel-extending851 | `any` |
 | kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — | @ariel-extending851 | `any` |
 | Loki | [loki.md](loki.md) | `loki` | <https://loki.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
 | node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `node-exporter` | — | @ariel-extending851 | `any` |
 | otel-collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | — | @ariel-extending851 | `any` |
 | prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
+| storage-latency | — | `storage-latency` | — | @ariel-extending851 | `any` |
 | unifi | — | `unifi` | — | @ariel-extending851 | `rpi3-only` |
 | Velero — Cluster Backup & Disaster Recovery | [velero.md](velero.md) | `velero` | — | @ariel-extending851 | `rpi4-or-ec2` |
 <!-- catalog:end -->
@@ -40,10 +42,14 @@ graph LR
   prometheus --> kube-state-metrics
   prometheus --> node-exporter
   prometheus --> blackbox
+  storage-latency --> prometheus
+  storage-latency --> loki
   adguard
   cilium
   falco
   golink
+  hl-kyverno
+  unifi
   velero
 ```
 <!-- graph:end -->
