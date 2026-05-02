@@ -4,13 +4,14 @@ name: DR Drill — Monthly Velero Restore Validation
 # backup/restore loop still works against the LIVE prod cluster:
 #
 #   1. Fetch prod kubeconfig via the same OIDC flow as nightly-e2e-live
-#   2. Run bin/test_velero_restore.sh (creates a marker namespace, takes
-#      a backup, deletes the namespace, restores it, verifies the marker)
+#   2. Run `make test-velero-restore` → bin/tests/test_velero_restore_live.py
+#      (creates a marker namespace, takes a backup, deletes the namespace,
+#      restores it, verifies the marker)
 #   3. On failure, open a GitHub issue tagged 'dr-drill' so it can't be
 #      silently ignored
 #
 # This is the operationalization of `make test-velero-restore` — the same
-# script ci-deployment.yml uses post-deploy, but on a recurring cadence
+# target ci-deployment.yml uses post-deploy, but on a recurring cadence
 # decoupled from deploys (so DR doesn't silently rot between releases).
 #
 # Manual run: workflow_dispatch trigger from the Actions tab.

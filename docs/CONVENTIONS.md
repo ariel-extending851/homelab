@@ -97,3 +97,36 @@ The canonical doc tree is described in [`docs/README.md`](README.md). New docume
 | Kubernetes app manifests | `k8s/apps/<app>/` | Folder name matches namespace. |
 | OPA / Conftest policies | `k8s/policies/*.rego` | |
 | Shell scripts | Avoid. | Prefer Python; existing shell logic was migrated in commit `9eecfcc`. |
+
+---
+
+## 7. Command-line conventions
+
+The project exposes two parallel command surfaces:
+
+| Audience | Surface | Why |
+|---|---|---|
+| Humans (interactive ops, debugging, ad-hoc deploys) | `homelab <cmd>` | Single mental model, consistent flag style, faster autocomplete |
+| CI / batch automation | `make <target>` | Source of truth for orchestration; what `.github/workflows/*.yml` calls |
+
+Both surfaces invoke the same Python modules under `bin/` — there is no logic divergence; the CLI is a routing layer over the same code that `make` runs.
+
+### Installing the CLI
+
+```bash
+pip install -e .
+homelab --help
+```
+
+`homelab` is registered as a `console_scripts` entry point in `pyproject.toml` (`bin.homelab:main`).
+
+### Adding a new subcommand
+
+1. Implement the work as a normal `bin/<thing>.py` script with a `main(argv=None)` that parses its own flags.
+2. Add a thin handler `cmd_<thing>` in `bin/homelab.py` that calls the script's `main(args.passthrough)`.
+3. Register the subcommand in `build_parser()`. If it should forward unparsed args opaquely, add the handler to `_PASSTHROUGH_HANDLERS`.
+4. Add a delegation test in `bin/tests/test_homelab.py`.
+
+### Subcommand `--help`
+
+`homelab <cmd> --help` shows the wrapper's help (consistent UX). To see the underlying script's help, invoke it directly: `python3 bin/<thing>.py --help`.

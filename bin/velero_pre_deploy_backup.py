@@ -8,12 +8,17 @@ works on the *new* cluster — it doesn't preserve the pre-deploy state to
 roll back to.
 
 Behavior:
-  - If the cluster is unreachable (first deploy, or post-destroy), log and
-    exit 0 — there is nothing to back up.
-  - If Velero is not installed in the target cluster, log and exit 0 for
-    the same reason.
+  - If the cluster is unreachable (first deploy, or post-destroy), warn
+    and exit 2 — non-blocking but loud (rollback safety reduced).
+  - If Velero is not installed in the target cluster, warn and exit 2
+    for the same reason.
   - Otherwise create `pre-deploy-<git-sha>-<unix-ts>` and wait up to
     --backup-timeout seconds for it to reach phase Completed.
+
+Exit codes:
+  0  backup completed
+  1  hard failure (velero CLI missing, backup create failed, phase != Completed)
+  2  skipped — backup not possible but deploy may proceed with reduced safety
 
 Required: kubectl, velero CLI in PATH, KUBECONFIG pointing at target.
 
@@ -145,18 +150,32 @@ def main(argv=None):
 
     backup_name = f"pre-deploy-{args.git_sha}-{int(time.time())}"
 
-    # Reachability gates: skip silently for first-deploy / post-destroy.
+    # Reachability gates: warn loudly for first-deploy / post-destroy.
+    # Exit 2 (not 0) so callers can distinguish "skipped" from "succeeded"
+    # and surface a yellow annotation. Rollback safety is reduced in this
+    # state — the caller decides whether to proceed.
     if not cluster_reachable():
         print(
-            "ℹ️  Cluster unreachable — first deploy or post-destroy, no pre-deploy backup needed."
+            "⚠️  Cluster unreachable — no pre-deploy backup taken. "
+            "Rollback will not be able to restore pre-deploy state.",
+            file=sys.stderr,
         )
-        print("::notice ::Pre-deploy Velero backup skipped (no prior cluster)")
-        return 0
+        print(
+            "::warning ::Pre-deploy Velero backup SKIPPED (cluster unreachable). "
+            "Rollback safety reduced."
+        )
+        return 2
 
     if not velero_installed():
-        print("ℹ️  Velero not installed in target cluster — skipping backup.")
-        print("::notice ::Pre-deploy Velero backup skipped (Velero absent)")
-        return 0
+        print(
+            "⚠️  Velero not installed in target cluster — no pre-deploy backup taken.",
+            file=sys.stderr,
+        )
+        print(
+            "::warning ::Pre-deploy Velero backup SKIPPED (Velero absent). "
+            "Install Velero to enable rollback safety."
+        )
+        return 2
 
     if shutil.which("velero") is None:
         print("❌ velero CLI not in PATH", file=sys.stderr)

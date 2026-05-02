@@ -1,7 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "homelab"
 version = "0.1.0"
 description = "Homelab infrastructure-as-code project"
+
+[project.scripts]
+homelab = "bin.homelab:main"
+
+[tool.setuptools]
+packages = ["bin"]
 
 [tool.pytest.ini_options]
 # Test discovery paths
@@ -37,6 +47,11 @@ omit = [
 relative_files = true
 
 [tool.coverage.report]
+# Floor: any pytest run with --cov fails the suite if total coverage drops
+# below this threshold. Current actual coverage is ~93%; 80 leaves a 13pt
+# buffer so genuine refactors don't get blocked, but a real regression does.
+fail_under = 80
+
 # Skip lines with pragma: no cover
 exclude_lines = [
   "pragma: no cover",

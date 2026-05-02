@@ -18,6 +18,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -38,6 +39,13 @@ DEFAULT_SSH_USER = "ec2-user"
 DEFAULT_TIMEOUT = 600
 KUBECONFIG_DEST = "/tmp/k3s-homelab-kubeconfig.yaml"
 TAILSCALE_IP_RE = re.compile(r"^100\.")
+
+# Resume-from state machine. STAGES is the canonical ordered list; each
+# successful phase appends its completion timestamp to STATE_FILE_NAME so
+# `--resume-from=<stage>` can skip pre-resume stages whose state is fresh.
+STAGES = ("prerequisites", "terraform", "instances", "tailscale", "ansible", "verify")
+STATE_FILE_NAME = ".deploy-state.json"
+STATE_STALE_AFTER_S = 2 * 3600  # 2 hours: re-validate stages older than this
 
 
 # ── logging helpers ──────────────────────────────────────────────────────────
@@ -62,6 +70,80 @@ def log_warning(msg):
 def error_exit(msg):
     log_error(msg)
     sys.exit(1)
+
+
+# ── deploy state file (resume-from logic) ────────────────────────────────────
+
+
+def state_file_path():
+    """Resolve the deploy state file path (relative to CWD by default).
+
+    Override via env var HOMELAB_DEPLOY_STATE_FILE for tests / non-default
+    project roots.
+    """
+    return Path(os.environ.get("HOMELAB_DEPLOY_STATE_FILE", STATE_FILE_NAME))
+
+
+def load_state():
+    """Read the state file. Return {} if missing or unparseable."""
+    path = state_file_path()
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_state(state):
+    """Persist the state dict atomically (write-then-rename)."""
+    path = state_file_path()
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2, sort_keys=True))
+    tmp.replace(path)
+
+
+def mark_stage_completed(stage, now=None):
+    """Record `stage` as completed with a unix timestamp."""
+    state = load_state()
+    state[stage] = int(now if now is not None else time.time())
+    save_state(state)
+
+
+def clear_state():
+    """Remove the state file. No-op if absent."""
+    path = state_file_path()
+    if path.exists():
+        path.unlink()
+
+
+def is_stage_fresh(state, stage, now=None):
+    """True iff `stage` was completed within STATE_STALE_AFTER_S seconds."""
+    completed_at = state.get(stage)
+    if not isinstance(completed_at, (int, float)):
+        return False
+    elapsed = (now if now is not None else time.time()) - completed_at
+    return 0 <= elapsed <= STATE_STALE_AFTER_S
+
+
+def should_skip_stage(stage, resume_from, state, now=None):
+    """True iff `stage` is BEFORE resume_from AND state is fresh.
+
+    Stages at or after `resume_from` always run. Pre-resume stages with
+    stale or missing state also re-run (with a warning emitted by the
+    caller) — we don't silently skip on stale state.
+    """
+    if not resume_from:
+        return False
+    try:
+        target_idx = STAGES.index(resume_from)
+        stage_idx = STAGES.index(stage)
+    except ValueError:
+        return False
+    if stage_idx >= target_idx:
+        return False
+    return is_stage_fresh(state, stage, now=now)
 
 
 # ── configuration ────────────────────────────────────────────────────────────
@@ -184,19 +266,37 @@ def check_sops_key(config):
             "Age key not configured. " "Set SOPS_AGE_KEY_FILE or SOPS_AGE_KEY env var."
         )
 
-    try:
-        subprocess.run(
-            ["sops", "--decrypt", "k8s/apps/adguard/secret.yaml"],
-            capture_output=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError:
-        error_exit(
-            "SOPS decryption failed. Verify your Age key can decrypt "
-            "k8s/apps/adguard/secret.yaml."
-        )
+    secret_files = find_sops_secret_files()
+    if not secret_files:
+        error_exit("No k8s/**/secret.yaml files found — repo layout unexpected.")
 
-    log_success("SOPS decryption verified")
+    failures = []
+    for secret_file in secret_files:
+        try:
+            subprocess.run(
+                ["sops", "--decrypt", str(secret_file)],
+                capture_output=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            stderr = (e.stderr or b"").decode("utf-8", errors="replace").strip()
+            first_line = stderr.splitlines()[0] if stderr else "(no stderr)"
+            failures.append((secret_file, first_line))
+
+    if failures:
+        log_error(
+            f"SOPS decryption failed on {len(failures)} of {len(secret_files)} files:"
+        )
+        for path, err in failures:
+            log_error(f"  - {path}: {err}")
+        error_exit("Fix the above secrets before retrying the deploy.")
+
+    log_success(f"SOPS decryption verified ({len(secret_files)} files)")
+
+
+def find_sops_secret_files():
+    """Return all SOPS-encrypted secret.yaml files under k8s/, sorted."""
+    return sorted(Path("k8s").rglob("secret.yaml"))
 
 
 def check_aws_account(config):
@@ -778,7 +878,26 @@ def main(argv=None):
     parser.add_argument(
         "--destroy", "-d", action="store_true", help="Destroy all AWS infrastructure"
     )
+    parser.add_argument(
+        "--resume-from",
+        choices=STAGES,
+        help=(
+            "Skip stages BEFORE this one if they completed within %d hours "
+            "(per .deploy-state.json). Stale or missing state re-runs the stage."
+        )
+        % (STATE_STALE_AFTER_S // 3600),
+    )
+    parser.add_argument(
+        "--reset-state",
+        action="store_true",
+        help="Delete .deploy-state.json and exit. No deploy is run.",
+    )
     args = parser.parse_args(argv)
+
+    if args.reset_state:
+        clear_state()
+        log_success(f"Deploy state cleared: {state_file_path()}")
+        return 0
 
     print_banner()
 
@@ -788,12 +907,32 @@ def main(argv=None):
         destroy_infrastructure(config)
         return 0
 
-    check_prerequisites(config)
-    phase1_terraform(config)
-    phase2_wait_for_instances(config)
-    phase2_5_wait_for_tailscale(config)
-    phase3_ansible(config)
-    phase4_verify(config)
+    state = load_state()
+    stages_plan = (
+        ("prerequisites", lambda: check_prerequisites(config)),
+        ("terraform", lambda: phase1_terraform(config)),
+        ("instances", lambda: phase2_wait_for_instances(config)),
+        ("tailscale", lambda: phase2_5_wait_for_tailscale(config)),
+        ("ansible", lambda: phase3_ansible(config)),
+        ("verify", lambda: phase4_verify(config)),
+    )
+
+    if args.resume_from:
+        log_info(f"▶ Resuming from stage: {args.resume_from}")
+
+    for stage_name, runner in stages_plan:
+        if should_skip_stage(stage_name, args.resume_from, state):
+            log_info(f"⏩ Skipping {stage_name} (fresh state, resume target ahead)")
+            continue
+        if args.resume_from and STAGES.index(stage_name) < STAGES.index(
+            args.resume_from
+        ):
+            log_warning(
+                f"⚠️  {stage_name} not in fresh state — re-running before resume target"
+            )
+        runner()
+        mark_stage_completed(stage_name)
+
     print_summary(config)
     return 0
 
