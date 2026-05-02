@@ -1,0 +1,112 @@
+site_name: Homelab
+site_description: Internal Developer Platform docs for the homelab k3s cluster
+site_url: https://ariel-extending851.github.io/homelab/
+repo_url: https://github.com/ariel-extending851/homelab
+repo_name: ariel-extending851/homelab
+edit_uri: edit/develop/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+nav:
+  - Home: README.md
+  - Getting started:
+      - Prerequisites: getting-started/prerequisites.md
+      - Deployment: getting-started/deployment.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - AWS infrastructure: architecture/aws-infrastructure.md
+      - Kubernetes: architecture/kubernetes.md
+      - Networking: architecture/networking.md
+      - GitOps: architecture/gitops.md
+      - Secrets management: architecture/secrets-management.md
+      - Multi-repo strategy: architecture/multi-repo-strategy.md
+      - Single-AZ tradeoff: architecture/single-az-tradeoff.md
+  - Services:
+      - Index: services/README.md
+      - AdGuard: services/adguard.md
+      - Cilium: services/cilium.md
+      - Falco: services/falco.md
+      - GoLink: services/golink.md
+      - Grafana: services/grafana.md
+      - Loki: services/loki.md
+      - Monitoring stack: services/monitoring-stack.md
+      - Tailscale operator: services/tailscale-operator.md
+      - Velero: services/velero.md
+  - Operations:
+      - Ansible: operations/ansible.md
+      - Terraform: operations/terraform.md
+      - Backup and restore: operations/backup-and-restore.md
+      - Cost and scheduling: operations/cost-and-scheduling.md
+      - Cost controls: operations/cost-controls.md
+      - Resource limits: operations/resource-limits.md
+      - SOPS setup: operations/sops-setup.md
+      - Testing: operations/testing.md
+  - Runbooks:
+      - Index: runbooks/README.md
+      - Control plane recovery: runbooks/control-plane-recovery.md
+      - GitHub environments: runbooks/github-environments.md
+      - Grafana dashboards: runbooks/grafana-dashboards.md
+      - Observability availability: runbooks/observability-availability.md
+      - On-call: runbooks/on-call.md
+      - SOPS key rotation: runbooks/sops-key-rotation.md
+      - Tailscale logged out: runbooks/tailscale-logged-out.md
+      - Trivy exceptions: runbooks/trivy-exceptions.md
+  - Security:
+      - Overview: security/overview.md
+      - Audit history: security/audit-history.md
+      - Fixes backlog: security/fixes-backlog.md
+      - Network policies: security/network-policies.md
+  - Reference:
+      - Glossary: reference/glossary.md
+      - Homelab CLI: reference/homelab-cli.md
+      - Makefile targets: reference/makefile-targets.md
+      - Tailnet services: reference/tailnet-services.md
+  - Contributing:
+      - Conventions: CONVENTIONS.md
+      - Doc style: contributing/doc-style.md
+      - Ansible roles: contributing/ansible-roles.md
+      - Role template: contributing/role-template.md

@@ -25,7 +25,7 @@
 		preflight drift morning-sync update-versions update-versions-dry-run \
 		test-ansible-idempotency test-velero-restore \
 		terraform-cost-baseline terraform-cost-diff \
-		homelab install-cli catalog-score \
+		homelab install-cli catalog-score docs-serve docs-build setup-ci-deps-docs \
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
 		terraform-staging-destroy terraform-prod-select \
 		cilium-flip-status cilium-flip-node cilium-flip-rollback
@@ -730,6 +730,16 @@ check-catalog: ## Fail if docs/services/README.md is out of sync with k8s/apps/
 
 catalog-score: ## Validate k8s/apps/*/catalog-info.yaml against scorecard rules (R001-R009)
 	@python3 bin/score_catalog.py
+
+docs-serve: ## Preview the mkdocs documentation site locally (http://localhost:8000)
+	@mkdocs serve
+
+docs-build: ## Build the static documentation site into ./site (smoke test for CI)
+	@mkdocs build --site-dir site
+
+setup-ci-deps-docs: ## Verify mkdocs is installed (install via `pipx install --include-deps mkdocs-material`)
+	@command -v mkdocs >/dev/null || { echo "❌ mkdocs not found — run: pipx install --include-deps mkdocs-material" >&2; exit 1; }
+	@mkdocs --version >/dev/null && echo "  ✓ mkdocs available"
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 
