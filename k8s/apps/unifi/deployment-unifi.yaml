@@ -31,6 +31,14 @@ spec:
             - sh
             - -c
             - until nc -z unifi-db 27017; do echo "waiting for unifi-db:27017"; sleep 2; done
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: "10m"
@@ -42,6 +50,22 @@ spec:
         - name: unifi
           image: lscr.io/linuxserver/unifi-network-application:latest
           imagePullPolicy: IfNotPresent
+          # linuxserver/* images launch as root via s6-overlay then drop to PUID
+          # via setuid syscalls. allowPrivilegeEscalation:false sets no_new_privs
+          # on the kernel side; SETUID/SETGID caps remain available so the
+          # demotion still works. Mirrors the AdGuard pattern.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - SETUID
+                - SETGID
+                - CHOWN
+                - DAC_OVERRIDE
+                - FOWNER
+                - NET_BIND_SERVICE
           env:
             - name: PUID
               value: "1000"

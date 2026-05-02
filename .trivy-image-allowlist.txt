@@ -23,3 +23,5 @@ quay.io/prometheus/blackbox-exporter:v0.24.0         # review-by: 2026-07-30  (l
 quay.io/prometheus/node-exporter:v1.7.0              # review-by: 2026-07-30  (low-risk bump to v1.8+)
 registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2  # review-by: 2026-07-30  (bump to v2.13+)
 velero/velero:v1.14.1                                # review-by: 2026-07-30  (Velero v1.15+ — verify CRD compat)
+mongo:7.0                                            # review-by: 2026-07-31  (UniFi requires Mongo 4-7; pin patch tag once 8.0 compat verified)
+lscr.io/linuxserver/unifi-network-application:latest # review-by: 2026-07-31  (pin to specific lsio tag after first successful adoption — see k8s/apps/unifi/README.md)

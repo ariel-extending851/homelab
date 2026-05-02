@@ -23,6 +23,11 @@ spec:
         - name: mongo
           image: mongo:7.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - secretRef:
                 name: unifi-credentials
