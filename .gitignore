@@ -72,4 +72,6 @@ temp_*.yaml
 # ArgoCD manifest cache (download via: make argocd-manifest-fetch)
 ansible/roles/argocd/files/argocd-*-install.yaml
 coverage.json
-.claude/
+.claude/settings.local.json
+.claude/worktrees/
+.claude/analise-projeto-devops.md
