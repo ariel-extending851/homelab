@@ -14,8 +14,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-# Allow import from the parent ansible/ directory
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Allow import from ansible/ where the script under test lives
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ansible"))
 import terraform_inventory_aws as inv_module
 from terraform_inventory_aws import TerraformInventoryAWS
 
