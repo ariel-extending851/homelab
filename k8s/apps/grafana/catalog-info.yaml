@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: grafana
+  description: Metrics + log dashboarding frontend over Prometheus and Loki
+  annotations:
+    homelab.io/runbook: docs/runbooks/grafana-dashboards.md
+    homelab.io/doc: docs/services/grafana.md
+spec:
+  type: website
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi4-or-ec2
+  dependsOn:
+    - component:prometheus
+    - component:loki
+  providesApis: []

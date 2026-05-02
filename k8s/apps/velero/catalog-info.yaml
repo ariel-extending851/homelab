@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: velero
+  description: Cluster backup and disaster recovery (S3-backed)
+  annotations:
+    homelab.io/runbook: docs/runbooks/control-plane-recovery.md
+    homelab.io/doc: docs/services/velero.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi4-or-ec2
+  dependsOn: []
+  providesApis: []

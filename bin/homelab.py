@@ -12,6 +12,9 @@ Sub-commands:
     homelab tf drift [--summary]     Run the Terraform drift probe from
                                      bin/drift.py with Argo + inventory
                                      checks skipped.
+    homelab catalog score [--app N]  Validate k8s/apps/*/catalog-info.yaml
+                                     against scorecard rules (R001-R009)
+                                     from bin/score_catalog.py.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ sys.path.insert(0, str(BIN_DIR))
 
 import drift  # noqa: E402
 import morning_sync  # noqa: E402
+import score_catalog  # noqa: E402
 import smoke_test  # noqa: E402
 
 
@@ -227,6 +231,25 @@ def cmd_tf_drift(args: argparse.Namespace) -> int:
     return 0 if tf_check["status"] in {"pass", "skip"} else 1
 
 
+# ── catalog score ────────────────────────────────────────────────────────────
+
+
+def cmd_catalog_score(args: argparse.Namespace) -> int:
+    """Run scorecard rules over k8s/apps/*/catalog-info.yaml."""
+    repo_root = BIN_DIR.parent
+    cli_argv: list[str] = []
+    if args.app:
+        cli_argv += ["--app", args.app]
+    for r in args.rule or []:
+        cli_argv += ["--rule", r]
+    cwd = os.getcwd()
+    try:
+        os.chdir(repo_root)
+        return score_catalog.main(cli_argv)
+    finally:
+        os.chdir(cwd)
+
+
 # ── arg parser ───────────────────────────────────────────────────────────────
 
 
@@ -285,6 +308,22 @@ def build_parser() -> argparse.ArgumentParser:
     k3s_status = k3s_sub.add_parser("status", help="Show node status")
     k3s_status.add_argument("--kubeconfig", default=None, help="Path to kubeconfig")
     k3s_status.set_defaults(func=cmd_k3s_status)
+
+    catalog_parser = sub.add_parser("catalog", help="Catalog operations")
+    catalog_sub = catalog_parser.add_subparsers(dest="cmd", required=True)
+    score_p = catalog_sub.add_parser(
+        "score", help="Validate catalog-info.yaml entities against scorecard rules"
+    )
+    score_p.add_argument(
+        "--app",
+        help="Filter findings to a single component name (e.g. grafana).",
+    )
+    score_p.add_argument(
+        "--rule",
+        action="append",
+        help="Only run specific rule id(s); may be passed multiple times.",
+    )
+    score_p.set_defaults(func=cmd_catalog_score)
 
     ci_parser = sub.add_parser("ci", help="Replay CI steps locally")
     ci_sub = ci_parser.add_subparsers(dest="cmd", required=True)

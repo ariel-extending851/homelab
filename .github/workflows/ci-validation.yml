@@ -171,6 +171,9 @@ jobs:
       - name: Verify Service Catalog is in sync with k8s/apps/
         run: make check-catalog
 
+      - name: Validate Catalog Scorecard (catalog-info.yaml entities)
+        run: make catalog-score
+
   enforce-molecule-tests:
     name: Enforce Molecule Tests
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

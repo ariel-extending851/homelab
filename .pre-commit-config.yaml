@@ -71,6 +71,13 @@ repos:
         language: system
         files: ^(k8s/apps/.*|docs/services/README\.md|bin/generate_service_catalog\.py)$
         pass_filenames: false
+      - id: catalog-score
+        name: catalog-score
+        description: Validate k8s/apps/*/catalog-info.yaml against scorecard rules (R001-R009)
+        entry: python3 bin/score_catalog.py
+        language: system
+        files: ^(k8s/apps/.*|bin/score_catalog\.py)$
+        pass_filenames: false
 
   # GitHub Actions workflow linting (syntax + security)
   - repo: local

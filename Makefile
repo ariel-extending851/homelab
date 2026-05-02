@@ -25,7 +25,7 @@
 		preflight drift morning-sync update-versions update-versions-dry-run \
 		test-ansible-idempotency test-velero-restore \
 		terraform-cost-baseline terraform-cost-diff \
-		homelab install-cli \
+		homelab install-cli catalog-score \
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
 		terraform-staging-destroy terraform-prod-select \
 		cilium-flip-status cilium-flip-node cilium-flip-rollback
@@ -727,6 +727,9 @@ generate-catalog: ## Regenerate the service catalog table in docs/services/READM
 
 check-catalog: ## Fail if docs/services/README.md is out of sync with k8s/apps/
 	@python3 bin/generate_service_catalog.py --check
+
+catalog-score: ## Validate k8s/apps/*/catalog-info.yaml against scorecard rules (R001-R009)
+	@python3 bin/score_catalog.py
 
 ##@ Molecule Role Tests (offline — no Raspberry Pi required)
 

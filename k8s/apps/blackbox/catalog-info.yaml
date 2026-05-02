@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: blackbox
+  description: Prometheus blackbox-exporter for HTTP/ICMP probing of cluster endpoints
+  annotations:
+    homelab.io/runbook: docs/runbooks/observability-availability.md
+    homelab.io/doc: docs/services/monitoring-stack.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []
