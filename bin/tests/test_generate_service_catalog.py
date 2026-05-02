@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import generate_service_catalog as gsc  # noqa: E402
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
@@ -168,11 +167,17 @@ def test_render_table_has_header_and_rows():
             "doc": "[alpha.md](alpha.md)",
             "namespace": "alpha",
             "ingress": "<https://alpha.example.com>",
+            "owner": "@team",
+            "tier": "any",
+            "entity_name": "alpha",
+            "depends_on": [],
         },
     ]
     out = gsc.render_table(rows)
-    assert out.splitlines()[0] == "| App | Doc | Namespace | Ingress |"
+    assert out.splitlines()[0] == "| App | Doc | Namespace | Ingress | Owner | Tier |"
     assert "| Alpha |" in out
+    assert "@team" in out
+    assert "`any`" in out
 
 
 def test_update_catalog_file_replaces_only_marker_block(repo):
@@ -236,3 +241,95 @@ def test_main_check_mode_fails_when_drifted(repo, capsys):
     rc = gsc.main(["--check"])
     assert rc == 1
     assert "out of sync" in capsys.readouterr().err
+
+
+# ── catalog-info.yaml integration ────────────────────────────────────────────
+
+
+def _write_entity(
+    base: Path,
+    name: str,
+    *,
+    owner: str = "@team",
+    tier: str = "any",
+    depends_on: list[str] | None = None,
+):
+    deps_block = "  dependsOn: []\n"
+    if depends_on:
+        deps_block = "  dependsOn:\n" + "".join(f"    - {d}\n" for d in depends_on)
+    body = (
+        "apiVersion: backstage.io/v1alpha1\n"
+        "kind: Component\n"
+        f"metadata:\n  name: {name}\n"
+        "spec:\n"
+        "  type: service\n"
+        "  lifecycle: production\n"
+        f'  owner: "{owner}"\n'
+        f"  tier: {tier}\n"
+        f"{deps_block}"
+    )
+    _write(base / "k8s" / "apps" / name / "catalog-info.yaml", body)
+
+
+def test_collect_rows_uses_catalog_info_for_owner_tier_deps(repo):
+    _make_app(repo, "alpha", namespace="alpha")
+    _make_app(repo, "beta", namespace="beta")
+    _write_entity(
+        repo,
+        "alpha",
+        owner="@platform",
+        tier="rpi4-or-ec2",
+        depends_on=["component:beta"],
+    )
+    _write_entity(repo, "beta", owner="@data", tier="rpi3-only")
+    rows = {r["dir"]: r for r in gsc.collect_rows(repo)}
+    assert rows["alpha"]["owner"] == "@platform"
+    assert rows["alpha"]["tier"] == "rpi4-or-ec2"
+    assert rows["alpha"]["depends_on"] == ["beta"]
+    assert rows["beta"]["tier"] == "rpi3-only"
+
+
+def test_collect_rows_defaults_when_catalog_info_missing(repo):
+    _make_app(repo, "alpha", namespace="alpha")
+    rows = gsc.collect_rows(repo)
+    assert rows[0]["owner"] == "—"
+    assert rows[0]["tier"] == "—"
+    assert rows[0]["depends_on"] == []
+
+
+def test_render_mermaid_includes_edges_and_orphans():
+    rows = [
+        {"entity_name": "alpha", "depends_on": ["beta"]},
+        {"entity_name": "beta", "depends_on": []},
+        {"entity_name": "gamma", "depends_on": []},  # orphan
+    ]
+    out = gsc.render_mermaid(rows)
+    assert "graph LR" in out
+    assert "alpha --> beta" in out
+    assert "  gamma" in out  # orphan listed
+
+
+def test_update_catalog_file_rewrites_graph_block_when_present(repo):
+    _make_app(repo, "alpha", namespace="alpha")
+    _make_app(repo, "beta", namespace="beta")
+    _write_entity(repo, "alpha", depends_on=["component:beta"])
+    _write_entity(repo, "beta")
+    target = repo / "docs" / "services" / "README.md"
+    intro = "# Services\n\nIntro.\n\n"
+    catalog_block = f"{gsc.CATALOG_START}\nold table\n{gsc.CATALOG_END}\n\n"
+    graph_block = f"{gsc.GRAPH_START}\nold graph\n{gsc.GRAPH_END}\n"
+    _write(target, intro + catalog_block + graph_block)
+    rows = gsc.collect_rows(repo)
+    changed, new_text = gsc.update_catalog_file(repo, rows)
+    assert changed is True
+    assert "alpha --> beta" in new_text
+    assert "old graph" not in new_text
+
+
+def test_update_catalog_file_skips_graph_when_markers_absent(repo):
+    _make_app(repo, "alpha", namespace="alpha")
+    _seed_catalog_file(repo)  # no graph markers
+    rows = gsc.collect_rows(repo)
+    _, new_text = gsc.update_catalog_file(repo, rows)
+    assert gsc.GRAPH_START not in new_text  # not added
+    assert gsc.CATALOG_START in new_text  # but catalog still there
