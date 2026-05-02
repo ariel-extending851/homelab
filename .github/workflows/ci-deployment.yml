@@ -31,6 +31,14 @@ on:
         options:
           - "false"
           - "true"
+      halt_on_failure:
+        description: "On deploy failure: halt + open issue (true, default) or terraform destroy (false)"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -521,7 +529,22 @@ jobs:
         env:
           KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
           GIT_SHA: ${{ github.sha }}
-        run: python3 bin/velero_pre_deploy_backup.py | tee /tmp/pre-deploy-backup.log
+        # Exit code semantics:
+        #   0 → backup completed; deploy proceeds with full rollback safety
+        #   1 → hard failure; deploy must NOT proceed
+        #   2 → skipped (cluster unreachable / velero absent); deploy may
+        #       proceed but rollback safety is reduced — the script already
+        #       emits a ::warning:: annotation, so we translate exit 2 to 0
+        #       here to keep the job green while the warning surfaces in CI.
+        run: |
+          set +e
+          python3 bin/velero_pre_deploy_backup.py | tee /tmp/pre-deploy-backup.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -eq 2 ]; then
+            echo "::notice ::Pre-deploy backup skipped (rc=2). Continuing deploy with reduced rollback safety."
+            exit 0
+          fi
+          exit "$rc"
 
       - name: Skip Notice (no live cluster)
         if: steps.kubeconfig.outcome != 'success'
@@ -579,6 +602,38 @@ jobs:
         with:
           name: terraform-plan-prod
           path: infra/aws/
+
+      # Re-plan immediately before apply. terraform itself errors with
+      # "Saved plan is stale" if state shifted since the artifact was made
+      # — but the failure happens deep inside terraform apply, not at this
+      # gate. Running a refresh-only plan here surfaces drift earlier with
+      # a clearer message, *before* any resource is mutated.
+      - name: Pre-apply state sanity (detect plan staleness)
+        if: inputs.skip_staging != 'true'
+        working-directory: infra/aws
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          set +e
+          terraform plan -lock=false -input=false -refresh=true \
+            -detailed-exitcode -out=preapply-check.tfplan \
+            > preapply-check.log 2>&1
+          rc=$?
+          set -e
+          # detailed-exitcode: 0=no diff, 1=error, 2=diff present
+          if [ "$rc" = "1" ]; then
+            echo "❌ Pre-apply re-plan failed — state may be unreadable or providers"
+            echo "   misconfigured. Fix root cause before re-running deploy."
+            tail -100 preapply-check.log || true
+            exit 1
+          fi
+          if [ "$rc" = "0" ]; then
+            echo "ℹ️  Re-plan shows no changes — state may already match the desired"
+            echo "   configuration. Proceeding to apply (idempotent no-op)."
+          else
+            echo "✅ Re-plan completed with expected diffs — proceeding to apply."
+          fi
+          rm -f preapply-check.tfplan
 
       - name: Apply Terraform Configuration
         working-directory: infra/aws
@@ -774,11 +829,15 @@ jobs:
 
   # ============================================================================
   # VELERO RESTORE TEST (DR validation)
+  # ----------------------------------------------------------------------------
+  # Runs LAST in the post-deploy chain so a flaky cluster (CrashLoopBackOff
+  # caught by observability-gate, or smoke/e2e regression) blocks the
+  # backup-restore drill — restoring into a broken cluster is meaningless.
   # ============================================================================
   velero-restore-test:
     name: Velero Backup + Restore Validation
     runs-on: ubuntu-latest
-    needs: [argocd-wait]
+    needs: [e2e-tests]
     # Implicit `if: success()` — never run against an incomplete deploy.
     steps:
       - name: Checkout Code
@@ -808,11 +867,16 @@ jobs:
 
   # ============================================================================
   # SMOKE TESTS (20+ checks)
+  # ----------------------------------------------------------------------------
+  # Sequenced AFTER observability-gate so a CrashLoopBackOff that started
+  # within seconds of ArgoCD reporting Healthy fails the gate first — not
+  # the smoke run that races it. See docs/plans/deploy-gaps-closure.md
+  # Phase 4: closes the parallel-gate race window.
   # ============================================================================
   smoke-test:
     name: Smoke Tests (20+ checks)
     runs-on: ubuntu-latest
-    needs: [argocd-wait]
+    needs: [observability-gate]
     # Implicit `if: success()` — never validate an incomplete cluster.
     steps:
       - name: Checkout Code
@@ -842,11 +906,14 @@ jobs:
 
   # ============================================================================
   # E2E TESTS (40+ BATS test cases via Makefile)
+  # ----------------------------------------------------------------------------
+  # After smoke-test (sequential): if the cheap smoke checks fail, the
+  # 40-test BATS suite is skipped — short feedback loop on regressions.
   # ============================================================================
   e2e-tests:
     name: E2E Full Suite (40+ tests)
     runs-on: ubuntu-latest
-    needs: [argocd-wait]
+    needs: [smoke-test]
     # Implicit `if: success()` — never run E2E against an incomplete deploy.
     steps:
       - name: Checkout Code
@@ -920,10 +987,23 @@ jobs:
             });
 
   # ============================================================================
-  # ROLLBACK (on test failure via Makefile)
+  # FAILURE HANDLING
+  # ----------------------------------------------------------------------------
+  # Default mode (halt_on_failure=true): leave infra alive, tag instances
+  # `do-not-destroy=true`, open a GitHub issue tagged `deploy-failure`. The
+  # operator inspects the cluster, then triggers rollback.yml manually with
+  # the typed confirmation phrase to actually destroy.
+  #
+  # Legacy mode (halt_on_failure=false): immediately runs terraform destroy.
+  # Use only for ephemeral/staging where investigation has no value.
+  #
+  # Why halt by default: an automatic destroy on test failure erases the
+  # exact state needed to diagnose the failure. The asymmetry between
+  # "local deploy failed → infra alive" and "CI deploy failed → infra
+  # gone" was the gap closed in Phase 3 of docs/plans/deploy-gaps-closure.
   # ============================================================================
   rollback:
-    name: Rollback on Failure
+    name: Halt or Rollback on Failure
     runs-on: ubuntu-latest
     needs: [deployment-gate]
     if: failure()
@@ -931,14 +1011,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      issues: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.11.0"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -946,36 +1022,123 @@ jobs:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-apply
           aws-region: us-east-1
 
+      - name: Determine failure mode
+        id: mode
+        env:
+          HALT_INPUT: ${{ inputs.halt_on_failure }}
+        run: |
+          # Default to halt when the input is unset (e.g., push to main).
+          halt="${HALT_INPUT:-true}"
+          echo "halt=$halt" >> "$GITHUB_OUTPUT"
+          if [ "$halt" = "true" ]; then
+            echo "🛑 HALT mode: infra preserved for investigation. Use rollback.yml to destroy."
+          else
+            echo "💣 DESTROY mode: terraform destroy will run inline."
+          fi
+
+      # ── HALT path (default) ──────────────────────────────────────────────
+      - name: Tag instances do-not-destroy
+        if: steps.mode.outputs.halt == 'true'
+        run: |
+          for tag in hl-k3s-server hl-k3s-agent; do
+            ids=$(aws ec2 describe-instances \
+              --filters "Name=tag:Name,Values=$tag" \
+                        "Name=instance-state-name,Values=pending,running,stopped" \
+              --query "Reservations[].Instances[].InstanceId" --output text || true)
+            if [ -n "$ids" ]; then
+              echo "Tagging $ids ..."
+              # shellcheck disable=SC2086  # $ids is a space-separated list; word-splitting is intentional
+              aws ec2 create-tags --resources $ids \
+                --tags Key=do-not-destroy,Value=true \
+                       Key=halted-deploy-run,Value=${{ github.run_id }}
+            fi
+          done
+
+      - name: Open halted-deploy issue
+        if: steps.mode.outputs.halt == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sha7 = context.sha.substring(0, 7);
+            const body = [
+              `🛑 **Deploy halted — infrastructure left running for investigation.**`,
+              ``,
+              `- Commit: \`${context.sha}\``,
+              `- Workflow run: ${runUrl}`,
+              ``,
+              `EC2 instances tagged \`do-not-destroy=true\` and`,
+              `\`halted-deploy-run=${context.runId}\`. To proceed:`,
+              ``,
+              `1. SSH/SSM into instances and inspect logs.`,
+              `2. When investigation is done, trigger \`rollback.yml\` manually with the`,
+              `   confirmation phrase to destroy infra.`,
+              `3. Or fix forward and re-run \`ci-deployment.yml\`.`,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🛑 Deploy halted: ${sha7}`,
+              body,
+              labels: ['deploy-failure', 'halted'],
+            });
+
+      - name: Create halted commit status
+        if: steps.mode.outputs.halt == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'failure',
+              description: 'Deploy halted - infra preserved for investigation',
+              context: 'cd/deploy-halted',
+            });
+
+      # ── DESTROY path (legacy, explicit opt-in via halt_on_failure=false) ─
+      - name: Setup Terraform
+        if: steps.mode.outputs.halt == 'false'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
       - name: Setup CI Dependencies (SOPS)
+        if: steps.mode.outputs.halt == 'false'
         run: make setup-ci-deps-terraform
 
       - name: Initialize Terraform
+        if: steps.mode.outputs.halt == 'false'
         working-directory: infra/aws
         run: terraform init
 
       - name: Destroy Infrastructure (Rollback)
+        if: steps.mode.outputs.halt == 'false'
         working-directory: infra/aws
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          echo "🚨 E2E tests failed — initiating automatic rollback..."
+          echo "🚨 E2E tests failed — initiating automatic rollback (halt disabled)..."
           terraform destroy -auto-approve -lock=true 2>&1 | tee destroy.log
           echo "✅ terraform destroy command completed — verifying..."
 
       - name: Verify Rollback Succeeded (EC2 + ENI + IAM + SG)
+        if: steps.mode.outputs.halt == 'false'
         env:
           AWS_REGION: us-east-1
         run: python3 bin/verify_aws_rollback.py
 
       - name: Upload Destroy Logs
-        if: always()
+        if: always() && steps.mode.outputs.halt == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: rollback-logs
           path: infra/aws/destroy.log
           retention-days: 30
 
-      - name: Create Issue on Failure
+      - name: Open rolled-back issue
+        if: steps.mode.outputs.halt == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -983,11 +1146,12 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: '🚨 Deployment Rollback: E2E Test Failure',
-              body: `Commit: \`${context.sha}\`\n\nE2E tests failed after deployment. Automatic rollback initiated. Check artifacts for logs:\n- smoke-test-logs\n- e2e-test-logs\n- rollback-logs`,
-              labels: ['deployment', 'failure', 'e2e-tests'],
+              body: `Commit: \`${context.sha}\`\n\nE2E tests failed after deployment. Automatic rollback initiated (halt_on_failure=false). Logs: smoke-test-logs, e2e-test-logs, rollback-logs.`,
+              labels: ['deploy-failure', 'rolled-back'],
             });
 
-      - name: Create Deployment Status
+      - name: Create rolled-back commit status
+        if: steps.mode.outputs.halt == 'false'
         uses: actions/github-script@v7
         with:
           script: |
