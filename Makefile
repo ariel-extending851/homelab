@@ -932,6 +932,12 @@ test-trivy-strict: setup-ci-deps-trivy setup-ci-deps-python ## Trivy strict mode
 	@python3 bin/trivy_scan.py --strict
 	@echo "  ✓ Trivy strict scan passed."
 
+test-trivy-config: setup-ci-deps-trivy setup-ci-deps-python ## Trivy misconfig scan in advisory mode (k8s + Terraform; .trivyignore.yaml filters justified findings)
+	@echo "🔍 Running Trivy misconfig scan (advisory mode) on k8s + infra/aws..."
+	@command -v trivy >/dev/null 2>&1 || (echo "❌ trivy not found. Install via: make setup-ci-deps-trivy"; exit 1)
+	@python3 bin/trivy_config_scan.py
+	@echo "  ✓ Trivy misconfig scan completed (advisory)."
+
 velero-bootstrap-secret: ## Inject Velero AWS credentials from terraform outputs into SOPS-encrypted secret (idempotent)
 	@echo "🔐 Bootstrapping Velero AWS credentials from terraform outputs..."
 	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
@@ -1011,6 +1017,7 @@ test-offline-required: ## Week 1 profile: required offline suites only (fast, bl
 	@make test-contracts
 	@make validate-k8s-policies-critical
 	@make test-trivy
+	@make test-trivy-config
 	@make test-shell
 	@make test-python-ci
 	@make test-templates

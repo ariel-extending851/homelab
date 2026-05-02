@@ -1,0 +1,148 @@
+# Trivy structured ignore file — misconfig allowlist.
+#
+# Companion to `.trivyignore` (which is CVE-only). This file scopes
+# misconfigurations to specific paths with mandatory expirations and
+# justification statements pointing back to in-repo references.
+#
+# Format docs: https://trivy.dev/v0.58/docs/configuration/filtering/
+#
+# Path resolution: paths are relative to the directory passed to
+# `trivy config`. We invoke per-tree (k8s/, infra/aws/) so paths drop
+# the leading `k8s/` or `infra/aws/` prefix.
+#
+# ID format: matches `Results[].Misconfigurations[].ID` in the JSON
+# report (e.g. `KSV-0009`, not `AVD-KSV-0009`).
+#
+# Process for adding (mirrors `.trivyignore` policy):
+#   1. PR adds entry with justification, ≤90-day expiration, second-engineer review.
+#   2. On expiration: remove entry, re-run `make test-trivy-config`, fix or extend.
+
+misconfigurations:
+  # ── Velero: cluster-wide wildcard RBAC for backup/restore of arbitrary CRDs ──
+  - id: KSV-0044
+    paths:
+      - "apps/velero/rbac.yaml"
+    statement: >
+      Velero needs wildcard verbs to back up/restore arbitrary resources
+      including CRDs added at runtime. Documented inline at
+      k8s/apps/velero/rbac.yaml:7-11 and allowlisted by
+      k8s/policies/rbac_safety.rego (wildcard_allowed_clusterroles).
+    expiration: 2026-07-30
+
+  - id: KSV-0046
+    paths:
+      - "apps/velero/rbac.yaml"
+    statement: Velero wildcard apiGroups/resources — same justification as KSV-0044.
+    expiration: 2026-07-30
+
+  # ── Falco: runtime security DaemonSet needs host access ──
+  - id: KSV-0005
+    paths:
+      - "apps/falco/daemonset.yaml"
+    statement: >
+      Falco modern-bpf needs SYS_ADMIN for /sys/kernel/debug access.
+      Justification inline at k8s/apps/falco/daemonset.yaml:50-55.
+    expiration: 2026-07-30
+
+  - id: KSV-0009
+    paths:
+      - "apps/falco/daemonset.yaml"
+      - "apps/adguard/deployment.yaml"
+      - "apps/node-exporter/daemonset.yaml"
+      - "apps/otel-collector/daemonset.yaml"
+    statement: >
+      hostNetwork required: Falco syscall capture, AdGuard DNS port 53
+      (singleton), node-exporter host-network metrics, otel-collector log
+      shipping. Each is justified inline in the respective manifest.
+    expiration: 2026-07-30
+
+  - id: KSV-0010
+    paths:
+      - "apps/falco/daemonset.yaml"
+      - "apps/node-exporter/daemonset.yaml"
+    statement: >
+      hostPID required for syscall monitoring (Falco) and host process
+      metrics (node-exporter). hostPath mounts are readOnly.
+    expiration: 2026-07-30
+
+  - id: KSV-0121
+    paths:
+      - "apps/falco/daemonset.yaml"
+      - "apps/node-exporter/daemonset.yaml"
+    statement: >
+      Critical hostPath mounts required for kernel/proc/dev/etc reads
+      (Falco) and node metrics (node-exporter). All readOnly except the
+      containerd socket needed by Falco for container introspection.
+    expiration: 2026-07-30
+
+  # ── Apps with writable rootfs (PVC- or runtime-driven) ──
+  - id: KSV-0014
+    paths:
+      - "apps/grafana/deployment.yaml"
+      - "apps/golink/deployment.yaml"
+      # AdGuard writes its config + data via PVC; rootfs is read-only at the
+      # host level via hostNetwork but the container needs writable /opt
+      # mounts that come from the PVC. Tracked in fixes-backlog item 2.
+      - "apps/adguard/deployment.yaml"
+      # Falco daemon writes runtime-loaded config and rule cache; modern eBPF
+      # init touches /etc/falco. Justified inline at falco/daemonset.yaml:50-55.
+      - "apps/falco/daemonset.yaml"
+      # ArgoCD repo-server SOPS init container writes via apk; the long-lived
+      # containers in the same patch DO set readOnlyRootFilesystem: true.
+      - "gitops/sops/argocd-repo-server-patch.yaml"
+    statement: >
+      Grafana writes to /var/lib/grafana (PVC) and may emit logs to other
+      paths under /var; Golink writes SQLite WAL/journal to /data (PVC);
+      AdGuard writes config to PVC. Read-only rootfs needs runtime
+      verification + emptyDir scaffolding. Tracked in
+      docs/security/fixes-backlog.md item 2.
+    expiration: 2026-08-31
+
+  # ── Falco rootfs: writable rootfs justified by Falco's own runtime ──
+  - id: KSV-0118
+    paths:
+      - "apps/falco/daemonset.yaml"
+      # Blackbox/KSM/Loki/Velero have explicit securityContext but Trivy's
+      # KSV-0118 sometimes flags the missing pod-level fsGroup. These all
+      # already enforce `runAsNonRoot: true` at container level.
+      - "apps/blackbox/deployment.yaml"
+      - "apps/kube-state-metrics/deployment.yaml"
+      - "apps/loki/deployment.yaml"
+      - "apps/velero/deployment.yaml"
+      - "apps/velero/daemonset.yaml"
+      - "apps/node-exporter/daemonset.yaml"
+      - "apps/otel-collector/daemonset.yaml"
+      - "apps/grafana/deployment.yaml"
+      - "apps/golink/deployment.yaml"
+      # ArgoCD repo-server patch is a strategic merge over the upstream
+      # chart; pod-level fsGroup is provided by the base manifest, not the
+      # patch. Container-scope securityContext is set on every container.
+      - "gitops/sops/argocd-repo-server-patch.yaml"
+    statement: >
+      KSV-0118 flags pod-level securityContext defaults; in this repo each
+      container sets allowPrivilegeEscalation/runAsNonRoot/capabilities at
+      the container scope, which is the stricter (per-container) mode.
+      OPA security_context.rego enforces this in CI.
+    expiration: 2026-08-31
+
+  # ── node-exporter hostPort: required by Prometheus direct-scrape pattern ──
+  - id: KSV-0024
+    paths:
+      - "apps/node-exporter/daemonset.yaml"
+    statement: >
+      hostPort 9100 is the documented node-exporter scrape pattern; with
+      hostNetwork already true the port is reachable on the node IP, and
+      Prometheus targets each node directly rather than via Service.
+      NetworkPolicy in monitoring namespace scopes ingress.
+    expiration: 2026-07-30
+
+  # ── AWS: CloudTrail KMS deferred per cost/compliance trade-off ──
+  - id: AVD-AWS-0015
+    paths:
+      - "modules/audit/main.tf"
+    statement: >
+      CloudTrail uses AWS-managed KMS encryption (still encrypted at rest).
+      Customer-managed CMK adds ~$1/month + key-rotation policy surface;
+      deferred until a compliance requirement (PCI/SOC2) demands it.
+      See docs/security/fixes-backlog.md item 5.
+    expiration: 2026-12-31

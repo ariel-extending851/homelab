@@ -9,10 +9,11 @@ kind: ClusterRole
 metadata:
   name: kube-state-metrics
 rules:
+  # `secrets` intentionally omitted — homelab does not consume kube_secret_*
+  # metrics (no dashboards reference them) and the SA is least-privilege.
   - apiGroups: [""]
     resources:
       - configmaps
-      - secrets
       - nodes
       - pods
       - services
