@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unifi-network-application
+  namespace: unifi
+  labels:
+    app: unifi-network-application
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: unifi-network-application
+  template:
+    metadata:
+      labels:
+        app: unifi-network-application
+    spec:
+      # hostNetwork is required so the controller can receive UDP/10001 L2
+      # discovery broadcasts and STUN traffic on UDP/3478 from UniFi devices
+      # on the same VLAN. The chosen node MUST share L2 with the switch.
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: wait-for-mongo
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z unifi-db 27017; do echo "waiting for unifi-db:27017"; sleep 2; done
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "100m"
+              memory: "32Mi"
+      containers:
+        - name: unifi
+          image: lscr.io/linuxserver/unifi-network-application:10.3.58
+          imagePullPolicy: IfNotPresent
+          # linuxserver/* images launch as root via s6-overlay then drop to PUID
+          # via setuid syscalls. allowPrivilegeEscalation:false sets no_new_privs
+          # on the kernel side; SETUID/SETGID caps remain available so the
+          # demotion still works. Mirrors the AdGuard pattern.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - SETUID
+                - SETGID
+                - CHOWN
+                - DAC_OVERRIDE
+                - FOWNER
+                - NET_BIND_SERVICE
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/Sao_Paulo
+            - name: MONGO_HOST
+              value: unifi-db
+            - name: MONGO_PORT
+              value: "27017"
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: unifi-credentials
+                  key: MONGO_USER
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: unifi-credentials
+                  key: MONGO_PASS
+            - name: MONGO_DBNAME
+              valueFrom:
+                secretKeyRef:
+                  name: unifi-credentials
+                  key: MONGO_DBNAME
+            - name: MONGO_AUTHSOURCE
+              valueFrom:
+                secretKeyRef:
+                  name: unifi-credentials
+                  key: MONGO_AUTHSOURCE
+          ports:
+            - containerPort: 8443
+              name: web-https
+              protocol: TCP
+            - containerPort: 8080
+              name: device-inform
+              protocol: TCP
+            - containerPort: 3478
+              name: stun
+              protocol: UDP
+            - containerPort: 10001
+              name: discovery
+              protocol: UDP
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: unifi-config-pvc

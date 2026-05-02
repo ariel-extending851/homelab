@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: unifi
+  description: On-demand UniFi Network Application controller for switch adoption and provisioning
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+    homelab.io/doc: docs/services/unifi.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi3-only
+  dependsOn: []
+  providesApis: []
