@@ -8,7 +8,9 @@ driver:
 
 platforms:
   - name: rasp-pi-04
-    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    # Pinned by digest to avoid drift in CI; bump when geerlingguy refreshes upstream.
+    # Tag dropped (only digest) — Molecule docker driver rejects tag@sha256 combo.
+    image: geerlingguy/docker-ubuntu2204-ansible@sha256:3a9474d843917fbeb737a78626c1b8bc31daf6424fe51575e6ce4affffecfa24
     privileged: true
     pre_build_image: true
     command: /lib/systemd/systemd

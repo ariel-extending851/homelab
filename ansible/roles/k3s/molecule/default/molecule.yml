@@ -21,7 +21,12 @@ driver:
 
 platforms:
   - name: k3s-agent-node
-    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    # Pinned by digest to avoid drift in CI; bump when geerlingguy refreshes upstream.
+    # `pre_build_image: true` skips Molecule's wrapper Dockerfile build — the
+    # geerlingguy image is already Ansible-ready, and the wrapper step
+    # mangles `image@sha256:` digests into `image:sha256:` (invalid Docker ref).
+    image: geerlingguy/docker-ubuntu2204-ansible@sha256:3a9474d843917fbeb737a78626c1b8bc31daf6424fe51575e6ce4affffecfa24
+    pre_build_image: true
     privileged: true
     user: root
     command: /lib/systemd/systemd
@@ -30,7 +35,8 @@ platforms:
     cgroupns_mode: host
 
   - name: k3s-server-node
-    image: geerlingguy/docker-amazonlinux2023-ansible:latest
+    image: geerlingguy/docker-amazonlinux2023-ansible@sha256:f80ab9ffd982dd07c7804868ceb9d3cc5be60285ae8bd5229a0b0708cdecd60f
+    pre_build_image: true
     privileged: true
     user: root
     command: /usr/lib/systemd/systemd
