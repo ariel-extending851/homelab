@@ -196,32 +196,96 @@ def test_check_sops_key_exits_1_when_no_age_key(capsys):
 
 def test_check_sops_key_succeeds_with_env_key(capsys):
     c = _config(env={"SOPS_AGE_KEY": "AGE-SECRET-KEY-1FAKE"})
+    fake_files = [
+        Path("k8s/apps/adguard/secret.yaml"),
+        Path("k8s/apps/grafana/secret.yaml"),
+    ]
     with patch("deploy_aws_homelab.shutil.which", return_value="/usr/bin/sops"), patch(
-        "deploy_aws_homelab.subprocess.run", return_value=_proc(0)
-    ):
+        "deploy_aws_homelab.find_sops_secret_files", return_value=fake_files
+    ), patch("deploy_aws_homelab.subprocess.run", return_value=_proc(0)) as run:
         deploy.check_sops_key(c)
-    assert "SOPS decryption verified" in capsys.readouterr().out
+    assert run.call_count == 2
+    out = capsys.readouterr().out
+    assert "SOPS decryption verified (2 files)" in out
 
 
 def test_check_sops_key_exits_1_on_decryption_failure(capsys):
     c = _config(env={"SOPS_AGE_KEY": "AGE-SECRET-KEY-1FAKE"})
-    failure = subprocess.CalledProcessError(returncode=1, cmd=["sops"])
+    fake_files = [Path("k8s/apps/adguard/secret.yaml")]
+    failure = subprocess.CalledProcessError(
+        returncode=1, cmd=["sops"], stderr=b"FATAL: failed to decrypt"
+    )
     with patch("deploy_aws_homelab.shutil.which", return_value="/usr/bin/sops"), patch(
-        "deploy_aws_homelab.subprocess.run", side_effect=failure
+        "deploy_aws_homelab.find_sops_secret_files", return_value=fake_files
+    ), patch("deploy_aws_homelab.subprocess.run", side_effect=failure):
+        with pytest.raises(SystemExit):
+            deploy.check_sops_key(c)
+    out = capsys.readouterr().out
+    assert "SOPS decryption failed on 1 of 1 files" in out
+    assert "k8s/apps/adguard/secret.yaml" in out
+    assert "FATAL: failed to decrypt" in out
+
+
+def test_check_sops_key_aggregates_multiple_failures(capsys):
+    c = _config(env={"SOPS_AGE_KEY": "AGE-SECRET-KEY-1FAKE"})
+    fake_files = [
+        Path("k8s/apps/adguard/secret.yaml"),
+        Path("k8s/apps/grafana/secret.yaml"),
+        Path("k8s/apps/loki/secret.yaml"),
+    ]
+    fail = subprocess.CalledProcessError(
+        returncode=1, cmd=["sops"], stderr=b"decrypt error"
+    )
+
+    def run_side_effect(*args, **kwargs):
+        path = args[0][2]
+        if "grafana" in path or "loki" in path:
+            raise fail
+        return _proc(0)
+
+    with patch("deploy_aws_homelab.shutil.which", return_value="/usr/bin/sops"), patch(
+        "deploy_aws_homelab.find_sops_secret_files", return_value=fake_files
+    ), patch("deploy_aws_homelab.subprocess.run", side_effect=run_side_effect):
+        with pytest.raises(SystemExit):
+            deploy.check_sops_key(c)
+    out = capsys.readouterr().out
+    assert "SOPS decryption failed on 2 of 3 files" in out
+    assert "grafana/secret.yaml" in out
+    assert "loki/secret.yaml" in out
+
+
+def test_check_sops_key_exits_when_no_secret_files_found(capsys):
+    c = _config(env={"SOPS_AGE_KEY": "AGE-SECRET-KEY-1FAKE"})
+    with patch("deploy_aws_homelab.shutil.which", return_value="/usr/bin/sops"), patch(
+        "deploy_aws_homelab.find_sops_secret_files", return_value=[]
     ):
         with pytest.raises(SystemExit):
             deploy.check_sops_key(c)
-    assert "SOPS decryption failed" in capsys.readouterr().out
+    assert "No k8s/**/secret.yaml files found" in capsys.readouterr().out
 
 
 def test_check_sops_key_accepts_key_file(tmp_path):
     key = tmp_path / "age.txt"
     key.write_text("AGE-SECRET-KEY-1FAKE\n")
     c = _config(env={"SOPS_AGE_KEY_FILE": str(key)})
+    fake_files = [Path("k8s/apps/adguard/secret.yaml")]
     with patch("deploy_aws_homelab.shutil.which", return_value="/usr/bin/sops"), patch(
-        "deploy_aws_homelab.subprocess.run", return_value=_proc(0)
-    ):
+        "deploy_aws_homelab.find_sops_secret_files", return_value=fake_files
+    ), patch("deploy_aws_homelab.subprocess.run", return_value=_proc(0)):
         deploy.check_sops_key(c)  # should not raise
+
+
+def test_find_sops_secret_files_returns_sorted_list(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "k8s" / "apps" / "b").mkdir(parents=True)
+    (tmp_path / "k8s" / "apps" / "a").mkdir(parents=True)
+    (tmp_path / "k8s" / "apps" / "b" / "secret.yaml").write_text("x")
+    (tmp_path / "k8s" / "apps" / "a" / "secret.yaml").write_text("x")
+    found = deploy.find_sops_secret_files()
+    assert [str(p) for p in found] == [
+        "k8s/apps/a/secret.yaml",
+        "k8s/apps/b/secret.yaml",
+    ]
 
 
 # ── check_aws_account ──────────────────────────────────────────────────────
@@ -1225,3 +1289,204 @@ def test_wait_for_tailscale_ip_pending_state_times_out():
         "deploy_aws_homelab.time.sleep"
     ):
         assert deploy.wait_for_tailscale_ip("i-late", c) is False
+
+
+# ── deploy state machine: load / save / clear / freshness ───────────────────
+
+
+@pytest.fixture
+def state_file(tmp_path, monkeypatch):
+    """Redirect the deploy state file to tmp_path for isolation."""
+    path = tmp_path / "deploy-state.json"
+    monkeypatch.setenv("HOMELAB_DEPLOY_STATE_FILE", str(path))
+    return path
+
+
+def test_load_state_returns_empty_when_file_missing(state_file):
+    assert deploy.load_state() == {}
+
+
+def test_load_state_returns_empty_on_invalid_json(state_file):
+    state_file.write_text("not json {{{")
+    assert deploy.load_state() == {}
+
+
+def test_load_state_returns_empty_when_top_level_is_not_object(state_file):
+    state_file.write_text("[1, 2, 3]")
+    assert deploy.load_state() == {}
+
+
+def test_save_state_writes_atomically(state_file):
+    deploy.save_state({"terraform": 1700000000})
+    assert state_file.exists()
+    import json as _j
+
+    assert _j.loads(state_file.read_text()) == {"terraform": 1700000000}
+    # Tmp file should not linger.
+    assert not state_file.with_suffix(state_file.suffix + ".tmp").exists()
+
+
+def test_mark_stage_completed_appends(state_file):
+    deploy.mark_stage_completed("terraform", now=1000)
+    deploy.mark_stage_completed("instances", now=1100)
+    state = deploy.load_state()
+    assert state == {"terraform": 1000, "instances": 1100}
+
+
+def test_clear_state_removes_file(state_file):
+    state_file.write_text("{}")
+    deploy.clear_state()
+    assert not state_file.exists()
+
+
+def test_clear_state_no_op_when_missing(state_file):
+    # Should not raise.
+    deploy.clear_state()
+
+
+def test_is_stage_fresh_true_within_window():
+    state = {"terraform": 1000}
+    assert deploy.is_stage_fresh(state, "terraform", now=1000 + 60) is True
+
+
+def test_is_stage_fresh_false_when_stale():
+    state = {"terraform": 1000}
+    stale = 1000 + deploy.STATE_STALE_AFTER_S + 1
+    assert deploy.is_stage_fresh(state, "terraform", now=stale) is False
+
+
+def test_is_stage_fresh_false_when_absent():
+    assert deploy.is_stage_fresh({}, "terraform", now=1000) is False
+
+
+def test_is_stage_fresh_false_when_value_not_numeric():
+    assert (
+        deploy.is_stage_fresh({"terraform": "yesterday"}, "terraform", now=1000)
+        is False
+    )
+
+
+# ── should_skip_stage routing ───────────────────────────────────────────────
+
+
+def test_should_skip_stage_returns_false_without_resume_from():
+    assert deploy.should_skip_stage("terraform", None, {}, now=1000) is False
+
+
+def test_should_skip_stage_skips_pre_resume_when_fresh():
+    state = {"terraform": 1000}
+    # resume_from=ansible (index 4); terraform is index 1 → before
+    assert deploy.should_skip_stage("terraform", "ansible", state, now=1100) is True
+
+
+def test_should_skip_stage_runs_pre_resume_when_stale():
+    state = {"terraform": 1000}
+    stale = 1000 + deploy.STATE_STALE_AFTER_S + 100
+    assert deploy.should_skip_stage("terraform", "ansible", state, now=stale) is False
+
+
+def test_should_skip_stage_runs_at_resume_target():
+    state = {"ansible": 1000}
+    # resume_from=ansible; ansible itself must run
+    assert deploy.should_skip_stage("ansible", "ansible", state, now=1100) is False
+
+
+def test_should_skip_stage_runs_after_resume_target():
+    state = {"verify": 1000}
+    # resume_from=ansible; verify is after → must run
+    assert deploy.should_skip_stage("verify", "ansible", state, now=1100) is False
+
+
+def test_should_skip_stage_returns_false_for_unknown_stage_name():
+    assert deploy.should_skip_stage("totally-bogus", "ansible", {}, now=1000) is False
+
+
+# ── main() integration: resume-from + reset-state ───────────────────────────
+
+
+@pytest.fixture
+def patched_phases(monkeypatch):
+    """Replace each phase with a recorder so main() runs without side effects."""
+    calls = []
+
+    def _record(name):
+        def runner(_config):
+            calls.append(name)
+
+        return runner
+
+    monkeypatch.setattr(deploy, "check_prerequisites", _record("prerequisites"))
+    monkeypatch.setattr(deploy, "phase1_terraform", _record("terraform"))
+    monkeypatch.setattr(deploy, "phase2_wait_for_instances", _record("instances"))
+    monkeypatch.setattr(deploy, "phase2_5_wait_for_tailscale", _record("tailscale"))
+    monkeypatch.setattr(deploy, "phase3_ansible", _record("ansible"))
+    monkeypatch.setattr(deploy, "phase4_verify", _record("verify"))
+    monkeypatch.setattr(deploy, "print_summary", lambda _c: None)
+    monkeypatch.setattr(deploy, "print_banner", lambda: None)
+    return calls
+
+
+def test_reset_state_flag_clears_file_and_returns_zero(state_file, capsys):
+    state_file.write_text('{"terraform": 1}')
+    rc = deploy.main(["--reset-state"])
+    assert rc == 0
+    assert not state_file.exists()
+    assert "Deploy state cleared" in capsys.readouterr().out
+
+
+def test_reset_state_no_op_when_file_absent(state_file):
+    rc = deploy.main(["--reset-state"])
+    assert rc == 0
+
+
+def test_main_runs_all_stages_when_no_resume(state_file, patched_phases):
+    rc = deploy.main([])
+    assert rc == 0
+    assert patched_phases == [
+        "prerequisites",
+        "terraform",
+        "instances",
+        "tailscale",
+        "ansible",
+        "verify",
+    ]
+    # State now contains all 6 stages
+    state = deploy.load_state()
+    assert set(state) == set(deploy.STAGES)
+
+
+def test_main_skips_stages_when_resume_from_ansible_with_fresh_state(
+    state_file, patched_phases
+):
+    now = int(time.time())
+    state_file.write_text(
+        '{"prerequisites": %d, "terraform": %d, "instances": %d, "tailscale": %d}'
+        % (now, now, now, now)
+    )
+    rc = deploy.main(["--resume-from", "ansible"])
+    assert rc == 0
+    # Skipped: prerequisites, terraform, instances, tailscale
+    assert patched_phases == ["ansible", "verify"]
+
+
+def test_main_reruns_stale_pre_resume_stages(state_file, patched_phases, capsys):
+    # Terraform was completed but is stale (>2h ago)
+    stale = int(time.time()) - deploy.STATE_STALE_AFTER_S - 100
+    state_file.write_text('{"terraform": %d}' % stale)
+    rc = deploy.main(["--resume-from", "ansible"])
+    assert rc == 0
+    # All pre-ansible stages re-run (only terraform was in state, and it was stale)
+    assert "prerequisites" in patched_phases
+    assert "terraform" in patched_phases
+    out = capsys.readouterr().out
+    assert "not in fresh state" in out
+
+
+def test_main_invalid_resume_from_value_errors(state_file, capsys):
+    with pytest.raises(SystemExit) as exc:
+        deploy.main(["--resume-from", "totally-bogus"])
+    assert exc.value.code != 0
+
+
+# Need time at module level for the integration tests above.
+import time  # noqa: E402

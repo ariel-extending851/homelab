@@ -57,9 +57,11 @@ def test_skip_when_cluster_unreachable(capsys, monkeypatch):
     runner = FakeRunner({"cluster-info": _completed(returncode=1)})
     monkeypatch.setattr(backup.subprocess, "run", runner)
     rc = backup.main(["--git-sha", "abc1234"])
-    assert rc == 0
-    out = capsys.readouterr().out
-    assert "Cluster unreachable" in out
+    assert rc == 2  # loud skip, not silent success
+    captured = capsys.readouterr()
+    assert "Cluster unreachable" in captured.err  # warning on stderr
+    assert "Rollback safety reduced" in captured.out  # GH annotation on stdout
+    assert "::warning ::" in captured.out
     # Crucially: no `velero backup create` should have been issued.
     assert not any(
         "backup" in " ".join(c) and "create" in " ".join(c) for c in runner.calls
@@ -76,8 +78,11 @@ def test_skip_when_velero_not_installed(capsys, monkeypatch):
     monkeypatch.setattr(backup.subprocess, "run", runner)
     monkeypatch.setattr(backup.shutil, "which", lambda _x: "/usr/local/bin/velero")
     rc = backup.main(["--git-sha", "abc1234"])
-    assert rc == 0
-    assert "Velero not installed" in capsys.readouterr().out
+    assert rc == 2  # loud skip, not silent success
+    captured = capsys.readouterr()
+    assert "Velero not installed" in captured.err
+    assert "Install Velero to enable rollback safety" in captured.out
+    assert "::warning ::" in captured.out
     assert not any(
         "backup" in " ".join(c) and "create" in " ".join(c) for c in runner.calls
     )

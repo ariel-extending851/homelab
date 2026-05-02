@@ -23,6 +23,7 @@ rules:
       - dr-drill.yml
       - drift-detection.yml
       - docs.yml
+      - rollback.yml
   artipacked:
     ignore:
       - ci-validation.yml
@@ -33,3 +34,4 @@ rules:
       - dr-drill.yml
       - drift-detection.yml
       - docs.yml
+      - rollback.yml

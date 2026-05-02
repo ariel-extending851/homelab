@@ -46,4 +46,5 @@ pods. Window is roughly:
 - Prometheus: ~1-2 min (WAL replay)
 
 Schedule node maintenance windows accordingly. Velero backups already
-cover the data side — see `bin/test_velero_restore.sh`.
+cover the data side — see `make test-velero-restore` (runs
+`bin/tests/test_velero_restore_live.py`).

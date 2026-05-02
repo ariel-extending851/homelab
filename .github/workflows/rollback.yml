@@ -1,0 +1,127 @@
+name: Rollback — Manual Infrastructure Teardown
+
+# Manual-only destroy of the homelab AWS infrastructure. Lives outside
+# ci-deployment.yml so a halted deploy (halt_on_failure=true) can be
+# torn down explicitly after investigation, without re-running tests.
+#
+# Inputs:
+#   - confirmation: must be the literal string "ROLLBACK" (case-sensitive).
+#                   Prevents accidental clicks from destroying prod.
+#   - reason:       free-form audit text logged into the resulting issue.
+#
+# Flow:
+#   1. Validate confirmation phrase (fail-fast on mismatch).
+#   2. terraform destroy + `bin/verify_aws_rollback.py`.
+#   3. Open audit issue tagged `rollback-executed` with run URL + reason.
+#
+# This workflow has NO scheduled or push triggers by design.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "ROLLBACK" (case-sensitive) to confirm destructive action'
+        required: true
+        type: string
+      reason:
+        description: "Why is this rollback being run? (audit log)"
+        required: true
+        type: string
+
+concurrency:
+  group: rollback
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  confirm:
+    name: Validate confirmation phrase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless confirmation matches
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [ "$CONFIRMATION" != "ROLLBACK" ]; then
+            echo "❌ Confirmation phrase did not match (got '$CONFIRMATION')."
+            echo "   Type the literal string ROLLBACK (case-sensitive) to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation accepted."
+
+  destroy:
+    name: Terraform destroy + verify
+    runs-on: ubuntu-latest
+    needs: [confirm]
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-apply
+          aws-region: us-east-1
+
+      - name: Setup Terraform + SOPS
+        run: make setup-ci-deps-terraform
+
+      - name: Initialize Terraform
+        working-directory: infra/aws
+        run: terraform init
+
+      - name: Terraform destroy
+        working-directory: infra/aws
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          echo "💣 Running terraform destroy (manual rollback)..."
+          terraform destroy -auto-approve -lock=true 2>&1 | tee destroy.log
+
+      - name: Verify rollback succeeded (EC2 + ENI + IAM + SG)
+        env:
+          AWS_REGION: us-east-1
+        run: python3 bin/verify_aws_rollback.py
+
+      - name: Upload destroy logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-logs
+          path: infra/aws/destroy.log
+          retention-days: 90
+
+      - name: Open audit issue
+        uses: actions/github-script@v7
+        env:
+          REASON: ${{ inputs.reason }}
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const reason = process.env.REASON || '(none provided)';
+            const sha7 = context.sha.substring(0, 7);
+            const body = [
+              `💣 **Manual rollback executed.**`,
+              ``,
+              `- Triggered by: @${context.actor}`,
+              `- Commit at trigger: \`${context.sha}\``,
+              `- Workflow run: ${runUrl}`,
+              ``,
+              `**Reason:**`,
+              ``,
+              reason,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `💣 Rollback executed: ${sha7}`,
+              body,
+              labels: ['rollback-executed', 'audit'],
+            });

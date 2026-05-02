@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
-"""homelab — unified diagnostics CLI for the homelab repo.
+"""homelab — canonical CLI for the homelab repo.
 
-Thin wrapper that reuses logic already shipped in bin/drift.py,
-bin/smoke_test.py, and bin/preflight.py — providing a single entry point
-for common debugging tasks during and after a deploy.
+Single entry point for diagnostics, deploy, rollback, and recovery.
+Each subcommand delegates to an existing module under bin/ — no logic
+is duplicated; the CLI is a routing layer.
 
 Sub-commands:
-    homelab argocd diagnose <app>    Inspect an ArgoCD application's
-                                     sync/health/conditions and surface
-                                     the most recent error message.
-    homelab tf drift [--summary]     Run the Terraform drift probe from
-                                     bin/drift.py with Argo + inventory
-                                     checks skipped.
-    homelab catalog score [--app N]  Validate k8s/apps/*/catalog-info.yaml
-                                     against scorecard rules (R001-R009)
-                                     from bin/score_catalog.py.
+    Diagnostics:
+      homelab argocd diagnose <app>    Inspect an ArgoCD app sync/health.
+      homelab argocd list              List all ArgoCD apps.
+      homelab k3s status               Node status table.
+      homelab tf drift [--summary]     Terraform drift probe.
+      homelab tf cost                  Infracost breakdown.
+      homelab ci replay <step>         Run a CI step locally via make.
+      homelab catalog score [--app N]  Validate k8s/apps/*/catalog-info.yaml
+                                       against scorecard rules (R001-R009).
+
+    Deploy + recovery:
+      homelab deploy [--destroy]       Full deploy orchestration.
+      homelab preflight [args…]        Pre-deploy chain checks.
+      homelab smoke                    Post-deploy smoke tests.
+      homelab rollback [args…]         Verify AWS rollback completion.
+      homelab backup pre [args…]       Take pre-deploy Velero backup.
+      homelab backup verify            Validate backup → restore loop.
+      homelab drift [args…]            Full drift report (tf + argo + inv).
 """
 
 from __future__ import annotations
@@ -250,6 +259,68 @@ def cmd_catalog_score(args: argparse.Namespace) -> int:
         os.chdir(cwd)
 
 
+# ── deploy / recovery delegations ────────────────────────────────────────────
+# Each handler imports its backing module lazily so `homelab --help` stays
+# fast and a syntax error in one module doesn't break the whole CLI.
+
+
+def cmd_deploy(args: argparse.Namespace) -> int:
+    """Run the full deploy orchestrator (bin/deploy_aws_homelab.py)."""
+    import deploy_aws_homelab
+
+    return deploy_aws_homelab.main(args.passthrough)
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Run pre-deploy chain checks (bin/preflight.py)."""
+    import preflight
+
+    return preflight.main(args.passthrough)
+
+
+def cmd_smoke(args: argparse.Namespace) -> int:
+    """Run post-deploy smoke tests (bin/smoke_test.py)."""
+    return smoke_test.main()
+
+
+def cmd_rollback(args: argparse.Namespace) -> int:
+    """Verify terraform destroy left no homelab residue (bin/verify_aws_rollback.py)."""
+    import verify_aws_rollback
+
+    return verify_aws_rollback.main(args.passthrough)
+
+
+def cmd_backup_pre(args: argparse.Namespace) -> int:
+    """Take a pre-deploy Velero backup (bin/velero_pre_deploy_backup.py)."""
+    import velero_pre_deploy_backup
+
+    return velero_pre_deploy_backup.main(args.passthrough)
+
+
+def cmd_backup_verify(args: argparse.Namespace) -> int:
+    """Validate Velero backup → restore loop via `make test-velero-restore`."""
+    repo_root = BIN_DIR.parent
+    print(f"▶ Running: make test-velero-restore (cwd={repo_root})")
+    return subprocess.call(["make", "test-velero-restore"], cwd=repo_root)
+
+
+def cmd_drift(args: argparse.Namespace) -> int:
+    """Full drift report (terraform + argo + inventory) via bin/drift.py."""
+    return drift.main(args.passthrough)
+
+
+# Handlers that opaquely forward `args.passthrough` to a backing module.
+# parse_known_args() in main() routes any unrecognized argv into passthrough
+# only for these handlers — every other subcommand stays strict.
+_PASSTHROUGH_HANDLERS = {
+    cmd_deploy,
+    cmd_preflight,
+    cmd_rollback,
+    cmd_backup_pre,
+    cmd_drift,
+}
+
+
 # ── arg parser ───────────────────────────────────────────────────────────────
 
 
@@ -339,11 +410,60 @@ def build_parser() -> argparse.ArgumentParser:
     replay.add_argument("step", help="Make target name to replay (see help)")
     replay.set_defaults(func=cmd_ci_replay)
 
+    # ── deploy / preflight / smoke / rollback / backup / drift ──────────────
+    # All forward unparsed args via REMAINDER to the backing module's main().
+
+    sub.add_parser(
+        "deploy",
+        help="Run full deploy (terraform + ansible + argocd)",
+        description="Forwards extra args to bin/deploy_aws_homelab.py. "
+        "Example: homelab deploy --destroy",
+    ).set_defaults(func=cmd_deploy)
+
+    sub.add_parser(
+        "preflight",
+        help="Run pre-deploy chain checks",
+        description="Forwards extra args to bin/preflight.py.",
+    ).set_defaults(func=cmd_preflight)
+
+    sub.add_parser("smoke", help="Run post-deploy smoke tests").set_defaults(
+        func=cmd_smoke
+    )
+
+    sub.add_parser(
+        "rollback",
+        help="Verify AWS rollback (no homelab residue after destroy)",
+        description="Forwards extra args to bin/verify_aws_rollback.py.",
+    ).set_defaults(func=cmd_rollback)
+
+    backup_p = sub.add_parser("backup", help="Velero backup operations")
+    backup_sub = backup_p.add_subparsers(dest="cmd", required=True)
+    backup_sub.add_parser(
+        "pre",
+        help="Take pre-deploy Velero backup",
+        description="Forwards extra args to bin/velero_pre_deploy_backup.py.",
+    ).set_defaults(func=cmd_backup_pre)
+    backup_sub.add_parser(
+        "verify",
+        help="Validate backup→restore via `make test-velero-restore`",
+    ).set_defaults(func=cmd_backup_verify)
+
+    sub.add_parser(
+        "drift",
+        help="Full drift report (terraform + argo + inventory)",
+        description="Forwards extra args to bin/drift.py (e.g. --fix, --skip-argo).",
+    ).set_defaults(func=cmd_drift)
+
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args, unknown = parser.parse_known_args(argv)
+    if args.func in _PASSTHROUGH_HANDLERS:
+        args.passthrough = unknown
+    elif unknown:
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
     return args.func(args)
 
 
