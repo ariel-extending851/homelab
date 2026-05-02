@@ -5,7 +5,8 @@ driver:
 platforms:
   - name: openwrt-router
     # Pinned by digest (x86_64 variant) to avoid CI drift; bump on intentional rebase.
-    image: openwrt/rootfs:x86_64@sha256:8acc3fb266a6b38b220bf40933c450724ba9d428b40b90bf3629041948bf7f1b
+    # Tag dropped (only digest) — Molecule docker driver rejects tag@sha256 combo.
+    image: openwrt/rootfs@sha256:8acc3fb266a6b38b220bf40933c450724ba9d428b40b90bf3629041948bf7f1b
     pre_build_image: true
     command: /bin/sh -c "while true; do sleep 3600; done"
 
