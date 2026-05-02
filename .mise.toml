@@ -30,6 +30,12 @@ localstack = "4.13.1"
 "pipx:pytest" = "9.0.3"
 "pipx:copier" = "9.4.1"
 
+# Note: mkdocs-material is intentionally NOT pinned in mise. It pulls in
+# transitive CLI tools (mkdocs, ghp-import, watchdog, pygments, …) and
+# pipx requires `--include-deps` to expose them, which mise's pipx
+# backend does not pass through cleanly. The docs workflow installs it
+# via plain pipx instead — see `.github/workflows/docs.yml`.
+
 # GitHub Actions workflow linting
 actionlint = "latest"
 "pipx:zizmor" = "latest"

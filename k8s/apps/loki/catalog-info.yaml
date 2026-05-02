@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: loki
+  description: Log aggregation backend (single-binary monolithic mode)
+  annotations:
+    homelab.io/runbook: docs/runbooks/observability-availability.md
+    homelab.io/doc: docs/services/loki.md
+spec:
+  type: datastore
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi4-or-ec2
+  dependsOn: []
+  providesApis: []

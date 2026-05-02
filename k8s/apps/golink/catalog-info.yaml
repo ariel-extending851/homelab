@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: golink
+  description: Tailscale-aware URL shortener (go/links)
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+    homelab.io/doc: docs/services/golink.md
+spec:
+  type: website
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []

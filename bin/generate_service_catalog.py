@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate the service-catalog table in docs/services/README.md.
+"""Regenerate the service-catalog table + dependency graph in
+docs/services/README.md.
 
 Source of truth is `k8s/apps/<app>/`. For each app directory we extract:
   - **App name** — H1 from `docs/services/<app>.md` if present, else the
@@ -10,9 +11,17 @@ Source of truth is `k8s/apps/<app>/`. For each app directory we extract:
     back to `namespace.yaml`'s `metadata.name`
   - **Ingress** — first host under `spec.tls[0].hosts[0]` from `ingress.yaml`,
     rendered as a Markdown autolink, or `—` when absent
+  - **Owner / Tier** — from `catalog-info.yaml` `spec.owner` / `spec.tier`
+    (defaults to `—` if the entity is missing)
 
-Only the block between `<!-- catalog:start -->` and `<!-- catalog:end -->`
-is rewritten — everything else (intro, footnotes) is preserved verbatim.
+Two marker-bounded blocks are rewritten in place; everything else
+(intro text, footnotes) is preserved verbatim:
+
+  - `<!-- catalog:start -->` / `<!-- catalog:end -->` — the apps table.
+  - `<!-- graph:start -->` / `<!-- graph:end -->` — a Mermaid graph
+    rendered from `spec.dependsOn` across all `catalog-info.yaml` files.
+    The graph block is optional; if the markers are absent, the catalog
+    table is updated alone.
 
 Run via `make generate-catalog`. A pre-commit hook fails when the file
 drifts so `git diff` is the integration test.
@@ -31,6 +40,8 @@ SERVICES_DOC_DIR = Path("docs/services")
 CATALOG_FILE = SERVICES_DOC_DIR / "README.md"
 CATALOG_START = "<!-- catalog:start -->"
 CATALOG_END = "<!-- catalog:end -->"
+GRAPH_START = "<!-- graph:start -->"
+GRAPH_END = "<!-- graph:end -->"
 
 # Apps that share `monitoring-stack.md` rather than having their own page.
 # Anchor matches the heading slug used in that doc.
@@ -97,6 +108,12 @@ def _doc_link(app_dir_name: str) -> str:
     return "—"
 
 
+def _extract_entity(app_dir: Path) -> dict:
+    """Return parsed catalog-info.yaml (dict) or an empty dict."""
+    raw = _read_yaml(app_dir / "catalog-info.yaml") or {}
+    return raw if isinstance(raw, dict) else {}
+
+
 def collect_rows(base_dir: Path) -> list[dict]:
     apps_root = base_dir / APPS_DIR
     rows = []
@@ -111,6 +128,23 @@ def collect_rows(base_dir: Path) -> list[dict]:
 
         namespace = _extract_namespace(entry)
         ingress = _extract_ingress_host(entry)
+        entity = _extract_entity(entry)
+        spec = entity.get("spec") if isinstance(entity, dict) else None
+        spec = spec if isinstance(spec, dict) else {}
+        owner = spec.get("owner") or "—"
+        tier = spec.get("tier") or "—"
+        deps: list[str] = []
+        for d in spec.get("dependsOn") or []:
+            if not isinstance(d, str):
+                continue
+            _, _, target = d.partition(":")
+            target = target or d
+            if target:
+                deps.append(target)
+        meta = entity.get("metadata") if isinstance(entity, dict) else None
+        meta = meta if isinstance(meta, dict) else {}
+        entity_name = meta.get("name") or entry.name
+
         rows.append(
             {
                 "name": _extract_display_name(entry.name),
@@ -118,6 +152,10 @@ def collect_rows(base_dir: Path) -> list[dict]:
                 "doc": _doc_link(entry.name),
                 "namespace": namespace,
                 "ingress": f"<https://{ingress}>" if ingress else "—",
+                "owner": owner,
+                "tier": tier,
+                "entity_name": entity_name,
+                "depends_on": deps,
             }
         )
     return rows
@@ -125,12 +163,13 @@ def collect_rows(base_dir: Path) -> list[dict]:
 
 def render_table(rows: list[dict]) -> str:
     lines = [
-        "| App | Doc | Namespace | Ingress |",
-        "|---|---|---|---|",
+        "| App | Doc | Namespace | Ingress | Owner | Tier |",
+        "|---|---|---|---|---|---|",
     ]
     for r in rows:
         lines.append(
-            f"| {r['name']} | {r['doc']} | `{r['namespace']}` | {r['ingress']} |"
+            f"| {r['name']} | {r['doc']} | `{r['namespace']}` | {r['ingress']} "
+            f"| {r['owner']} | `{r['tier']}` |"
         )
     return "\n".join(lines)
 
@@ -140,28 +179,68 @@ def render_catalog_block(rows: list[dict]) -> str:
     return f"{CATALOG_START}\n{render_table(rows)}\n{CATALOG_END}"
 
 
-_BLOCK_RE = re.compile(
+def render_mermaid(rows: list[dict]) -> str:
+    """Render a Mermaid `graph LR` of dependsOn edges plus orphan nodes.
+
+    GitHub renders Mermaid natively in Markdown — no extra infra needed.
+    Orphans are emitted explicitly so the graph is a complete inventory,
+    not just the connected subset.
+    """
+    edges: list[str] = []
+    referenced: set[str] = set()
+    for r in rows:
+        for dep in r["depends_on"]:
+            edges.append(f"  {r['entity_name']} --> {dep}")
+            referenced.add(dep)
+            referenced.add(r["entity_name"])
+    body = ["```mermaid", "graph LR"]
+    body.extend(edges)
+    for r in rows:
+        name = r["entity_name"]
+        if name not in referenced:
+            body.append(f"  {name}")
+    body.append("```")
+    return "\n".join(body)
+
+
+def render_graph_block(rows: list[dict]) -> str:
+    return f"{GRAPH_START}\n{render_mermaid(rows)}\n{GRAPH_END}"
+
+
+_CATALOG_RE = re.compile(
     re.escape(CATALOG_START) + r".*?" + re.escape(CATALOG_END),
+    re.DOTALL,
+)
+_GRAPH_RE = re.compile(
+    re.escape(GRAPH_START) + r".*?" + re.escape(GRAPH_END),
     re.DOTALL,
 )
 
 
 def update_catalog_file(base_dir: Path, rows: list[dict]) -> tuple[bool, str]:
-    """Rewrite the marker block in CATALOG_FILE. Returns (changed, new_text)."""
+    """Rewrite the marker blocks in CATALOG_FILE. Returns (changed, new_text).
+
+    The catalog table block is required; the graph block is rewritten only
+    when its markers are present (so the change is opt-in).
+    """
     target = base_dir / CATALOG_FILE
     if not target.is_file():
         raise SystemExit(f"❌ {CATALOG_FILE} not found.")
 
     original = target.read_text(encoding="utf-8")
-    new_block = render_catalog_block(rows)
-
-    if not _BLOCK_RE.search(original):
+    if not _CATALOG_RE.search(original):
         raise SystemExit(
             f"❌ {CATALOG_FILE} is missing catalog markers.\n"
             f"   Add `{CATALOG_START}` and `{CATALOG_END}` around the table."
         )
 
-    updated = _BLOCK_RE.sub(lambda _: new_block, original, count=1)
+    new_catalog = render_catalog_block(rows)
+    updated = _CATALOG_RE.sub(lambda _: new_catalog, original, count=1)
+
+    if _GRAPH_RE.search(updated):
+        new_graph = render_graph_block(rows)
+        updated = _GRAPH_RE.sub(lambda _: new_graph, updated, count=1)
+
     return updated != original, updated
 
 

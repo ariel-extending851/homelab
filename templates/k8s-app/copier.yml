@@ -91,14 +91,72 @@ memory_limit:
 target_node:
   type: str
   help: |
-    Where this app should run. RPi3 has only 1 GB RAM — pick `rpi3-only`
-    only if you've sized the limits accordingly (memory_limit <= 200Mi).
+    Where this app should run (drives the Deployment nodeSelector). RPi3
+    has only 1 GB RAM — pick `rpi3-only` only if you've sized the limits
+    accordingly (memory_limit <= 256Mi, enforced by `make catalog-score`
+    rule R004).
   choices:
     any: any
     rpi4-only: rpi4-only
     rpi3-only: rpi3-only
     ec2-only: ec2-only
   default: any
+
+# ──────────────────────────────────────────────────────────────────────
+# Catalog metadata (catalog-info.yaml — Backstage-compatible schema)
+# ──────────────────────────────────────────────────────────────────────
+
+component_type:
+  type: str
+  help: |
+    Backstage component type. `service` is the default; pick `website`
+    for apps with a UI, `datastore` for stateful data backends,
+    `library` for non-running code modules.
+  choices:
+    service: service
+    website: website
+    library: library
+    datastore: datastore
+  default: service
+
+lifecycle:
+  type: str
+  help: Lifecycle stage exposed to the catalog.
+  choices:
+    production: production
+    staging: staging
+    experimental: experimental
+  default: production
+
+tier:
+  type: str
+  help: |
+    Catalog-level tier — broader than `target_node` because some apps
+    cannot run on RPi3 due to memory but do not need to be pinned to a
+    single node tier (e.g. `rpi4-or-ec2`). Defaults to mirror
+    `target_node`; override only when the broader semantic applies.
+  choices:
+    any: any
+    rpi3-only: rpi3-only
+    rpi4-only: rpi4-only
+    ec2-only: ec2-only
+    rpi4-or-ec2: rpi4-or-ec2
+  default: "{{ target_node }}"
+
+runbook_path:
+  type: str
+  help: |
+    Path (relative to repo root) of the runbook for this component,
+    surfaced via the `homelab.io/runbook` annotation.
+  default: "docs/runbooks/on-call.md"
+
+depends_on:
+  type: str
+  help: |
+    Comma-separated list of component names this depends on (e.g.
+    "prometheus,loki"). Each entry will be rendered as
+    `component:<name>` in catalog-info.yaml. Leave empty for none.
+  default: ""
 
 # ──────────────────────────────────────────────────────────────────────
 # Networking
