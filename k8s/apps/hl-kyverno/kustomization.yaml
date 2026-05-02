@@ -1,0 +1,8 @@
+---
+# Bootstrap entry for the App-of-Apps root. Forwards to k8s/system/kyverno/
+# where the actual Kyverno install Application and the policies live.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../system/kyverno

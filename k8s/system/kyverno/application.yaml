@@ -1,0 +1,110 @@
+---
+# Kyverno admission controller — runtime enforcement for what conftest already
+# gates in CI. Pinned exclusively to amd64 nodes (AWS) so the 1 GB Raspberry
+# Pi 3 cannot accept any of these pods.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hl-kyverno
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hl-kyverno
+    app.kubernetes.io/part-of: homelab
+  annotations:
+    # Install the chart before the policies that depend on its CRDs.
+    argocd.argoproj.io/sync-wave: "-10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://kyverno.github.io/kyverno/
+    chart: kyverno
+    targetRevision: 3.3.7  # app version 1.13.x
+    helm:
+      releaseName: kyverno
+      values: |
+        # --- Workload placement -------------------------------------------------
+        # Every Kyverno component is pinned to amd64 (AWS t3.medium / t3.small).
+        # The cluster contains arm64 Raspberry Pi nodes with as little as 1 GB of
+        # RAM; the Kyverno admission controller alone idles around 200 MiB and
+        # would OOM on the Pi 3.
+        admissionController:
+          replicas: 2
+          nodeSelector:
+            kubernetes.io/arch: amd64
+          tolerations: []
+          container:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 384Mi
+
+        backgroundController:
+          enabled: true
+          replicas: 1
+          nodeSelector:
+            kubernetes.io/arch: amd64
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
+
+        reportsController:
+          enabled: true
+          replicas: 1
+          nodeSelector:
+            kubernetes.io/arch: amd64
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
+
+        # Saves ~80 MiB cluster-wide. Cleanup of policy reports is rare; we run
+        # the reports controller (cheap) and skip the dedicated cleanup pod.
+        cleanupController:
+          enabled: false
+
+        # CRDs ship with the chart and are owned by Kyverno's release.
+        crds:
+          install: true
+
+        # Ship policy exceptions via PolicyException CRs from Git rather than
+        # ad-hoc annotations.
+        features:
+          policyExceptions:
+            enabled: true
+            namespace: kyverno
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      # The chart ships large CRDs that exceed the kubectl client-side
+      # annotation limit; ServerSideApply (above) handles this, but we also
+      # tell Argo to replace CRDs on schema changes rather than patch.
+      - Replace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

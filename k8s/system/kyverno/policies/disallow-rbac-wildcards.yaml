@@ -1,0 +1,54 @@
+---
+# Mirrors k8s/policies/rbac_safety.rego. ClusterRoles must not use wildcard
+# verbs or resources. Allowlist matches the Rego allowlist exactly — keep
+# both in sync. Justifications live in k8s/policies/README.md.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: hl-disallow-rbac-wildcards
+  annotations:
+    policies.kyverno.io/title: Disallow wildcards in ClusterRole rules
+    policies.kyverno.io/category: RBAC Best Practices
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: ClusterRole
+    policies.kyverno.io/description: >-
+      ClusterRoles with verbs '*' or resources '*' grant unrestricted access
+      and violate least-privilege. The allowlist of legitimate exemptions
+      (cluster backup, GitOps reconcilers) lives both here and in
+      k8s/policies/rbac_safety.rego — keep them in sync.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: deny-wildcard-verbs-or-resources
+      match:
+        any:
+          - resources:
+              kinds: [ClusterRole]
+      exclude:
+        any:
+          # Justifications: see k8s/policies/README.md.
+          - resources:
+              names:
+                - velero
+                - argocd-application-controller
+                - argocd-server
+      validate:
+        message: >-
+          ClusterRole '{{ request.object.metadata.name }}' must not use
+          wildcard verbs or resources. Enumerate the specific verbs/resources
+          required, or — if the ClusterRole genuinely needs broad access —
+          add it to the allowlist in this policy AND in
+          k8s/policies/rbac_safety.rego with justification in
+          k8s/policies/README.md.
+        foreach:
+          - list: request.object.rules
+            deny:
+              conditions:
+                any:
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.verbs || `[]` }}"
+                  - key: "*"
+                    operator: AnyIn
+                    value: "{{ element.resources || `[]` }}"

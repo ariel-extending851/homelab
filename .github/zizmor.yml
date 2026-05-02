@@ -33,3 +33,5 @@ rules:
       - dr-drill.yml
       - drift-detection.yml
       - rollback.yml
+      - supply-chain.yml
+      - checkov.yml

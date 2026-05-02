@@ -1,0 +1,69 @@
+---
+name: Checkov (IaC SAST)
+
+# Static analysis for Terraform, Kubernetes manifests, GitHub Actions, and
+# Dockerfiles. Complements Trivy config (broader rule corpus, ~1000 checks)
+# and surfaces findings in the GitHub Security tab via SARIF.
+#
+# Convention: every action is pinned by 40-char SHA. Dependabot keeps these
+# fresh — see .github/dependabot.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "30 5 * * 1"   # Mondays 05:30 UTC — weekly drift catch
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  iac:
+    name: "Security: Checkov SAST"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload to GitHub Security tab
+      pull-requests: write     # PR annotations
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@38a95e98d734de90ac5b8adf3b1abf488e8aab74  # v12.2912.0
+        with:
+          directory: .
+          # Frameworks aligned with what this repo actually contains.
+          framework: terraform,kubernetes,github_actions,dockerfile
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          # Honour the existing .trivyignore.yaml justifications by mirroring
+          # their check IDs here. Keep this list short; prefer fixing.
+          skip_check: CKV_K8S_43
+          quiet: true
+          soft_fail: false
+          # Avoid scanning the giant generated state of node_modules / .git etc.
+          skip_path: .git,.qa,htmlcov,.venv,venv,node_modules
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@396bb3e45325a47dd9ef434068033c6d5bb0d11a  # v3.27.0
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
+      - name: Upload SARIF as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
+        with:
+          name: checkov-sarif
+          path: checkov.sarif
+          retention-days: 14

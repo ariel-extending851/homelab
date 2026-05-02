@@ -1,0 +1,47 @@
+---
+# Cosign keyless signature verification at admission time. Pairs with
+# .github/workflows/supply-chain.yml which signs first-party images using the
+# repository's GitHub OIDC token (no private keys).
+#
+# IMPORTANT: this policy starts in Audit mode. Flip to Enforce ONLY after:
+#   1. supply-chain.yml has run successfully on main at least once,
+#   2. `kubectl get clusterpolicyreport -A | grep hl-verify-image-signatures`
+#      shows zero unexpected violations,
+#   3. Each upstream image we pull (Grafana, Prometheus, Falco, ...) has
+#      either an explicit verification rule below or an exception.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: hl-verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify image signatures (Cosign keyless)
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Verifies first-party images signed by .github/workflows/supply-chain.yml
+      using GitHub OIDC. Upstream images (currently unsigned for our purposes)
+      are skipped via the imageReferences narrowing — extend with additional
+      rules per upstream signer when those signers are mapped.
+spec:
+  validationFailureAction: Audit
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-first-party-ghcr-images
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/ariel-extending851/*"
+          mutateDigest: true
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/ariel-extending851/homelab/.github/workflows/supply-chain.yml@refs/heads/main"
+                    rekor:
+                      url: https://rekor.sigstore.dev

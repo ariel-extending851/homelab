@@ -1,0 +1,81 @@
+---
+# Keeps SHA-pinned GitHub Actions, Terraform providers, and Python deps fresh.
+# Manual SHA pins are only useful if a robot keeps them current — that's this.
+version: 2
+
+updates:
+  # GitHub Actions — bumps the SHA pins introduced in supply-chain.yml and
+  # checkov.yml. Other workflows still use floating tags (zizmor exception);
+  # dependabot will only PR for actions that are actually pinned.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci(actions)
+    labels:
+      - dependencies
+      - github-actions
+
+  # Terraform providers + module versions across every TF root in the repo.
+  - package-ecosystem: terraform
+    directory: /infra/aws
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(terraform)
+    labels:
+      - dependencies
+      - terraform
+
+  - package-ecosystem: terraform
+    directory: /infra/aws-backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(terraform)
+    labels:
+      - dependencies
+      - terraform
+
+  - package-ecosystem: terraform
+    directory: /infra/aws-oidc
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(terraform)
+    labels:
+      - dependencies
+      - terraform
+
+  # Python dependencies declared in pyproject.toml (`pip` ecosystem covers
+  # PEP 621 build-system + project deps).
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(python)
+    labels:
+      - dependencies
+      - python

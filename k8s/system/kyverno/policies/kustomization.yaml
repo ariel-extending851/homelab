@@ -1,0 +1,11 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ./disallow-privilege-escalation.yaml
+  - ./disallow-rbac-wildcards.yaml
+  - ./require-readiness-probe.yaml
+  - ./require-resource-limits.yaml
+  - ./require-seccomp-runtime-default.yaml
+  - ./verify-image-signatures.yaml
