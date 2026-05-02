@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         if: always() && hashFiles('.qa/checkov/results_sarif.sarif') != ''
-        uses: github/codeql-action/upload-sarif@662472033e021d55d94146f66f6058822b0b39fd  # v3.27.0
+        uses: github/codeql-action/upload-sarif@0daab03d71ff584ef619d027a3fd9146679c5d84  # v3.35.3
         with:
           sarif_file: .qa/checkov/results_sarif.sarif
           category: checkov
