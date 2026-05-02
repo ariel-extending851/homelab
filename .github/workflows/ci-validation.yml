@@ -671,20 +671,18 @@ jobs:
           K3D_TARGET_REVISION_OVERRIDE: "${{ github.event.pull_request.head.sha || github.sha }}"
         run: make test-k3d-convergence
 
-      - name: Dump ArgoCD State on Failure
-        if: failure()
-        run: |
-          kubectl get applications.argoproj.io -A -o yaml > /tmp/argocd-apps.yaml || true
-          kubectl get pods -A -o wide > /tmp/all-pods.txt || true
-
+      # The diagnostic dump now happens INSIDE the test (in a
+      # try/finally) so kubectl still has a cluster to query. By the
+      # time this step runs, the k3d cluster has already been torn down
+      # by the pytest fixture's finally:. We just need to upload what
+      # the test wrote to /tmp/k3d-failure-state/.
       - name: Upload Failure Artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: k3d-convergence-failure-${{ github.run_id }}
-          path: |
-            /tmp/argocd-apps.yaml
-            /tmp/all-pods.txt
+          name: k3d-convergence-state-${{ github.run_id }}
+          path: /tmp/k3d-failure-state/
+          if-no-files-found: ignore
           retention-days: 14
 
   terraform-plan:
