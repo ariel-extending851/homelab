@@ -20,6 +20,7 @@
         validate-shellcheck validate-sops-workflow \
 		validate-terraform-tests validate-k8s-policies validate-k8s-policies-critical validate-k8s-dry-run \
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
+		setup-ci-deps-k3d test-chaos-rpi3 test-chaos-tailscale test-k3d-convergence \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
 		preflight drift morning-sync update-versions update-versions-dry-run \
@@ -238,6 +239,14 @@ setup-ci-deps-kind: ## Install kind (for CI)
 		curl -Lo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64; \
 		chmod +x /usr/local/bin/kind; \
 	fi
+
+setup-ci-deps-k3d: ## Install k3d (preferred over kind for GitOps convergence — same k3s distro as prod)
+	@echo "🔧 Setting up k3d for CI..."
+	@command -v mise >/dev/null && mise install k3d || true
+	@if ! command -v k3d >/dev/null 2>&1; then \
+		curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash; \
+	fi
+	@command -v kubectl >/dev/null || (echo "❌ kubectl missing; run setup-ci-deps-kubernetes first"; exit 1)
 	@kind version && echo "✅ kind installed"
 
 setup-ci-deps-molecule: ## Install Molecule + Ansible tooling (for CI)
@@ -897,6 +906,34 @@ test-velero-restore: ## Validate Velero backup → delete → restore → data i
 	@echo "🛟  Running Velero restore validation..."
 	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
 	@python3 -m pytest bin/tests/test_velero_restore_live.py --run-live -v
+
+test-chaos-rpi3: ## Inject deterministic OOMKill on the RPi3 node and assert containment + observability (LIVE, manual-only)
+	@echo "💥 Running RPi3 OOM resilience drill..."
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@if [ "$$CHAOS_ACK" != "I_ACCEPT_THE_RISK" ]; then \
+		echo "❌ Refusing to run: set CHAOS_ACK=I_ACCEPT_THE_RISK to acknowledge this is a fault-injection drill."; \
+		echo "   The test pre-flight will also skip if AdGuard or UniFi are scheduled on the RPi3."; \
+		exit 1; \
+	fi
+	@python3 -m pytest bin/tests/test_chaos_rpi3_oom.py --run-live -v -m "live and chaos"
+
+test-chaos-tailscale: ## Disconnect Tailscale on a target node, assert kubelet/workload survival + auto-recovery (LIVE, manual-only)
+	@echo "🌐 Running Tailscale mesh-partition drill..."
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@if [ "$$CHAOS_TAILSCALE_ACK" != "I_ACCEPT_THE_RISK" ]; then \
+		echo "❌ Refusing to run: set CHAOS_TAILSCALE_ACK=I_ACCEPT_THE_RISK."; \
+		echo "   This test cuts the mesh on a target node — never run on production without a maintenance window."; \
+		exit 1; \
+	fi
+	@: $${TS_CHAOS_EPHEMERAL_AUTHKEY:?Set TS_CHAOS_EPHEMERAL_AUTHKEY (a Tailscale ephemeral auth key) to allow auto-reconnect}
+	@: $${TS_CHAOS_TARGET_HOST:?Set TS_CHAOS_TARGET_HOST (SSH-reachable hostname of the chaos victim — must be RPi4 or AWS, never RPi3)}
+	@python3 -m pytest bin/tests/test_chaos_tailscale_partition.py --run-live -v -m "live and chaos and disruptive"
+
+test-k3d-convergence: ## Spin up an ephemeral k3d cluster, install ArgoCD, apply the GitOps tree, assert all Apps Synced+Healthy
+	@echo "🧪 Running k3d GitOps convergence test..."
+	@command -v k3d >/dev/null || (echo "❌ k3d not found. Run: mise install"; exit 1)
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@python3 -m pytest bin/tests/test_k3d_gitops_convergence.py --run-live -v
 
 morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
 	@echo "🌅 Running morning sync health check..."

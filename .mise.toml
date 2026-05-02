@@ -43,6 +43,11 @@ actionlint = "latest"
 # Shell testing
 bats = "1.11.1"
 
+# Local cluster for pre-deploy GitOps convergence test
+# (k3d ships k3s — same distro as prod; matches sync-wave timing more
+# faithfully than upstream kind/kubeadm.)
+k3d = "5.8.3"
+
 # Runtimes
 node = "lts"
 npm = "11.12.1"

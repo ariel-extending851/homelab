@@ -1,0 +1,146 @@
+name: Chaos Drill — Manual Resilience Validation
+
+# Workflow_dispatch ONLY. Never on schedule, never on push.
+#
+# Hosts two fault-injection drills against the LIVE prod cluster:
+#
+#   1. chaos-rpi3   — OOMKill a hog Job on the 1GB RPi3 node, assert
+#                     containment + observability + ArgoCD non-degradation.
+#                     The test pre-flight refuses to run if AdGuard or
+#                     UniFi pods are scheduled on the target — drain
+#                     them first, or run on a non-prod cluster.
+#
+#   2. chaos-tailscale — Cut Tailscale on a designated RPi4 or AWS host
+#                     (NEVER the RPi3) and assert kubelet flips to
+#                     Unknown, non-target workloads survive, and the
+#                     mesh re-handshakes within 90s of `tailscale up`.
+#                     Requires an ephemeral auth key passed via secret.
+#
+# Why two jobs in one workflow: both need the same OIDC + kubeconfig
+# bootstrap and the same human-in-the-loop trigger semantics. The
+# `which` input lets the operator pick one or both per dispatch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: "Which drill(s) to run"
+        type: choice
+        required: true
+        default: "rpi3"
+        options:
+          - rpi3
+          - tailscale
+          - both
+      tailscale_target:
+        description: "Tailscale chaos target hostname (RPi4 or AWS only)"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chaos-drill
+  cancel-in-progress: false
+
+jobs:
+  chaos-rpi3:
+    if: inputs.which == 'rpi3' || inputs.which == 'both'
+    name: RPi3 OOM Resilience Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup CI Dependencies
+        run: |
+          make setup-ci-deps-terraform
+          make setup-ci-deps-kubernetes
+          make setup-ci-deps-python
+
+      - name: Configure AWS Credentials (OIDC, plan-only role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-plan
+          aws-region: us-east-1
+
+      - name: Generate Live Kubeconfig
+        run: |
+          make k8s-kubeconfig
+          test -f /tmp/k3s-homelab-kubeconfig.yaml
+          kubectl --kubeconfig=/tmp/k3s-homelab-kubeconfig.yaml \
+            cluster-info --request-timeout=15s
+
+      - name: Run RPi3 OOM Drill
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+          CHAOS_ACK: I_ACCEPT_THE_RISK
+        run: make test-chaos-rpi3 2>&1 | tee /tmp/chaos-rpi3.log
+
+      - name: Upload Drill Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-rpi3-${{ github.run_id }}
+          path: /tmp/chaos-rpi3.log
+          retention-days: 30
+
+  chaos-tailscale:
+    if: inputs.which == 'tailscale' || inputs.which == 'both'
+    name: Tailscale Mesh-Partition Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Validate Inputs
+        env:
+          TS_TARGET: ${{ inputs.tailscale_target }}
+        run: |
+          if [ -z "$TS_TARGET" ]; then
+            echo "❌ tailscale_target input is required for the tailscale drill"
+            exit 1
+          fi
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup CI Dependencies
+        run: |
+          make setup-ci-deps-terraform
+          make setup-ci-deps-kubernetes
+          make setup-ci-deps-python
+
+      - name: Configure AWS Credentials (OIDC, plan-only role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform-plan
+          aws-region: us-east-1
+
+      - name: Generate Live Kubeconfig
+        run: |
+          make k8s-kubeconfig
+          test -f /tmp/k3s-homelab-kubeconfig.yaml
+
+      - name: Run Tailscale Partition Drill
+        env:
+          KUBECONFIG: /tmp/k3s-homelab-kubeconfig.yaml
+          CHAOS_TAILSCALE_ACK: I_ACCEPT_THE_RISK
+          TS_CHAOS_TARGET_HOST: ${{ inputs.tailscale_target }}
+          TS_CHAOS_EPHEMERAL_AUTHKEY: ${{ secrets.TS_CHAOS_EPHEMERAL_AUTHKEY }}
+        run: make test-chaos-tailscale 2>&1 | tee /tmp/chaos-tailscale.log
+
+      - name: Upload Drill Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-tailscale-${{ github.run_id }}
+          path: /tmp/chaos-tailscale.log
+          retention-days: 30
