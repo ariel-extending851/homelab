@@ -48,7 +48,7 @@ spec:
               memory: "32Mi"
       containers:
         - name: unifi
-          image: lscr.io/linuxserver/unifi-network-application:latest
+          image: lscr.io/linuxserver/unifi-network-application:10.3.58
           imagePullPolicy: IfNotPresent
           # linuxserver/* images launch as root via s6-overlay then drop to PUID
           # via setuid syscalls. allowPrivilegeEscalation:false sets no_new_privs
