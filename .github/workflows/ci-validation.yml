@@ -516,6 +516,10 @@ jobs:
       - name: Run Trivy Image Scan (strict — fails on HIGH/CRITICAL fixable CVE)
         run: make test-trivy-strict
 
+      - name: Run Trivy Misconfig Scan (advisory — IaC coverage, .trivyignore.yaml filtered)
+        if: always()
+        run: make test-trivy-config
+
       - name: Upload Trivy Reports
         if: always()
         uses: actions/upload-artifact@v4

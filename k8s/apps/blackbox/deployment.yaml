@@ -19,7 +19,7 @@ spec:
       # Blackbox exporter is stateless and has no hardware dependencies.
       containers:
         - name: blackbox-exporter
-          image: quay.io/prometheus/blackbox-exporter:v0.24.0
+          image: quay.io/prometheus/blackbox-exporter:v0.28.0
           imagePullPolicy: IfNotPresent
 
           securityContext:
