@@ -1,0 +1,152 @@
+---
+name: Supply Chain (SBOM + Signing)
+
+# Generates an SPDX SBOM for every image referenced in k8s/apps/ and Cosign-
+# keyless-signs first-party images (those whose registry path matches the
+# repository owner) using GitHub's OIDC token. Verification at admission is
+# performed by k8s/system/kyverno/policies/verify-image-signatures.yaml.
+#
+# Why a dedicated workflow:
+#   - Trivy at build time can be defeated by a post-scan registry swap; only
+#     a Sigstore signature bound to the image digest closes that window.
+#   - Keyless signing needs no private key — it rides the OIDC trust path
+#     already configured for terraform-plan in ci-validation.yml.
+#
+# Reference: ci-validation.yml lines 626-651 (terraform-plan) for OIDC pattern.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "k8s/apps/**/deployment.yaml"
+      - "k8s/apps/**/daemonset.yaml"
+      - ".github/workflows/supply-chain.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Default to read-only; jobs widen below.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false   # signing is not safe to cancel mid-run
+
+jobs:
+  enumerate-images:
+    name: "Supply Chain: Enumerate workload images"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.list.outputs.images }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Enumerate images from k8s/apps manifests
+        id: list
+        env:
+          GH_REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          # Collect all `image:` refs from deployment + daemonset manifests,
+          # strip leading whitespace and the "image:" key, then dedupe.
+          mapfile -t images < <(
+            grep -rhE '^[[:space:]]+image:[[:space:]]+' \
+              k8s/apps/*/deployment.yaml \
+              k8s/apps/*/daemonset.yaml 2>/dev/null \
+              | sed -E 's/^[[:space:]]+image:[[:space:]]+//' \
+              | sed -E 's/[[:space:]]*#.*$//' \
+              | sort -u
+          )
+          json=$(printf '%s\n' "${images[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "images=${json}" >> "${GITHUB_OUTPUT}"
+          echo "Found $(echo "${json}" | jq 'length') unique image(s)"
+          echo "${json}" | jq -r '.[]'
+
+  sbom-and-sign:
+    name: "Supply Chain: SBOM + sign (${{ matrix.image }})"
+    needs: enumerate-images
+    if: needs.enumerate-images.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Required for Cosign keyless signing via Sigstore Fulcio + Rekor.
+      id-token: write
+      # Required so we can write SBOM artifacts back to the run.
+      actions: read
+      packages: read
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        image: ${{ fromJSON(needs.enumerate-images.outputs.images) }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Resolve image digest
+        id: digest
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          # If the manifest already pins a digest, use it directly. Otherwise
+          # query the registry once so signatures bind to an immutable digest.
+          if [[ "${IMAGE}" == *"@sha256:"* ]]; then
+            digest_ref="${IMAGE}"
+          else
+            digest=$(docker buildx imagetools inspect "${IMAGE}" --format '{{json .Manifest.Digest}}' | jq -r .)
+            base="${IMAGE%@*}"
+            base="${base%:*}"
+            digest_ref="${base}@${digest}"
+          fi
+          echo "ref=${digest_ref}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved: ${digest_ref}"
+
+      - name: Generate SPDX SBOM (syft via sbom-action)
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb  # v0.17.7
+        with:
+          image: ${{ steps.digest.outputs.ref }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: true
+          upload-artifact-retention: 30
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
+        with:
+          cosign-release: "v2.4.1"
+
+      - name: Sign + attest (first-party images only)
+        env:
+          IMAGE_REF: ${{ steps.digest.outputs.ref }}
+          GH_REPO_OWNER: ${{ github.repository_owner }}
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          # First-party = images we built and pushed to ghcr.io under our owner.
+          # Upstream images (grafana, prometheus, falco, ...) are SBOM'd above
+          # but signing them with our identity is meaningless — they have their
+          # own Sigstore signatures from their respective publishers.
+          if [[ "${IMAGE_REF}" != "ghcr.io/${GH_REPO_OWNER}/"* ]]; then
+            echo "skip: ${IMAGE_REF} is not a first-party image; SBOM only."
+            exit 0
+          fi
+
+          echo "Signing ${IMAGE_REF} with keyless OIDC..."
+          cosign sign --yes "${IMAGE_REF}"
+
+          echo "Attaching SPDX SBOM as in-toto attestation..."
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdx \
+            "${IMAGE_REF}"
+
+          echo "Verifying signature roundtrip..."
+          cosign verify \
+            --certificate-identity-regexp "^https://github.com/${GH_REPO_OWNER}/homelab/\.github/workflows/supply-chain\.yml@" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${IMAGE_REF}"

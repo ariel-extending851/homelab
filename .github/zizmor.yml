@@ -35,3 +35,5 @@ rules:
       - drift-detection.yml
       - docs.yml
       - rollback.yml
+      - supply-chain.yml
+      - checkov.yml

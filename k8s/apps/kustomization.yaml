@@ -20,4 +20,5 @@ resources:
 - ./velero
 - ./cilium
 - ./falco
+- ./hl-kyverno
 - ./unifi

@@ -1,0 +1,46 @@
+---
+# New runtime control — closes the 2/8 -> 8/8 gap identified in the audit.
+# Either the Pod or each container must set seccompProfile.type to
+# RuntimeDefault or Localhost. Audit mode initially because Falco's DaemonSet
+# legitimately needs an unconfined seccomp profile (host eBPF probes); add a
+# PolicyException for it before flipping to Enforce.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: hl-require-seccomp-runtime-default
+  annotations:
+    policies.kyverno.io/title: Require seccompProfile = RuntimeDefault
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      seccompProfile.type must be RuntimeDefault or Localhost on the Pod
+      spec, OR on every container's securityContext. Workloads that genuinely
+      require Unconfined (Falco's eBPF DaemonSet) must opt out via a
+      Kyverno PolicyException.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: pod-or-container-seccomp-runtime-default
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: >-
+          Pod or every container must set seccompProfile.type to
+          RuntimeDefault or Localhost.
+        anyPattern:
+          # Either the pod-level profile is set...
+          - spec:
+              securityContext:
+                seccompProfile:
+                  type: "RuntimeDefault | Localhost"
+          # ...or every container declares its own.
+          - spec:
+              containers:
+                - name: "*"
+                  securityContext:
+                    seccompProfile:
+                      type: "RuntimeDefault | Localhost"

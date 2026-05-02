@@ -1,0 +1,65 @@
+---
+# Mirrors k8s/policies/resource_limits.rego. Every container must declare
+# both requests and limits for CPU and memory. Containers without limits are
+# unbounded and can starve other workloads — particularly dangerous on the
+# 1 GB Raspberry Pi 3.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: hl-require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require CPU & memory requests and limits
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Every container declares CPU and memory requests AND limits. Mirrors
+      the conftest gate in k8s/policies/resource_limits.rego.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: containers-must-declare-cpu-memory-requests-limits
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        message: >-
+          Every container must set spec.containers[*].resources.{requests,limits}.{cpu,memory}.
+        pattern:
+          spec:
+            containers:
+              - name: "*"
+                resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
+
+    - name: init-containers-must-declare-cpu-memory-requests-limits
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers || `[]` | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: >-
+          Every initContainer must set resources.{requests,limits}.{cpu,memory}.
+        pattern:
+          spec:
+            initContainers:
+              - name: "*"
+                resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"
