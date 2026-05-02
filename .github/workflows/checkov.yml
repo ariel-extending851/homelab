@@ -43,27 +43,40 @@ jobs:
           directory: .
           # Frameworks aligned with what this repo actually contains.
           framework: terraform,kubernetes,github_actions,dockerfile
-          output_format: cli,sarif
-          output_file_path: console,checkov.sarif
+          output_format: sarif
           # Honour the existing .trivyignore.yaml justifications by mirroring
           # their check IDs here. Keep this list short; prefer fixing.
           skip_check: CKV_K8S_43
           quiet: true
           soft_fail: false
-          # Avoid scanning the giant generated state of node_modules / .git etc.
-          skip_path: .git,.qa,htmlcov,.venv,venv,node_modules
+
+      # Locate whichever SARIF file the action produced (filename varies by
+      # version: results.sarif, results_sarif.sarif, ...). Defensive find +
+      # GITHUB_OUTPUT lets the next step run regardless.
+      - name: Locate SARIF report
+        if: always()
+        id: sarif
+        run: |
+          set -euo pipefail
+          file=$(find . -maxdepth 3 -name "*.sarif" -type f | head -n1 || true)
+          echo "file=${file}" >> "${GITHUB_OUTPUT}"
+          if [ -n "${file}" ]; then
+            echo "Found SARIF: ${file}"
+          else
+            echo "No SARIF file produced by Checkov."
+          fi
 
       - name: Upload SARIF to GitHub Security tab
-        if: always()
+        if: always() && steps.sarif.outputs.file != ''
         uses: github/codeql-action/upload-sarif@662472033e021d55d94146f66f6058822b0b39fd  # v3.27.0
         with:
-          sarif_file: checkov.sarif
+          sarif_file: ${{ steps.sarif.outputs.file }}
           category: checkov
 
       - name: Upload SARIF as workflow artifact
-        if: always()
+        if: always() && steps.sarif.outputs.file != ''
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
         with:
           name: checkov-sarif
-          path: checkov.sarif
+          path: ${{ steps.sarif.outputs.file }}
           retention-days: 14
