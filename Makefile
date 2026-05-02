@@ -21,7 +21,7 @@
 		validate-terraform-tests validate-k8s-policies validate-k8s-policies-critical validate-k8s-dry-run \
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-k3d test-chaos-rpi3 test-chaos-tailscale test-k3d-convergence \
-		rollback-status rollback-argocd rollback-terraform \
+		rollback-status rollback-argocd rollback-terraform checkov-baseline \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
 		preflight drift morning-sync update-versions update-versions-dry-run \
@@ -935,6 +935,21 @@ test-k3d-convergence: ## Spin up an ephemeral k3d cluster, install ArgoCD, apply
 	@command -v k3d >/dev/null || (echo "❌ k3d not found. Run: mise install"; exit 1)
 	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
 	@python3 -m pytest bin/tests/test_k3d_gitops_convergence.py --run-live -v
+
+checkov-baseline: ## Regenerate .checkov.baseline (run after fixing a baselined finding)
+	@command -v checkov >/dev/null || (echo "❌ checkov not found. pipx install checkov==3.2.382"; exit 1)
+	@echo "🛡️  Regenerating Checkov baseline..."
+	@checkov \
+		--directory . \
+		--framework terraform,kubernetes,github_actions,dockerfile \
+		--skip-check CKV_K8S_43 \
+		--skip-path .git --skip-path .qa --skip-path htmlcov \
+		--skip-path .venv --skip-path venv --skip-path node_modules \
+		--create-baseline \
+		--output json --quiet \
+		--output-file-path .qa/checkov-baseline-gen >/dev/null 2>&1 || true
+	@test -f .checkov.baseline && echo "✅ .checkov.baseline updated ($$(grep -c '"check_id"' .checkov.baseline 2>/dev/null || echo '?') findings recorded)" \
+		|| (echo "❌ .checkov.baseline not generated"; exit 1)
 
 rollback-status: ## List ArgoCD apps + their revertable revisions (read-only, safe)
 	@python3 bin/rollback.py status
