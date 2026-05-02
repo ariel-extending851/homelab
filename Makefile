@@ -21,6 +21,7 @@
 		validate-terraform-tests validate-k8s-policies validate-k8s-policies-critical validate-k8s-dry-run \
 		setup-ci-deps-yamllint setup-ci-deps-shellcheck setup-ci-deps-kind \
 		setup-ci-deps-k3d test-chaos-rpi3 test-chaos-tailscale test-k3d-convergence \
+		rollback-status rollback-argocd rollback-terraform \
 		setup-ci-deps-molecule setup-ci-deps-arm64 test-e2e-live-nightly \
 		setup-ci-deps-workflow-lint lint-workflows \
 		preflight drift morning-sync update-versions update-versions-dry-run \
@@ -934,6 +935,33 @@ test-k3d-convergence: ## Spin up an ephemeral k3d cluster, install ArgoCD, apply
 	@command -v k3d >/dev/null || (echo "❌ k3d not found. Run: mise install"; exit 1)
 	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
 	@python3 -m pytest bin/tests/test_k3d_gitops_convergence.py --run-live -v
+
+rollback-status: ## List ArgoCD apps + their revertable revisions (read-only, safe)
+	@python3 bin/rollback.py status
+
+rollback-argocd: ## Revert ArgoCD app to previous good revision (DRY-RUN by default; pass APPLY=1 to execute)
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@APP="$${ROLLBACK_APP:-homelab-apps-root}"; \
+	if [ "$$APPLY" = "1" ]; then \
+		if [ "$$ROLLBACK_ACK" != "I_AM_REVERTING" ]; then \
+			echo "❌ APPLY=1 requires ROLLBACK_ACK=I_AM_REVERTING"; exit 1; \
+		fi; \
+		python3 bin/rollback.py argocd --app "$$APP" --apply --ack "$$ROLLBACK_ACK"; \
+	else \
+		python3 bin/rollback.py argocd --app "$$APP"; \
+	fi
+
+rollback-terraform: ## Revert infra/aws to a tag and re-apply (DRY-RUN by default; ROLLBACK_TAG=vX.Y.Z, APPLY=1 to execute)
+	@command -v terraform >/dev/null || (echo "❌ terraform not found"; exit 1)
+	@: $${ROLLBACK_TAG:?Set ROLLBACK_TAG=vX.Y.Z (the known-good git tag to revert to)}
+	@if [ "$$APPLY" = "1" ]; then \
+		if [ "$$ROLLBACK_ACK" != "I_AM_REVERTING" ]; then \
+			echo "❌ APPLY=1 requires ROLLBACK_ACK=I_AM_REVERTING"; exit 1; \
+		fi; \
+		python3 bin/rollback.py terraform --tag "$$ROLLBACK_TAG" --apply --ack "$$ROLLBACK_ACK"; \
+	else \
+		python3 bin/rollback.py terraform --tag "$$ROLLBACK_TAG"; \
+	fi
 
 morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
 	@echo "🌅 Running morning sync health check..."
