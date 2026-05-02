@@ -22,6 +22,7 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 | node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `node-exporter` | — |
 | otel-collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | — |
 | prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> |
+| unifi | — | `unifi` | — |
 | Velero — Cluster Backup & Disaster Recovery | [velero.md](velero.md) | `velero` | — |
 <!-- catalog:end -->
 

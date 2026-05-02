@@ -20,3 +20,4 @@ resources:
 - ./velero
 - ./cilium
 - ./falco
+- ./unifi

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unifi-mongo-init
+  namespace: unifi
+  labels:
+    app: unifi-db
+data:
+  init-mongo.js: |
+    // Runs once on first MongoDB start (when /data/db is empty).
+    // Reads MONGO_USER and MONGO_PASS from the container env so the
+    // password is never stored in this ConfigMap.
+    const user = process.env.MONGO_USER;
+    const pwd = process.env.MONGO_PASS;
+    db.getSiblingDB("admin").createUser({
+      user: user,
+      pwd: pwd,
+      roles: [
+        { role: "dbOwner", db: "unifi" },
+        { role: "dbOwner", db: "unifi_stat" },
+        { role: "dbOwner", db: "unifi_audit" },
+        { role: "dbOwner", db: "unifi_dpia" }
+      ]
+    });
