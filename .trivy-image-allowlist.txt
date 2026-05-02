@@ -9,17 +9,25 @@
 #   2. Open a tracking issue for the upgrade work.
 #   3. On the review-by date: bump the image, remove the line, re-run CI.
 #
-# This list was bootstrapped when the strict gate was first enabled
-# (PR #7). All entries point to the planned observability + Velero stack
-# refresh tracked separately. Do not add new entries casually.
+# Active sprint: docs/runbooks/image-upgrade-sprint-2026-q3.md
+#
+# Phase 1 outcome (2026-05-02):
+#   - AdGuard: bumped v0.107.71 → v0.107.74 — now CLEAN, removed from list.
+#   - Blackbox / Node-exporter / KSM / Golink: bumped to latest upstream
+#     stable. All four still trip the gate exclusively on Go-stdlib +
+#     transitive Go library CVEs (CVE-2025-68121, CVE-2026-32280-83, gRPC,
+#     opentelemetry-go) baked into upstream's static binary. We cannot
+#     fix without an upstream rebuild against a newer Go toolchain.
+#     Despite still being allowlisted, **CVE counts dropped ~50%** vs the
+#     prior pins — net security win. Review-by 2026-08-01 to re-check
+#     whether upstream has rebuilt by then.
 
-adguard/adguardhome:v0.107.71                        # review-by: 2026-07-30  (bump to v0.107.78+ in observability refresh)
-ghcr.io/tailscale/golink:main@sha256:ba5303fefc041cf9f11f960a90c3e16ca922dad8140ef43f704670f5c55f581b  # review-by: 2026-07-30  (re-pin to current digest)
-grafana/grafana:10.2.3                               # review-by: 2026-07-30  (Grafana 11 LTS upgrade — needs dashboard regression testing)
-grafana/loki:2.9.2                                   # review-by: 2026-07-30  (Loki 3.x — schema migration required)
-otel/opentelemetry-collector-contrib:0.102.0        # review-by: 2026-07-30  (OTel 0.115+ — config compat check)
-prom/prometheus:v2.45.0                              # review-by: 2026-07-30  (Prometheus 2.55+ — TSDB compat verified)
-quay.io/prometheus/blackbox-exporter:v0.24.0         # review-by: 2026-07-30  (low-risk bump to v0.26+)
-quay.io/prometheus/node-exporter:v1.7.0              # review-by: 2026-07-30  (low-risk bump to v1.8+)
-registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2  # review-by: 2026-07-30  (bump to v2.13+)
-velero/velero:v1.14.1                                # review-by: 2026-07-30  (Velero v1.15+ — verify CRD compat)
+ghcr.io/tailscale/golink:main@sha256:011e6a242d525df54faec21defed5e3c164d89cb02192fbd950266dfde889d7d  # review-by: 2026-08-01  (4 HIGH from Go stdlib in static binary; awaiting Tailscale rebuild)
+grafana/grafana:10.2.3                               # review-by: 2026-07-30  (Grafana 11 LTS upgrade — Phase 6 of upgrade sprint)
+grafana/loki:2.9.2                                   # review-by: 2026-07-30  (Loki 3.x — schema migration required — Phase 5)
+otel/opentelemetry-collector-contrib:0.102.0        # review-by: 2026-07-30  (OTel 0.115+ — config compat check — Phase 4)
+prom/prometheus:v2.45.0                              # review-by: 2026-07-30  (Prometheus 2.55+ — TSDB compat verified — Phase 3)
+quay.io/prometheus/blackbox-exporter:v0.28.0         # review-by: 2026-08-01  (8 CVEs from Go stdlib + grpc; awaiting prometheus/blackbox-exporter rebuild — was 22 on v0.24.0)
+quay.io/prometheus/node-exporter:v1.9.1              # review-by: 2026-08-01  (11 CVEs from Go stdlib + selinux; awaiting prometheus/node-exporter rebuild — was 17 on v1.7.0)
+registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0  # review-by: 2026-08-01  (10 CVEs from Go stdlib + grpc + otel-sdk; awaiting kube-state-metrics rebuild — was 20 on v2.9.2)
+velero/velero:v1.14.1                                # review-by: 2026-07-30  (Velero v1.15+ — verify CRD compat — Phase 2)

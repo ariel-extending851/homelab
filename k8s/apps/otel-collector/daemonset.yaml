@@ -39,6 +39,7 @@ spec:
 
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             runAsUser: 0
             capabilities:
               drop:
@@ -71,6 +72,8 @@ spec:
           volumeMounts:
             - name: otel-collector-config-vol
               mountPath: /conf
+            - name: tmp
+              mountPath: /tmp
             - name: varlog
               mountPath: /var/log
               readOnly: true
@@ -85,6 +88,9 @@ spec:
             items:
               - key: otel-collector-config
                 path: otel-collector-config
+        # Writable scratch — required because rootfs is read-only.
+        - name: tmp
+          emptyDir: {}
         # hostPath mounts required for log collection. All mounts are readOnly.
         - name: varlog
           hostPath:
