@@ -48,7 +48,11 @@ jobs:
           # their check IDs here. Keep this list short; prefer fixing.
           skip_check: CKV_K8S_43
           quiet: true
-          soft_fail: false
+          # Phase 1 rollout: advisory only. Findings still appear in the
+          # GitHub Security tab via the SARIF upload below — flip to false
+          # after the initial baseline is triaged (mirrors the Kyverno
+          # Audit -> Enforce playbook documented in the audit plan).
+          soft_fail: true
 
       # Locate whichever SARIF file the action produced (filename varies by
       # version: results.sarif, results_sarif.sarif, ...). Defensive find +
