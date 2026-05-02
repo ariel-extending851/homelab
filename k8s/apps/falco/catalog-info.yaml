@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: falco
+  description: eBPF runtime security monitoring (DaemonSet, excludes resource-constrained nodes)
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+    homelab.io/doc: docs/services/falco.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []

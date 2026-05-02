@@ -8,7 +8,10 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         args: ["--allow-multiple-documents"]
-        exclude: "(.*\\.sops\\.yaml|k8s/charts/.*/templates/.*)"
+        # mkdocs.yml uses Python-specific YAML tags (!!python/name:...) for
+        # the pymdownx.superfences Mermaid extension, which check-yaml
+        # cannot parse with the safe loader.
+        exclude: "(.*\\.sops\\.yaml|k8s/charts/.*/templates/.*|^mkdocs\\.yml$)"
       - id: check-added-large-files
         args: ["--maxkb=500"]
       - id: check-merge-conflict
@@ -70,6 +73,13 @@ repos:
         entry: python3 bin/generate_service_catalog.py --check
         language: system
         files: ^(k8s/apps/.*|docs/services/README\.md|bin/generate_service_catalog\.py)$
+        pass_filenames: false
+      - id: catalog-score
+        name: catalog-score
+        description: Validate k8s/apps/*/catalog-info.yaml against scorecard rules (R001-R009)
+        entry: python3 bin/score_catalog.py
+        language: system
+        files: ^(k8s/apps/.*|bin/score_catalog\.py)$
         pass_filenames: false
 
   # GitHub Actions workflow linting (syntax + security)

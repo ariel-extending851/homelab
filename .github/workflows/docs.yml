@@ -1,0 +1,77 @@
+# GitHub Actions Workflow: Documentation site (TechDocs equivalent)
+#
+# Builds the mkdocs-material site from `docs/` and `mkdocs.yml`. PRs run
+# the build only (catches breakage); pushes to `develop` deploy to GitHub
+# Pages (gh-pages branch) so the site at
+# https://ariel-extending851.github.io/homelab/ tracks the trunk.
+#
+# Tool note: mkdocs-material is installed via plain `pipx` (with
+# `--include-deps` so the mkdocs/ghp-import/watchdog/pygments binaries
+# are exposed). It is intentionally not pinned through mise — see the
+# matching note in `.mise.toml`.
+
+name: "Docs: Build & Deploy"
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "Build mkdocs site"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write  # gh-pages deploy needs to push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # mkdocs gh-deploy needs full history
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pipx
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/pipx
+          key: pipx-mkdocs-material-${{ hashFiles('.github/workflows/docs.yml') }}
+          restore-keys: |
+            pipx-mkdocs-material-
+
+      - name: Install mkdocs-material
+        run: |
+          python -m pip install --user --upgrade pipx
+          python -m pipx ensurepath
+          export PATH="$HOME/.local/bin:$PATH"
+          pipx install --include-deps "mkdocs-material==9.5.49"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify mkdocs available
+        run: make setup-ci-deps-docs
+
+      - name: Build site
+        run: make docs-build
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --no-history

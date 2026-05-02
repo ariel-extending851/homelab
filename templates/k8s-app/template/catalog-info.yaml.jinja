@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ app_name }}
+  description: {{ description }}
+  annotations:
+    homelab.io/runbook: {{ runbook_path }}
+    homelab.io/doc: docs/services/{{ app_name }}.md
+spec:
+  type: {{ component_type }}
+  lifecycle: {{ lifecycle }}
+  owner: "{{ owner }}"
+  tier: {{ tier }}
+  {% set deps = depends_on.split(',') | map('trim') | reject('equalto', '') | list %}
+  {% if deps %}
+  dependsOn:
+  {% for d in deps %}
+    - component:{{ d }}
+  {% endfor %}
+  {% else %}
+  dependsOn: []
+  {% endif %}
+  providesApis: []

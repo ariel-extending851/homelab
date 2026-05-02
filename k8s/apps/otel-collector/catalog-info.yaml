@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: otel-collector
+  description: OpenTelemetry collector forwarding logs to Loki and metrics to Prometheus
+  annotations:
+    homelab.io/runbook: docs/runbooks/observability-availability.md
+    homelab.io/doc: docs/services/monitoring-stack.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn:
+    - component:loki
+    - component:prometheus
+  providesApis: []
