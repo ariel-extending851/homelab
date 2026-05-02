@@ -53,10 +53,17 @@ jobs:
       - name: Install Checkov
         run: pip install --quiet "checkov==3.2.382"
 
-      # Phase 1 rollout: --soft-fail. Findings still appear in the GitHub
-      # Security tab via the SARIF upload below. Flip to a hard gate after
-      # the initial baseline is triaged (mirrors the Kyverno Audit ->
-      # Enforce playbook documented in the audit plan).
+      # Phase 1 rollout: --soft-fail keeps the workflow green even if a
+      # net-new finding slips in. The hard gate is enforced by GitHub
+      # Code Scanning's "Code scanning results / Checkov" check, which
+      # fails on any error-severity alert in the uploaded SARIF.
+      #
+      # The `--baseline .checkov.baseline` flag filters out findings
+      # that were already present at baseline-generation time, so only
+      # NEW findings introduced by a PR reach Code Scanning. Regenerate
+      # the baseline (via `make checkov-baseline`) when fixing a
+      # baselined finding — see docs in the file header for the
+      # gate-flip playbook.
       - name: Run Checkov
         id: checkov
         run: |
@@ -74,6 +81,7 @@ jobs:
             --skip-path .venv \
             --skip-path venv \
             --skip-path node_modules \
+            --baseline .checkov.baseline \
             --quiet \
             --soft-fail
 

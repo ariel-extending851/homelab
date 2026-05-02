@@ -626,6 +626,65 @@ jobs:
       - name: Run Kubernetes Dry-Run Validation
         run: make validate-k8s-dry-run
 
+  k3d-convergence:
+    # Pre-merge gate: spin up an ephemeral k3d cluster, install ArgoCD,
+    # apply the homelab app-of-apps, and assert every Application converges
+    # to Synced+Healthy. Closes the gap that `validate-k8s-dry-run` (kind,
+    # schema-only) leaves: schema-valid manifests can still fail to converge
+    # because of sync waves, CRD ordering, or broken refs.
+    name: "Kubernetes: GitOps Convergence (k3d)"
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Mise Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mise
+            ~/.cache/mise
+          key: mise-k3d-convergence-${{ hashFiles('.mise.toml') }}
+          restore-keys: mise-k3d-convergence-
+
+      - name: Setup k3d + Kubernetes dependencies via Makefile
+        run: |
+          make setup-ci-deps-kubernetes
+          make setup-ci-deps-python
+          make setup-ci-deps-k3d
+
+      - name: Run k3d GitOps Convergence Test
+        env:
+          IGNORE_MISSING_SECRET_APPS: "1"
+          # Override the SSH repoURL in the shipped root manifest with the
+          # public HTTPS clone so ArgoCD in k3d can fetch without creds.
+          # If the repo is private, replace with a fork/mirror URL.
+          K3D_REPO_URL_OVERRIDE: "https://github.com/${{ github.repository }}.git"
+          # Pin to the actual PR head — tests THIS branch's GitOps tree,
+          # not develop's. github.event.pull_request.head.sha is set on PR
+          # events; falls through to github.sha for push/dispatch.
+          K3D_TARGET_REVISION_OVERRIDE: "${{ github.event.pull_request.head.sha || github.sha }}"
+        run: make test-k3d-convergence
+
+      # The diagnostic dump now happens INSIDE the test (in a
+      # try/finally) so kubectl still has a cluster to query. By the
+      # time this step runs, the k3d cluster has already been torn down
+      # by the pytest fixture's finally:. We just need to upload what
+      # the test wrote to /tmp/k3d-failure-state/.
+      - name: Upload Failure Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k3d-convergence-state-${{ github.run_id }}
+          path: /tmp/k3d-failure-state/
+          if-no-files-found: ignore
+          retention-days: 14
+
   terraform-plan:
     name: "Terraform: Plan (OIDC)"
     runs-on: ubuntu-latest

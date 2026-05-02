@@ -24,6 +24,7 @@ import shutil
 import socket
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
@@ -114,6 +115,111 @@ def parse_sts_identity(stdout):
     except json.JSONDecodeError:
         return "", ""
     return data.get("Account", ""), data.get("Arn", "")
+
+
+def parse_quota_response(stdout):
+    """Return the integer Quota.Value from `aws service-quotas get-service-quota`.
+
+    Returns 0 on blank/malformed input — caller treats 0 as "couldn't read".
+    """
+    if not (stdout or "").strip():
+        return 0
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return 0
+    value = data.get("Quota", {}).get("Value")
+    if value is None:
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def parse_tailscale_key_expiry(stdout):
+    """Return seconds-until-expiry of the local Tailscale key.
+
+    -1 sentinel for "no key" or "never expires" — caller skips the check.
+    """
+    if not (stdout or "").strip():
+        return -1
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return -1
+    expiry = (data.get("Self") or {}).get("KeyExpiry")
+    if not expiry or str(expiry).startswith("0001-"):
+        return -1
+    try:
+        ts = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return -1
+    return int((ts - datetime.now(timezone.utc)).total_seconds())
+
+
+_CNI_NAME_PATTERNS = ("flannel", "cilium", "calico", "canal", "weave")
+
+
+def parse_cni_daemonset_status(stdout):
+    """Inspect `kubectl -n kube-system get daemonsets -o json`.
+
+    Returns:
+      None   — no CNI DaemonSet matched (caller skips the check)
+      []     — all matched DSes have desired==ready (caller passes)
+      [{...}] — list of diverged DSes (caller fails)
+    """
+    if not (stdout or "").strip():
+        return None
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    matched_any = False
+    diverged = []
+    for item in data.get("items", []) or []:
+        name = (item.get("metadata") or {}).get("name", "")
+        if not any(p in name.lower() for p in _CNI_NAME_PATTERNS):
+            continue
+        matched_any = True
+        status = item.get("status") or {}
+        desired = int(status.get("desiredNumberScheduled", 0) or 0)
+        ready = int(status.get("numberReady", 0) or 0)
+        if ready != desired:
+            diverged.append({"name": name, "desired": desired, "ready": ready})
+    if not matched_any:
+        return None
+    return diverged
+
+
+def parse_velero_backup_freshness(stdout):
+    """Return age (in seconds) of newest Completed Velero backup.
+
+    None if no Completed backups exist — caller surfaces a 'no backups' warn.
+    """
+    if not (stdout or "").strip():
+        return None
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    newest_ts = None
+    for item in data.get("items", []) or []:
+        status = item.get("status") or {}
+        if status.get("phase") != "Completed":
+            continue
+        ts_str = status.get("completionTimestamp")
+        if not ts_str:
+            continue
+        try:
+            ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            continue
+        if newest_ts is None or ts > newest_ts:
+            newest_ts = ts
+    if newest_ts is None:
+        return None
+    return (datetime.now(timezone.utc) - newest_ts).total_seconds()
 
 
 # ── orchestrator ─────────────────────────────────────────────────────────────
@@ -310,6 +416,172 @@ class Preflight:
             return
         self.pass_("kube.config", f"{path} reachable")
 
+    def check_aws_quota(self):
+        """Verify EC2 RunInstances quota has headroom for the planned deploy.
+
+        Standard On-Demand quota code: L-1216C47A. Compare against the
+        configured `--planned-instances` (CLI flag, default 4 for the
+        homelab footprint of server + agents).
+
+        - quota >= 4× planned → pass (4× headroom is the comfort margin)
+        - planned <= quota < 4× planned → warn (proceed but flag risk)
+        - quota < planned → fail (deploy will hit RunInstances throttle)
+        """
+        if self.args.skip_aws:
+            self.skip("aws.quota", "--skip-aws")
+            return
+        if not shutil.which("aws"):
+            self.fail("aws.quota", "aws CLI missing")
+            return
+        try:
+            result = self.run(
+                [
+                    "aws",
+                    "service-quotas",
+                    "get-service-quota",
+                    "--service-code",
+                    "ec2",
+                    "--quota-code",
+                    "L-1216C47A",
+                    "--output",
+                    "json",
+                ]
+            )
+        except subprocess.TimeoutExpired:
+            self.warn("aws.quota", "timed out")
+            return
+        if result.returncode != 0:
+            self.warn(
+                "aws.quota",
+                (result.stderr or "get-service-quota failed").strip().splitlines()[0],
+            )
+            return
+        quota = parse_quota_response(result.stdout)
+        planned = int(getattr(self.args, "planned_instances", 4) or 4)
+        if quota == 0:
+            self.warn("aws.quota", "couldn't read RunInstances quota")
+            return
+        if quota < planned:
+            self.fail(
+                "aws.quota",
+                f"RunInstances quota {quota} < planned {planned} — deploy will throttle",
+            )
+            return
+        if quota < planned * 4:
+            self.warn(
+                "aws.quota",
+                f"RunInstances quota {quota} (planned {planned}, want >= {planned * 4})",
+            )
+            return
+        self.pass_("aws.quota", f"RunInstances quota {quota} (planned {planned})")
+
+    def check_tailscale_key_expiry(self):
+        """Warn if the local Tailscale node-key expires within 24h."""
+        if not shutil.which("tailscale"):
+            self.skip("tailscale.key_expiry", "tailscale CLI missing")
+            return
+        try:
+            result = self.run(["tailscale", "status", "--json"])
+        except subprocess.TimeoutExpired:
+            self.warn("tailscale.key_expiry", "timed out")
+            return
+        if result.returncode != 0:
+            self.warn("tailscale.key_expiry", "status query failed")
+            return
+        secs = parse_tailscale_key_expiry(result.stdout)
+        if secs < 0:
+            self.skip("tailscale.key_expiry", "no expiring key on this node")
+            return
+        hours = secs // 3600
+        if secs <= 0:
+            self.fail("tailscale.key_expiry", "key already expired")
+            return
+        if hours < 24:
+            self.warn(
+                "tailscale.key_expiry",
+                f"expires in {hours}h — re-auth before deploy",
+            )
+            return
+        self.pass_("tailscale.key_expiry", f"expires in {hours // 24}d {hours % 24}h")
+
+    def check_cni_ready(self):
+        """Guard against the CNI race: refuse deploy if flannel/cilium pods aren't all Ready.
+
+        Pods with `hostNetwork: false` flap if applied before the CNI
+        DaemonSet has converged. This check enforces `desiredNumberScheduled
+        == numberReady` on every recognised CNI DS in `kube-system`.
+        """
+        if not shutil.which("kubectl"):
+            self.skip("cluster.cni_ready", "kubectl missing")
+            return
+        try:
+            result = self.run(
+                [
+                    "kubectl",
+                    "-n",
+                    "kube-system",
+                    "get",
+                    "daemonsets",
+                    "-o",
+                    "json",
+                ]
+            )
+        except subprocess.TimeoutExpired:
+            self.warn("cluster.cni_ready", "timed out")
+            return
+        if result.returncode != 0:
+            self.warn(
+                "cluster.cni_ready",
+                (result.stderr or "list failed").strip().splitlines()[0],
+            )
+            return
+        diverged = parse_cni_daemonset_status(result.stdout)
+        if diverged is None:
+            self.skip("cluster.cni_ready", "no recognised CNI DaemonSet")
+            return
+        if diverged:
+            details = ", ".join(
+                f"{d['name']} {d['ready']}/{d['desired']}" for d in diverged
+            )
+            self.fail("cluster.cni_ready", f"CNI not converged: {details}")
+            return
+        self.pass_("cluster.cni_ready", "all CNI DaemonSets fully scheduled")
+
+    def check_velero_backup_fresh(self):
+        """Warn if the newest Completed Velero backup is > 24h old.
+
+        Going to deploy with a stale backup means the recovery window is
+        wider than the SLA — surface it before the change, not after.
+        """
+        if not shutil.which("kubectl"):
+            self.skip("velero.backup_fresh", "kubectl missing")
+            return
+        try:
+            result = self.run(
+                ["kubectl", "-n", "velero", "get", "backups", "-o", "json"]
+            )
+        except subprocess.TimeoutExpired:
+            self.warn("velero.backup_fresh", "timed out")
+            return
+        if result.returncode != 0:
+            self.warn(
+                "velero.backup_fresh",
+                (result.stderr or "list failed").strip().splitlines()[0],
+            )
+            return
+        age = parse_velero_backup_freshness(result.stdout)
+        if age is None:
+            self.warn("velero.backup_fresh", "no Completed Velero backups visible")
+            return
+        hours = int(age // 3600)
+        if hours > 24:
+            self.warn(
+                "velero.backup_fresh",
+                f"newest backup is {hours}h ago (> 24h SLA — likely stale)",
+            )
+            return
+        self.pass_("velero.backup_fresh", f"newest backup {hours}h ago")
+
     def check_git(self):
         if not shutil.which("git"):
             self.skip("git.state", "git missing")
@@ -337,11 +609,15 @@ class Preflight:
     def run_all(self):
         self.check_tools()
         self.check_aws_creds()
+        self.check_aws_quota()
         self.check_sops_decrypt()
         self.check_tailscale()
+        self.check_tailscale_key_expiry()
         self.check_ssh()
         self.check_aws_ssm()
         self.check_kubeconfig()
+        self.check_cni_ready()
+        self.check_velero_backup_fresh()
         self.check_git()
 
     def counts(self):
@@ -386,6 +662,12 @@ def build_arg_parser():
     )
     p.add_argument("--kubeconfig", default=None, help="path to kubeconfig")
     p.add_argument("--timeout", type=int, default=30, help="per-command timeout (s)")
+    p.add_argument(
+        "--planned-instances",
+        type=int,
+        default=4,
+        help="EC2 instance count for the upcoming deploy (used by AWS quota check; default: 4)",
+    )
     return p
 
 

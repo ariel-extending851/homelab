@@ -121,6 +121,7 @@ def _args(**overrides):
         output="text",
         kubeconfig=None,
         timeout=5,
+        planned_instances=4,
     )
     defaults.update(overrides)
     return type("A", (), defaults)()
@@ -330,3 +331,383 @@ def test_main_all_skipped_exits_on_tool_checks(
     )
     code = preflight.main(["--skip-aws", "--skip-ssh", "-o", "json"])
     assert code in (0, 2)  # kube/git may warn; no fail expected
+
+
+# ── #7 AWS quota headroom (RunInstances) ───────────────────────────────────
+
+
+def test_parse_quota_response_returns_value():
+    """Standard get-service-quota JSON shape: Quota.Value is an integer/float."""
+    payload = json.dumps({"Quota": {"Value": 256.0, "QuotaCode": "L-1216C47A"}})
+    assert preflight.parse_quota_response(payload) == 256
+
+
+def test_parse_quota_response_blank_returns_zero():
+    assert preflight.parse_quota_response("") == 0
+    assert preflight.parse_quota_response("not-json") == 0
+
+
+def test_parse_quota_response_missing_value_returns_zero():
+    assert preflight.parse_quota_response(json.dumps({"Quota": {}})) == 0
+
+
+def test_check_aws_quota_skipped_when_skip_aws():
+    pf = preflight.Preflight(_args(skip_aws=True))
+    pf.check_aws_quota()
+    assert pf.checks[-1]["status"] == "skip"
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_aws_quota_pass_with_headroom(mock_which, mock_run):
+    """quota >= 4× planned should pass (default planned=4 → need 16)."""
+    mock_which.return_value = "/usr/bin/aws"
+    mock_run.return_value = _proc(0, json.dumps({"Quota": {"Value": 256}}))
+    pf = preflight.Preflight(_args(skip_aws=False))
+    pf.check_aws_quota()
+    last = pf.checks[-1]
+    assert last["status"] == "pass"
+    assert "256" in last["message"]
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_aws_quota_warn_below_4x_planned(mock_which, mock_run):
+    """quota present but < 4× planned → warn (not fail; user may proceed)."""
+    mock_which.return_value = "/usr/bin/aws"
+    mock_run.return_value = _proc(0, json.dumps({"Quota": {"Value": 8}}))
+    pf = preflight.Preflight(_args(skip_aws=False, planned_instances=4))
+    pf.check_aws_quota()
+    assert pf.checks[-1]["status"] == "warn"
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_aws_quota_fail_below_planned(mock_which, mock_run):
+    """quota < planned instance count → fail (deploy will throttle/fail)."""
+    mock_which.return_value = "/usr/bin/aws"
+    mock_run.return_value = _proc(0, json.dumps({"Quota": {"Value": 2}}))
+    pf = preflight.Preflight(_args(skip_aws=False, planned_instances=4))
+    pf.check_aws_quota()
+    assert pf.checks[-1]["status"] == "fail"
+
+
+# ── #8 Tailscale key expiry ────────────────────────────────────────────────
+
+
+def test_parse_tailscale_key_expiry_seconds_remaining():
+    """Self.KeyExpiry is RFC3339; helper returns seconds-until-expiry."""
+    from datetime import datetime, timedelta, timezone
+
+    soon = (
+        (datetime.now(timezone.utc) + timedelta(hours=2))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    payload = json.dumps({"Self": {"KeyExpiry": soon}})
+    secs = preflight.parse_tailscale_key_expiry(payload)
+    # Allow a small window for clock skew during test execution.
+    assert 7100 <= secs <= 7300  # ~2h
+
+
+def test_parse_tailscale_key_expiry_no_key_returns_negative():
+    """Missing or never-expires key → return -1 sentinel (no warn fired)."""
+    assert preflight.parse_tailscale_key_expiry("") == -1
+    assert preflight.parse_tailscale_key_expiry("{}") == -1
+    assert preflight.parse_tailscale_key_expiry(json.dumps({"Self": {}})) == -1
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_tailscale_key_expiry_warn_under_24h(mock_which, mock_run):
+    from datetime import datetime, timedelta, timezone
+
+    expiry = (
+        (datetime.now(timezone.utc) + timedelta(hours=12))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    mock_which.return_value = "/usr/bin/tailscale"
+    mock_run.return_value = _proc(
+        0, json.dumps({"BackendState": "Running", "Self": {"KeyExpiry": expiry}})
+    )
+    pf = preflight.Preflight(_args())
+    pf.check_tailscale_key_expiry()
+    last = pf.checks[-1]
+    assert last["status"] == "warn"
+    assert "expires" in last["message"].lower() or "h" in last["message"]
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_tailscale_key_expiry_pass_more_than_24h(mock_which, mock_run):
+    from datetime import datetime, timedelta, timezone
+
+    expiry = (
+        (datetime.now(timezone.utc) + timedelta(days=30))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    mock_which.return_value = "/usr/bin/tailscale"
+    mock_run.return_value = _proc(
+        0, json.dumps({"BackendState": "Running", "Self": {"KeyExpiry": expiry}})
+    )
+    pf = preflight.Preflight(_args())
+    pf.check_tailscale_key_expiry()
+    assert pf.checks[-1]["status"] == "pass"
+
+
+# ── #10 CNI race guard ─────────────────────────────────────────────────────
+
+
+def test_parse_cni_daemonset_status_all_ready():
+    """flannel/cilium/calico DaemonSets in kube-system all converged."""
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "kube-flannel-ds", "namespace": "kube-system"},
+                    "status": {"desiredNumberScheduled": 4, "numberReady": 4},
+                }
+            ]
+        }
+    )
+    diverged = preflight.parse_cni_daemonset_status(payload)
+    assert diverged == []  # no divergence
+
+
+def test_parse_cni_daemonset_status_diverged():
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "cilium", "namespace": "kube-system"},
+                    "status": {"desiredNumberScheduled": 4, "numberReady": 2},
+                },
+                {
+                    "metadata": {"name": "calico-node", "namespace": "kube-system"},
+                    "status": {"desiredNumberScheduled": 4, "numberReady": 4},
+                },
+            ]
+        }
+    )
+    diverged = preflight.parse_cni_daemonset_status(payload)
+    assert len(diverged) == 1
+    assert diverged[0]["name"] == "cilium"
+    assert diverged[0]["ready"] == 2
+    assert diverged[0]["desired"] == 4
+
+
+def test_parse_cni_daemonset_status_no_cni_found_returns_none_marker():
+    """No flannel/cilium/calico DS at all → caller should skip, not fail.
+
+    Helper signals "no CNI matched" via a None return distinct from [].
+    """
+    payload = json.dumps({"items": []})
+    assert preflight.parse_cni_daemonset_status(payload) is None
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_cni_ready_pass_when_converged(mock_which, mock_run):
+    mock_which.return_value = "/usr/bin/kubectl"
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "cilium", "namespace": "kube-system"},
+                    "status": {"desiredNumberScheduled": 4, "numberReady": 4},
+                }
+            ]
+        }
+    )
+    mock_run.return_value = _proc(0, payload)
+    pf = preflight.Preflight(_args())
+    pf.check_cni_ready()
+    assert pf.checks[-1]["status"] == "pass"
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_cni_ready_fail_when_diverged(mock_which, mock_run):
+    mock_which.return_value = "/usr/bin/kubectl"
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "kube-flannel-ds", "namespace": "kube-system"},
+                    "status": {"desiredNumberScheduled": 4, "numberReady": 1},
+                }
+            ]
+        }
+    )
+    mock_run.return_value = _proc(0, payload)
+    pf = preflight.Preflight(_args())
+    pf.check_cni_ready()
+    last = pf.checks[-1]
+    assert last["status"] == "fail"
+    assert "1/4" in last["message"]
+
+
+# ── #12 Velero last-backup freshness ───────────────────────────────────────
+
+
+def test_parse_velero_backup_freshness_no_backups_returns_none():
+    """No Velero backups at all → None (caller surfaces 'no backups' warn)."""
+    assert preflight.parse_velero_backup_freshness(json.dumps({"items": []})) is None
+
+
+def test_parse_velero_backup_freshness_returns_age_in_seconds():
+    from datetime import datetime, timedelta, timezone
+
+    twelve_hours_ago = (
+        (datetime.now(timezone.utc) - timedelta(hours=12))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "old-backup"},
+                    "status": {
+                        "phase": "Completed",
+                        "completionTimestamp": (
+                            datetime.now(timezone.utc) - timedelta(days=5)
+                        )
+                        .isoformat()
+                        .replace("+00:00", "Z"),
+                    },
+                },
+                {
+                    "metadata": {"name": "fresh-backup"},
+                    "status": {
+                        "phase": "Completed",
+                        "completionTimestamp": twelve_hours_ago,
+                    },
+                },
+            ]
+        }
+    )
+    age = preflight.parse_velero_backup_freshness(payload)
+    # Returns the *newest* completed backup age in seconds.
+    assert 11.5 * 3600 <= age <= 12.5 * 3600
+
+
+def test_parse_velero_backup_freshness_skips_failed_backups():
+    """Only Completed backups count — InProgress/Failed don't reset the SLA."""
+    payload = json.dumps(
+        {
+            "items": [
+                {
+                    "metadata": {"name": "failed-recent"},
+                    "status": {
+                        "phase": "Failed",
+                        "completionTimestamp": "2099-01-01T00:00:00Z",
+                    },
+                }
+            ]
+        }
+    )
+    assert preflight.parse_velero_backup_freshness(payload) is None
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_velero_backup_fresh_pass_within_24h(mock_which, mock_run):
+    from datetime import datetime, timedelta, timezone
+
+    fresh = (
+        (datetime.now(timezone.utc) - timedelta(hours=2))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    mock_which.return_value = "/usr/bin/kubectl"
+    mock_run.return_value = _proc(
+        0,
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "metadata": {"name": "b1"},
+                        "status": {
+                            "phase": "Completed",
+                            "completionTimestamp": fresh,
+                        },
+                    }
+                ]
+            }
+        ),
+    )
+    pf = preflight.Preflight(_args())
+    pf.check_velero_backup_fresh()
+    assert pf.checks[-1]["status"] == "pass"
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_velero_backup_fresh_warn_over_24h(mock_which, mock_run):
+    from datetime import datetime, timedelta, timezone
+
+    stale = (
+        (datetime.now(timezone.utc) - timedelta(days=2))
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    mock_which.return_value = "/usr/bin/kubectl"
+    mock_run.return_value = _proc(
+        0,
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "metadata": {"name": "b1"},
+                        "status": {
+                            "phase": "Completed",
+                            "completionTimestamp": stale,
+                        },
+                    }
+                ]
+            }
+        ),
+    )
+    pf = preflight.Preflight(_args())
+    pf.check_velero_backup_fresh()
+    last = pf.checks[-1]
+    assert last["status"] == "warn"
+    assert "stale" in last["message"].lower() or "h ago" in last["message"]
+
+
+@patch("preflight.subprocess.run")
+@patch("preflight.shutil.which")
+def test_check_velero_backup_fresh_warn_no_backups(mock_which, mock_run):
+    mock_which.return_value = "/usr/bin/kubectl"
+    mock_run.return_value = _proc(0, json.dumps({"items": []}))
+    pf = preflight.Preflight(_args())
+    pf.check_velero_backup_fresh()
+    assert pf.checks[-1]["status"] == "warn"
+
+
+# ── run_all wires everything ───────────────────────────────────────────────
+
+
+def test_run_all_includes_new_checks(monkeypatch, tmp_path):
+    """All four new checks must be registered in run_all() — regression guard.
+
+    We make every external command/file fail or skip gracefully; we just
+    want the check *names* to appear. This is the canary that protects
+    against someone forgetting to wire a new check into run_all().
+    """
+    monkeypatch.setattr(preflight, "SOPS_CANARY", tmp_path / "nope.yaml")
+    monkeypatch.setattr(preflight, "ANSIBLE_INVENTORY", tmp_path / "nope.yml")
+
+    pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
+    # Stub external probes so check_tailscale_key_expiry / cni / velero
+    # don't blow up — they should record skip/warn and continue.
+    with patch("preflight.shutil.which", return_value=None):
+        pf.run_all()
+    names = {c["name"] for c in pf.checks}
+    assert "aws.quota" in names
+    assert "tailscale.key_expiry" in names
+    assert "cluster.cni_ready" in names
+    assert "velero.backup_fresh" in names

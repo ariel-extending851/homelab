@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: storage-latency
+  description: Periodic fio-based RPi4 SD/USB latency probe; alerts on p99 > 50ms
+  annotations:
+    homelab.io/runbook: docs/runbooks/storage-latency-degraded.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn:
+    - component:prometheus
+    - component:loki
+  providesApis: []

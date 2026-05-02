@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-latency-config
+  namespace: storage-latency
+data:
+  # fio job spec — short, deterministic, designed to expose SD/USB
+  # degradation (random small writes are the failure mode that surfaces
+  # first when flash media is wearing out).
+  storage-latency.fio: |
+    [global]
+    ioengine=libaio
+    direct=1
+    runtime=15
+    time_based=1
+    group_reporting=1
+    filename=/data/fio-test-file
+    size=64M
+    # Pre-fill the file so reads aren't fall-through-to-zeros.
+    filename_format=fio-test-file
+    fallocate=native
+    rw=randrw
+    rwmixread=70
+    bs=4k
+    iodepth=4
+    # Percentile keys we read in parse_fio_output.py
+    percentile_list=50,90,95,99,99.9
+
+    [homelab-storage-latency]
+    name=homelab-storage-latency
+
+  # The parser is shipped as a ConfigMap entry rather than a custom image
+  # so the source-of-truth stays in bin/parse_fio_output.py — keeps the
+  # repo single-rooted. CronJob mounts it read-only at /opt/parser/.
+  #
+  # WARNING: must be kept in sync with bin/parse_fio_output.py. A future
+  # improvement is to render this from the source via Kustomize generator
+  # (see make render-templates if/when added), but for now copy-by-hand
+  # is acceptable — the file is small and rarely changes.
+  parse_fio_output.py: |
+    """Parser for fio JSON output — see bin/parse_fio_output.py for source."""
+    from __future__ import annotations
+    import argparse, json, sys
+    from datetime import datetime, timezone
+
+    def parse_fio_json(raw):
+        if not (raw or "").strip():
+            return {}
+        try:
+            doc = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+        jobs = doc.get("jobs") or []
+        if not jobs:
+            return {}
+        job = jobs[0]
+        out = {}
+        for direction in ("write", "read"):
+            section = job.get(direction) or {}
+            if not section:
+                continue
+            clat = section.get("clat_ns") or {}
+            pct = clat.get("percentile") or {}
+            p99_ns = pct.get("99.000000") or pct.get("99.0") or pct.get("99")
+            if p99_ns is not None:
+                out["p99_" + direction + "_ms"] = round(float(p99_ns) / 1_000_000, 3)
+            if "iops" in section:
+                out[direction + "_iops"] = float(section["iops"])
+            if "bw" in section:
+                out[direction + "_bw_kbs"] = int(section["bw"])
+        return out
+
+    def breaches_threshold(metrics, threshold_ms):
+        for key in ("p99_write_ms", "p99_read_ms"):
+            val = metrics.get(key)
+            if val is not None and val > threshold_ms:
+                return True
+        return False
+
+    def render_log_line(metrics, host, threshold_ms):
+        payload = {
+            "event": "storage_latency",
+            "host": host,
+            "threshold_ms": threshold_ms,
+            "breach": breaches_threshold(metrics, threshold_ms),
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        payload.update(metrics)
+        return json.dumps(payload, sort_keys=True)
+
+    def main(argv=None):
+        p = argparse.ArgumentParser()
+        p.add_argument("--input", default="-")
+        p.add_argument("--threshold-ms", type=float, default=50.0)
+        p.add_argument("--host", default="unknown")
+        a = p.parse_args(argv)
+        if a.input == "-":
+            raw = sys.stdin.read()
+        else:
+            try:
+                with open(a.input, "r", encoding="utf-8") as fh:
+                    raw = fh.read()
+            except OSError as exc:
+                print("failed to read " + a.input + ": " + str(exc), file=sys.stderr)
+                return 2
+        metrics = parse_fio_json(raw)
+        if not metrics:
+            print("no parseable fio metrics in input (" + str(len(raw)) + " bytes)", file=sys.stderr)
+            return 2
+        print(render_log_line(metrics, host=a.host, threshold_ms=a.threshold_ms))
+        return 1 if breaches_threshold(metrics, a.threshold_ms) else 0
+
+    if __name__ == "__main__":
+        sys.exit(main())

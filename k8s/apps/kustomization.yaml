@@ -22,3 +22,4 @@ resources:
 - ./falco
 - ./hl-kyverno
 - ./unifi
+- ./storage-latency

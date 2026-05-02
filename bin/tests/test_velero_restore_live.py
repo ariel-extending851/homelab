@@ -22,74 +22,12 @@ import uuid
 
 import pytest
 
+from bin.tests._k8s_helpers import _apply, _kubectl, _wait_for_phase
+
 pytestmark = pytest.mark.live
 
 BACKUP_TIMEOUT = int(os.environ.get("BACKUP_TIMEOUT", "300"))
 RESTORE_TIMEOUT = int(os.environ.get("RESTORE_TIMEOUT", "300"))
-
-
-# ── helpers ────────────────────────────────────────────────────────────────
-
-
-def _kubectl(*args, check=True, **kwargs):
-    return subprocess.run(["kubectl", *args], check=check, text=True, **kwargs)
-
-
-def _wait_for_phase(kind, name, timeout):
-    """Poll a Velero CR's .status.phase until Completed or terminal failure.
-
-    Returns the final phase. Raises AssertionError if the phase becomes
-    Failed/PartiallyFailed or polling times out.
-    """
-    deadline = time.monotonic() + timeout
-    last_phase = ""
-    while time.monotonic() < deadline:
-        result = subprocess.run(
-            [
-                "kubectl",
-                "-n",
-                "velero",
-                "get",
-                f"{kind}.velero.io",
-                name,
-                "-o",
-                "jsonpath={.status.phase}",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        last_phase = result.stdout.strip() if result.returncode == 0 else ""
-        if last_phase == "Completed":
-            return last_phase
-        if last_phase in ("Failed", "PartiallyFailed"):
-            details = subprocess.run(
-                [
-                    "kubectl",
-                    "-n",
-                    "velero",
-                    "get",
-                    f"{kind}.velero.io",
-                    name,
-                    "-o",
-                    "yaml",
-                ],
-                capture_output=True,
-                text=True,
-            ).stdout
-            raise AssertionError(
-                f"{kind} {name} terminated in phase={last_phase}\n{details}"
-            )
-        time.sleep(5)
-    raise AssertionError(
-        f"{kind} {name} timed out after {timeout}s (last phase={last_phase or 'pending'})"
-    )
-
-
-def _apply(manifest):
-    """Apply a YAML manifest provided as a string via stdin."""
-    subprocess.run(
-        ["kubectl", "apply", "-f", "-"], input=manifest, text=True, check=True
-    )
 
 
 # ── fixtures ───────────────────────────────────────────────────────────────

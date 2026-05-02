@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: storage-latency
+  namespace: storage-latency
+  labels:
+    app.kubernetes.io/name: storage-latency
+    app.kubernetes.io/component: observability
+spec:
+  # Every 6h. Fast enough to catch progressive SD-card wear within ~1
+  # day; slow enough that the cumulative wear from the test itself is
+  # negligible (10s × 4/day = 40s/day of write workload).
+  schedule: "17 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 600
+
+  jobTemplate:
+    spec:
+      backoffLimit: 0  # don't retry — a breach is the signal
+      ttlSecondsAfterFinished: 86400  # 24h artifact retention
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: storage-latency
+        spec:
+          restartPolicy: Never
+          # Pinning to rasp-pi-04: the only RPi4 currently in the
+          # cluster (per ansible/inventory/production.yml). If more
+          # RPi4s are added, switch to a `tier: rpi4` node label or
+          # similar discovery.
+          nodeSelector:
+            kubernetes.io/hostname: rasp-pi-04
+
+          # hostPath measures the actual SD/USB media — this is the
+          # whole point. Restricted to a dedicated dir; not a full host
+          # mount.
+          volumes:
+            - name: fio-data
+              hostPath:
+                path: /var/lib/storage-latency
+                type: DirectoryOrCreate
+            - name: fio-config
+              configMap:
+                name: storage-latency-config
+                defaultMode: 0o444
+
+          containers:
+            - name: fio-runner
+              image: debian:bookworm-slim
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+                - name: THRESHOLD_MS
+                  value: "50"
+              command: ["/bin/bash", "-euo", "pipefail", "-c"]
+              args:
+                - |
+                  apt-get update -qq
+                  apt-get install -y --no-install-recommends fio python3-minimal >/dev/null
+                  fio /etc/fio/storage-latency.fio \
+                      --output-format=json \
+                      --output=/tmp/fio.json
+                  python3 /etc/parser/parse_fio_output.py \
+                      --input /tmp/fio.json \
+                      --threshold-ms "${THRESHOLD_MS}" \
+                      --host "${NODE_NAME}"
+              securityContext:
+                # fio needs CAP_SYS_RESOURCE for direct=1 (O_DIRECT).
+                # We accept the elevated privilege for this monitoring
+                # workload — runs in an isolated namespace and only on
+                # the dedicated RPi4 hostPath.
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop: ["ALL"]
+                  add: ["SYS_RESOURCE"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: fio-data
+                  mountPath: /data
+                - name: fio-config
+                  mountPath: /etc/fio
+                  subPath: storage-latency.fio
+                  readOnly: true
+                - name: fio-config
+                  mountPath: /etc/parser/parse_fio_output.py
+                  subPath: parse_fio_output.py
+                  readOnly: true

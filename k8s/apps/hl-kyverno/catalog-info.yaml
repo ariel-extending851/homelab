@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hl-kyverno
+  description: Homelab-scoped Kyverno admission policies (resource caps, image pinning, RPi3 protections)
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []
