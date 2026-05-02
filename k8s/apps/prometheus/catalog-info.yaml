@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prometheus
+  description: Time-series metrics database scraping cluster + host exporters
+  annotations:
+    homelab.io/runbook: docs/runbooks/observability-availability.md
+    homelab.io/doc: docs/services/monitoring-stack.md
+spec:
+  type: datastore
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi4-or-ec2
+  dependsOn:
+    - component:kube-state-metrics
+    - component:node-exporter
+    - component:blackbox
+  providesApis: []

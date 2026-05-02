@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: adguard
+  description: DNS server with ad-blocking + filtering for the home LAN
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+    homelab.io/doc: docs/services/adguard.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: rpi3-only
+  dependsOn: []
+  providesApis: []

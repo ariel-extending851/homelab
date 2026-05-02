@@ -6,24 +6,46 @@
 
 Index of every application deployed to the k3s cluster. Each row links to the canonical service doc; manifests are in [`k8s/apps/`](../../k8s/apps/) and synced via ArgoCD.
 
-The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_service_catalog.py`. Run `make generate-catalog` after adding or removing an app; a pre-commit hook fails the build if the file drifts.
+The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_service_catalog.py`. The Owner and Tier columns come from each app's `catalog-info.yaml` (see `make catalog-score` for validation rules). Run `make generate-catalog` after adding or removing an app; a pre-commit hook fails the build if the file drifts.
 
 <!-- catalog:start -->
-| App | Doc | Namespace | Ingress |
-|---|---|---|---|
-| AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> |
-| blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — |
-| Cilium | [cilium.md](cilium.md) | `—` | — |
-| Falco | [falco.md](falco.md) | `falco` | — |
-| GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> |
-| Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> |
-| kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — |
-| Loki | [loki.md](loki.md) | `loki` | <https://loki.tail57bf10.ts.net> |
-| node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `node-exporter` | — |
-| otel-collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | — |
-| prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> |
-| Velero — Cluster Backup & Disaster Recovery | [velero.md](velero.md) | `velero` | — |
+| App | Doc | Namespace | Ingress | Owner | Tier |
+|---|---|---|---|---|---|
+| AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> | @ariel-extending851 | `rpi3-only` |
+| blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — | @ariel-extending851 | `any` |
+| Cilium | [cilium.md](cilium.md) | `—` | — | @ariel-extending851 | `any` |
+| Falco | [falco.md](falco.md) | `falco` | — | @ariel-extending851 | `any` |
+| GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> | @ariel-extending851 | `any` |
+| Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
+| kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — | @ariel-extending851 | `any` |
+| Loki | [loki.md](loki.md) | `loki` | <https://loki.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
+| node-exporter | [monitoring-stack.md](monitoring-stack.md#node-exporter) | `node-exporter` | — | @ariel-extending851 | `any` |
+| otel-collector | [monitoring-stack.md](monitoring-stack.md#otel-collector) | `otel-collector` | — | @ariel-extending851 | `any` |
+| prometheus | [monitoring-stack.md](monitoring-stack.md#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
+| Velero — Cluster Backup & Disaster Recovery | [velero.md](velero.md) | `velero` | — | @ariel-extending851 | `rpi4-or-ec2` |
 <!-- catalog:end -->
+
+## Dependency graph
+
+Generated from `spec.dependsOn` in each `catalog-info.yaml`. GitHub renders Mermaid natively in Markdown.
+
+<!-- graph:start -->
+```mermaid
+graph LR
+  grafana --> prometheus
+  grafana --> loki
+  otel-collector --> loki
+  otel-collector --> prometheus
+  prometheus --> kube-state-metrics
+  prometheus --> node-exporter
+  prometheus --> blackbox
+  adguard
+  cilium
+  falco
+  golink
+  velero
+```
+<!-- graph:end -->
 
 System-only components not deployed under `k8s/apps/` (e.g. Tailscale Operator) are documented separately:
 
