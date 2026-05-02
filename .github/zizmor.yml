@@ -22,6 +22,7 @@ rules:
       - link-checker.yml
       - dr-drill.yml
       - drift-detection.yml
+      - rollback.yml
   artipacked:
     ignore:
       - ci-validation.yml
@@ -31,3 +32,4 @@ rules:
       - link-checker.yml
       - dr-drill.yml
       - drift-detection.yml
+      - rollback.yml
