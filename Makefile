@@ -28,7 +28,8 @@
 		homelab install-cli catalog-score docs-serve docs-build setup-ci-deps-docs \
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
 		terraform-staging-destroy terraform-prod-select \
-		cilium-flip-status cilium-flip-node cilium-flip-rollback
+		cilium-flip-status cilium-flip-node cilium-flip-rollback \
+		unifi-up unifi-down unifi-status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -427,6 +428,39 @@ validate-argocd-synced: ## Wait for ArgoCD root app to reach Synced + Healthy (u
 	  exit 1; \
 	}
 	@echo "✅ ArgoCD root app is Synced + Healthy"
+
+##@ UniFi On-Demand Controller
+
+unifi-up: ## Scale UniFi (mongo + controller) to 1 replica and print web URL
+	@echo "🚀 Scaling unifi-db to 1..."
+	@kubectl -n unifi scale deploy/unifi-db --replicas=1
+	@kubectl -n unifi rollout status deploy/unifi-db --timeout=120s
+	@echo "🚀 Scaling unifi-network-application to 1..."
+	@kubectl -n unifi scale deploy/unifi-network-application --replicas=1
+	@kubectl -n unifi rollout status deploy/unifi-network-application --timeout=180s
+	@NODE_IP=$$(kubectl -n unifi get pod -l app=unifi-network-application -o jsonpath='{.items[0].status.hostIP}'); \
+	echo ""; \
+	echo "✅ Controller is up. Wait ~60-90s for the JVM to finish booting, then visit:"; \
+	echo "   https://$$NODE_IP:8443"; \
+	echo ""; \
+	echo "ℹ️  The cert is self-signed — accept the browser warning once."; \
+	echo "ℹ️  When done, run: make unifi-down"
+
+unifi-down: ## Scale UniFi (controller + mongo) to 0; switch keeps its config
+	@echo "🛑 Scaling unifi-network-application to 0..."
+	@kubectl -n unifi scale deploy/unifi-network-application --replicas=0
+	@kubectl -n unifi rollout status deploy/unifi-network-application --timeout=60s
+	@echo "🛑 Scaling unifi-db to 0..."
+	@kubectl -n unifi scale deploy/unifi-db --replicas=0
+	@kubectl -n unifi rollout status deploy/unifi-db --timeout=60s
+	@echo "✅ UniFi controller stopped. Adopted devices keep their configuration."
+
+unifi-status: ## Show UniFi deployments, pods, PVCs, and recent controller logs
+	@kubectl -n unifi get deploy,pod,pvc 2>/dev/null || true
+	@echo ""
+	@echo "--- recent controller logs (if any) ---"
+	@kubectl -n unifi logs deploy/unifi-network-application --tail=50 2>/dev/null || \
+	  echo "(controller is scaled to 0 — no logs)"
 
 ##@ Cilium Migration (Phase B — per-node Flannel→Cilium cutover)
 
