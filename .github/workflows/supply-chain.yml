@@ -107,7 +107,7 @@ jobs:
           echo "Resolved: ${digest_ref}"
 
       - name: Generate SPDX SBOM (syft via sbom-action)
-        uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0  # v0.17.7
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb  # v0.17.7
         with:
           image: ${{ steps.digest.outputs.ref }}
           format: spdx-json
