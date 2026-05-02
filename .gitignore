@@ -72,7 +72,9 @@ temp_*.yaml
 # ArgoCD manifest cache (download via: make argocd-manifest-fetch)
 ansible/roles/argocd/files/argocd-*-install.yaml
 coverage.json
-.claude/
+.claude/settings.local.json
+.claude/worktrees/
+.claude/analise-projeto-devops.md
 
 # Deploy resume state (runtime, per-machine — see bin/deploy_aws_homelab.py)
 .deploy-state.json
