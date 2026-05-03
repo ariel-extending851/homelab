@@ -97,6 +97,13 @@ spec:
             - name: cloud-credentials
               mountPath: /credentials
               readOnly: true
+            # Velero's plugin loader extracts each plugin to /tmp/plugin* and
+            # execs them. With readOnlyRootFilesystem: true above, the loader
+            # fails ("open /tmp/plugin...: read-only file system") and the
+            # pod CrashLoops. emptyDir gives it a writable scratch area
+            # without relaxing the security context.
+            - name: tmp
+              mountPath: /tmp
 
       volumes:
         - name: scratch
@@ -104,3 +111,5 @@ spec:
         - name: cloud-credentials
           secret:
             secretName: velero-aws-credentials
+        - name: tmp
+          emptyDir: {}

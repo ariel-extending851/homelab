@@ -218,6 +218,22 @@ Was masked on 2026-05-03 because the operator bypassed the patch step (Gotcha #3
 
 **Permanent fix (applied):** migrated the two alerts (`StorageLatencyDegraded`, `StorageLatencyMonitorStalled`) to plain Prometheus rules under the `storage-latency.rules` group inside `k8s/apps/prometheus/configmap.yaml` (same pattern the rest of the homelab alerts use). Deleted `k8s/apps/storage-latency/prometheusrule.yaml` and removed it from `k8s/apps/storage-latency/kustomization.yaml`. No prometheus-operator dependency, alerts preserved.
 
+### 10. Velero CrashLoop — `readOnlyRootFilesystem: true` without `/tmp` emptyDir
+
+After PR #28+#29+#30+#31, `apps-root` reaches `Synced/Degraded/Succeeded` cleanly, but the smoke test surfaces multiple app-config drift issues in `k8s/apps/`. The most consequential is **Velero**:
+
+```text
+plugin init error: open /tmp/plugin112169602: read-only file system
+```
+
+`k8s/apps/velero/deployment.yaml` sets `readOnlyRootFilesystem: true` on the Velero container but only mounts `/scratch` and `/credentials` as writable volumes. Velero's plugin loader writes scratch files to `/tmp/plugin*` — with no emptyDir there, the plugin handshake fails and the pod CrashLoops.
+
+**Partial fix (PR #32):** added a `tmp` emptyDir volume mounted at `/tmp` on the Velero container, alongside the existing `scratch` and `cloud-credentials` mounts. `readOnlyRootFilesystem: true` stays — only `/tmp` becomes writable for plugin extraction. Same emptyDir-with-readonly-root pattern that ArgoCD repo-server already uses.
+
+**Still broken after PR #32 (sub-gotcha #10b):** the Velero v1.14.1 binary also requires CRDs `velero.io/v2alpha1.DataDownload` and `DataUpload`, but `k8s/apps/velero/crds.yaml` only contains the v1 CRDs. Both the deployment and the `node-agent` DaemonSet fail at startup with `custom resource DataUpload not found`. Permanent fix needs either: (a) refresh `crds.yaml` from upstream Velero v1.14 release manifests, or (b) pin to an older Velero version that doesn't require the v2alpha1 group. Tracked separately.
+
+**Other smoke-test failures observed but not analyzed deeply** (likely additional config-drift gotchas in `k8s/apps/`): `monitoring` namespace not created, 8 deployments at 0/0 replicas (adguard, blackbox, grafana, kube-state-metrics, loki, node-exporter, otel-collector, prometheus), `unifi` PVCs Pending. These would each need a separate look — out of scope for the prod-deploy plan.
+
 ### 9. Cilium takeover bricks the cluster on first deploy
 
 After PR #28+#29+#30 unblocked apps-root sync, the `homelab-apps-root` Application reached `Synced/Degraded/Succeeded` and started cascading children. **Cilium** (`k8s/apps/cilium/`) was the first to install — it tried to take over CNI from the existing flannel that k3s installed at bootstrap time. Result: networking broke mid-flight, both `kubectl` over Tailscale **and** SSM agent commands stopped responding (server EC2 still `running`, but ssm-agent stuck in `Pending`). The 2026-05-03 19:43 UTC canary cluster ended up unrecoverable from the devcontainer.
@@ -237,6 +253,9 @@ These are TODO commits, separate PRs:
 - [x] SOPS sidecar patch — drop redundant volume overrides (Gotcha #7, PR #29)
 - [x] apps-root CRD ordering — alerts migrated to plain Prometheus rules, no operator needed (Gotcha #8, PR #30)
 - [x] Cilium takeover during apps-root sync bricks the cluster — Cilium app removed from apps-root in PR #31; re-enable via Ansible pre-cluster install when ready (Gotcha #9)
+- [x] Velero `/tmp` emptyDir for plugin loader — added in PR #32 (Gotcha #10a)
+- [ ] Velero v2alpha1 CRDs (`DataDownload`/`DataUpload`) missing from `crds.yaml` — refresh from upstream or pin older Velero version (Gotcha #10b)
+- [ ] Several apps not converging on first-deploy: monitoring namespace, adguard/blackbox/grafana/loki/prometheus deployments at 0/0 replicas, unifi PVCs Pending — needs per-app investigation (gotchas #11+)
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)
