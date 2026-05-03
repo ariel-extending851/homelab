@@ -11,6 +11,13 @@ provider "tailscale" {
 }
 
 # Apply the ACL policy
-resource "tailscale_acl" "homelab_acl" {
-  acl = file("${path.module}/acl.json")
-}
+#
+# Disabled 2026-05-03: live tailnet ACL is richer than acl.json (declares
+# tag:server for EC2, tagged-devices for RPi, plus user-managed rules for
+# phones/TVs). Importing + applying acl.json would overwrite all those
+# rules and break connectivity for every device. ACL stays managed in the
+# Tailscale admin panel until a follow-up PR syncs acl.json with live state.
+#
+# resource "tailscale_acl" "homelab_acl" {
+#   acl = file("${path.module}/acl.json")
+# }
