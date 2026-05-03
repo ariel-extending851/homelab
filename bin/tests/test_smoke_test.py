@@ -156,7 +156,7 @@ def test_smoke_detects_crashloop_pods(capsys):
 
 
 def test_smoke_detects_missing_namespace(capsys):
-    overrides = {"get namespace monitoring": _proc(1, "", "NotFound")}
+    overrides = {"get namespace prometheus": _proc(1, "", "NotFound")}
     with patch("smoke_test.subprocess.run", side_effect=_build_kubectl_fake(overrides)):
         rc = smoke_test.SmokeTest(kubeconfig="/dev/null").run()
     assert rc == 1
@@ -181,7 +181,7 @@ def test_smoke_exits_2_when_only_a_couple_apps_fail(capsys):
     # Two specific apps fail; all other checks pass. Should exit 2.
     def side_effect(cmd, *args, **kwargs):
         key = " ".join(cmd[1:])
-        if "get deployment grafana -n monitoring" in key and "readyReplicas" in key:
+        if "get deployment grafana -n grafana" in key and "readyReplicas" in key:
             return _proc(0, "0")
             return _proc(0, "0")
         return _build_kubectl_fake()(cmd, *args, **kwargs)
@@ -494,7 +494,7 @@ def test_check_pod_health_detects_crashloopbackoff(capsys):
     overrides = {
         "get pods -A --no-headers": _proc(
             0,
-            "monitoring  loki-0  0/1  CrashLoopBackOff  12  1h\n",
+            "loki  loki-0  0/1  CrashLoopBackOff  12  1h\n",
         )
     }
     with patch("smoke_test.subprocess.run", side_effect=_build_kubectl_fake(overrides)):

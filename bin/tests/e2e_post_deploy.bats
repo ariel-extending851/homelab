@@ -75,14 +75,14 @@ setup() {
 # shellcheck disable=SC2034
 declare -a APPS=(
   "adguard:adguard"
-  "blackbox:monitoring"
+  "blackbox:blackbox"
   "golink:golink"
-  "grafana:monitoring"
-  "kube-state-metrics:monitoring"
-  "loki:monitoring"
-  "node-exporter:monitoring"
+  "grafana:grafana"
+  "kube-state-metrics:kube-state-metrics"
+  "loki:loki"
+  "node-exporter:node-exporter"
   "otel-collector:otel-collector"
-  "prometheus:monitoring"
+  "prometheus:prometheus"
 )
 
 @test "E2E: adguard deployment is Ready" {
@@ -91,22 +91,22 @@ declare -a APPS=(
 }
 
 @test "E2E: blackbox deployment is Ready" {
-  READY=$(kubectl get deploy blackbox -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+  READY=$(kubectl get deploy blackbox -n blackbox -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
 @test "E2E: grafana deployment is Ready" {
-  READY=$(kubectl get deploy grafana -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+  READY=$(kubectl get deploy grafana -n grafana -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
 @test "E2E: prometheus deployment is Ready" {
-  READY=$(kubectl get deploy prometheus -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+  READY=$(kubectl get deploy prometheus -n prometheus -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
 @test "E2E: loki deployment is Ready" {
-  READY=$(kubectl get deploy loki -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+  READY=$(kubectl get deploy loki -n loki -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
 }
 
@@ -156,14 +156,14 @@ declare -a APPS=(
 @test "E2E: Prometheus has metrics available" {
   skip "Requires port-forward setup — manual verification recommended"
   # In live deployment, run:
-  # kubectl port-forward -n monitoring svc/prometheus 9090:9090 &
+  # kubectl port-forward -n prometheus svc/prometheus 9090:9090 &
   # curl -s 'http://localhost:9090/api/v1/query?query=up' | jq '.data.result | length > 0'
 }
 
 @test "E2E: Loki has logs available" {
   skip "Requires port-forward setup — manual verification recommended"
   # In live deployment, run:
-  # kubectl port-forward -n monitoring svc/loki 3100:3100 &
+  # kubectl port-forward -n loki svc/loki 3100:3100 &
   # curl -s 'http://localhost:3100/loki/api/v1/query_range?query={job="kubelet"}' | jq '.data.result | length > 0'
 }
 
@@ -186,8 +186,16 @@ declare -a APPS=(
   kubectl get namespace "$ARGOCD_NS" >/dev/null 2>&1
 }
 
-@test "E2E: monitoring namespace exists" {
-  kubectl get namespace monitoring >/dev/null 2>&1
+@test "E2E: prometheus namespace exists" {
+  kubectl get namespace prometheus >/dev/null 2>&1
+}
+
+@test "E2E: grafana namespace exists" {
+  kubectl get namespace grafana >/dev/null 2>&1
+}
+
+@test "E2E: loki namespace exists" {
+  kubectl get namespace loki >/dev/null 2>&1
 }
 
 @test "E2E: adguard namespace exists" {
@@ -222,8 +230,8 @@ declare -a APPS=(
   # svc:namespace:port — only apps with HTTP APIs; exclude DNS-only (adguard),
   # headless (loki push-only endpoints), exporters (not user-facing).
   SERVICES=(
-    "grafana:monitoring:3000"
-    "prometheus:monitoring:9090"
+    "grafana:grafana:3000"
+    "prometheus:prometheus:9090"
   )
 
   script=""
