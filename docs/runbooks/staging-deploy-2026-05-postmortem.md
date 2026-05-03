@@ -232,7 +232,11 @@ plugin init error: open /tmp/plugin112169602: read-only file system
 
 **Still broken after PR #32 (sub-gotcha #10b):** the Velero v1.14.1 binary also requires CRDs `velero.io/v2alpha1.DataDownload` and `DataUpload`, but `k8s/apps/velero/crds.yaml` only contains the v1 CRDs. Both the deployment and the `node-agent` DaemonSet fail at startup with `custom resource DataUpload not found`. Permanent fix needs either: (a) refresh `crds.yaml` from upstream Velero v1.14 release manifests, or (b) pin to an older Velero version that doesn't require the v2alpha1 group. Tracked separately.
 
-**Other smoke-test failures observed but not analyzed deeply** (likely additional config-drift gotchas in `k8s/apps/`): `monitoring` namespace not created, 8 deployments at 0/0 replicas (adguard, blackbox, grafana, kube-state-metrics, loki, node-exporter, otel-collector, prometheus), `unifi` PVCs Pending. These would each need a separate look — out of scope for the prod-deploy plan.
+### 12. Unifi PVCs stay `Pending` (by design, not a smoke-test failure) (fixed in PR #36)
+
+`k8s/apps/unifi/deployment-{mongo,unifi}.yaml` declare `replicas: 0` because UniFi is on-demand (operator scales it up only when adopting/provisioning a switch). The `local-path` storage class uses `WaitForFirstConsumer`, so the two PVCs (`unifi-mongo-pvc`, `unifi-config-pvc`) stay `Pending` until a pod actually mounts them. Smoke test was flagging this as a failure. Fix: smoke test now whitelists `unifi` as an on-demand namespace and reports its Pending PVCs as expected (not failures).
+
+(Gotcha #11 about smoke-test namespace mismatch is tracked in PR #35.)
 
 ### 9. Cilium takeover bricks the cluster on first deploy
 
@@ -255,7 +259,7 @@ These are TODO commits, separate PRs:
 - [x] Cilium takeover during apps-root sync bricks the cluster — Cilium app removed from apps-root in PR #31; re-enable via Ansible pre-cluster install when ready (Gotcha #9)
 - [x] Velero `/tmp` emptyDir for plugin loader — added in PR #32 (Gotcha #10a)
 - [ ] Velero v2alpha1 CRDs (`DataDownload`/`DataUpload`) missing from `crds.yaml` — refresh from upstream or pin older Velero version (Gotcha #10b)
-- [ ] Several apps not converging on first-deploy: monitoring namespace, adguard/blackbox/grafana/loki/prometheus deployments at 0/0 replicas, unifi PVCs Pending — needs per-app investigation (gotchas #11+)
+- [x] Smoke-test fails on unifi on-demand PVCs (Gotcha #12, PR #36) — `replicas: 0` + `WaitForFirstConsumer` → expected Pending
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)
