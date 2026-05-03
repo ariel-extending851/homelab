@@ -14,19 +14,24 @@ import subprocess
 import sys
 from typing import NamedTuple
 
+# Each (deployment, namespace) pair below tracks where the manifest actually
+# lives in `k8s/apps/<app>/namespace.yaml`. Earlier versions assumed a shared
+# `monitoring` namespace, but the homelab manifests put each observability
+# component in its own namespace (see gotcha #11 in
+# docs/runbooks/staging-deploy-2026-05-postmortem.md).
 APPS = [
     ("adguard", "adguard"),
-    ("blackbox", "monitoring"),
+    ("blackbox", "blackbox"),
     ("golink", "golink"),
-    ("grafana", "monitoring"),
-    ("kube-state-metrics", "monitoring"),
-    ("loki", "monitoring"),
-    ("node-exporter", "monitoring"),
+    ("grafana", "grafana"),
+    ("kube-state-metrics", "kube-state-metrics"),
+    ("loki", "loki"),
+    ("node-exporter", "node-exporter"),
     ("otel-collector", "otel-collector"),
-    ("prometheus", "monitoring"),
+    ("prometheus", "prometheus"),
 ]
 
-REQUIRED_NAMESPACES = ["argocd", "monitoring", "adguard"]
+REQUIRED_NAMESPACES = ["argocd", "prometheus", "grafana", "loki", "adguard"]
 POD_FAILURE_STATES = {
     "CrashLoopBackOff",
     "OOMKilled",
@@ -333,11 +338,9 @@ class SmokeTest:
     def check_observability(self):
         print("▶ Observability stack (Prometheus + Loki)")
         prom_ready = self._deployment_int(
-            "prometheus", "monitoring", "{.status.readyReplicas}"
+            "prometheus", "prometheus", "{.status.readyReplicas}"
         )
-        loki_ready = self._deployment_int(
-            "loki", "monitoring", "{.status.readyReplicas}"
-        )
+        loki_ready = self._deployment_int("loki", "loki", "{.status.readyReplicas}")
 
         if prom_ready >= 1:
             self.pass_(f"Prometheus: {prom_ready} replica(s) ready")
