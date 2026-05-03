@@ -15,12 +15,13 @@
 # tracked as the remaining Phase 5 work in the QA gap-closure plan.
 
 # Smaller instances to reduce idle cost while staging is up.
-# Heads-up: the spot fleet's price-capacity-optimized strategy may substitute
-# t3.micro even when t3.small is requested here. ArgoCD on t3.micro briefly
-# hits load 8 during initial reconcile but recovers. See gotcha #3 in
-# docs/runbooks/staging-deploy-2026-05-postmortem.md.
+# Note: the fleet override list in modules/compute/main.tf floors at 2 GiB
+# (t3.small / t3a.small / t3.medium). The launch template uses these vars,
+# but spot fleet substitution is bounded by the overrides — so even if you
+# set agent_instance_type = "t3.micro" here, the running instance will be
+# t3.small or larger. Keep these aligned to avoid confusion at plan time.
 server_instance_type = "t3.small"
-agent_instance_type  = "t3.micro"
+agent_instance_type  = "t3.small"
 ebs_volume_size      = 30
 
 # Aggressive shutdown window: 22:00 → 07:00 BRT (vs prod 21:00 → 10:00).

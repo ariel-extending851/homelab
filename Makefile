@@ -1082,6 +1082,11 @@ test-dr-execution: ## Run disaster recovery role as real execution in Molecule t
 	@make test-molecule-emergency-recovery
 	@echo "  ✓ Disaster recovery execution test passed."
 
+test-python-collect: setup-ci-deps-python ## Verify every Python test module imports cleanly (~5s; PR-fast guard)
+	@echo "🧪 Verifying Python test collection (no execution)..."
+	@python3 -m pytest bin/tests/ infra/aws/modules/scheduler/lambda_src/tests/ --collect-only -q
+	@echo "  ✓ All test modules imported cleanly."
+
 test-python: setup-ci-deps-python ## Run Python unit tests for inventory script and Lambda scheduler with coverage (requires pytest-cov)
 	@echo "🧪 Running Python unit tests with coverage..."
 	@python3 -m pytest bin/tests/ infra/aws/modules/scheduler/lambda_src/tests/ -v \

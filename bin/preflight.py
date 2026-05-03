@@ -32,6 +32,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOPS_CANARY = REPO_ROOT / "infra" / "aws" / "terraform.tfvars.sops.yaml"
 ANSIBLE_INVENTORY = REPO_ROOT / "ansible" / "inventory" / "production.yml"
+GIT_DEPLOY_KEY_PATH = Path.home() / ".ssh" / "homelab-deploy-key"
 REQUIRED_TOOLS = (
     "terraform",
     "ansible",
@@ -192,6 +193,37 @@ def parse_cni_daemonset_status(stdout):
     return diverged
 
 
+SOPS_SENSITIVE_FIELDS = (
+    "ssh_public_key",
+    "k3s_token",
+    "tailscale_auth_key",
+    "tailscale_api_key",
+)
+
+
+def parse_sops_double_encrypt(decrypted_yaml):
+    """Return list of fields whose decrypted value still starts with ENC[.
+
+    Postmortem 2026-05-03 (gotcha #1): re-encrypting an already-encrypted
+    SOPS file yields ENC[ENC[...]] strings that decrypt to literal "ENC[..."
+    payloads, which then ship into EC2 user-data and break tailscale/k3s
+    bootstrap silently. Fixed in commit 0e55bb5.
+    """
+    if not (decrypted_yaml or "").strip():
+        return []
+    try:
+        data = yaml.safe_load(decrypted_yaml) or {}
+    except yaml.YAMLError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    return [
+        field
+        for field in SOPS_SENSITIVE_FIELDS
+        if isinstance(data.get(field), str) and data[field].startswith("ENC[")
+    ]
+
+
 def parse_velero_backup_freshness(stdout):
     """Return age (in seconds) of newest Completed Velero backup.
 
@@ -304,6 +336,15 @@ class Preflight:
             self.fail(
                 "sops.decrypt",
                 "age key cannot decrypt canary — deploy will silently fall back to mock secrets",
+            )
+            return
+        double_encrypted = parse_sops_double_encrypt(result.stdout)
+        if double_encrypted:
+            fields = ", ".join(double_encrypted)
+            self.fail(
+                "sops.decrypt",
+                f"double-encrypted (ENC[ENC[…]]) fields detected: {fields} "
+                "— see commit 0e55bb5 / postmortem gotcha #1",
             )
             return
         self.pass_("sops.decrypt", "age key decrypts canary")
@@ -582,6 +623,26 @@ class Preflight:
             return
         self.pass_("velero.backup_fresh", f"newest backup {hours}h ago")
 
+    def check_git_deploy_key(self):
+        """Verify the GitHub deploy key Ansible reads in configure_repo.yml.
+
+        Postmortem 2026-05-03 (gotcha #5): if this file is missing, the
+        Ansible task that creates `homelab-repo-secret` was previously
+        skipped silently, leaving apps-root unable to clone via SSH.
+        """
+        if not GIT_DEPLOY_KEY_PATH.exists():
+            self.fail(
+                "git.deploy_key",
+                f"missing {GIT_DEPLOY_KEY_PATH} — required for ArgoCD SSH repo "
+                "creds; ssh-keygen -t ed25519 -f {path} and add public key as "
+                "GitHub deploy key".format(path=GIT_DEPLOY_KEY_PATH),
+            )
+            return
+        if GIT_DEPLOY_KEY_PATH.stat().st_size == 0:
+            self.fail("git.deploy_key", f"empty file: {GIT_DEPLOY_KEY_PATH}")
+            return
+        self.pass_("git.deploy_key", f"{GIT_DEPLOY_KEY_PATH} present")
+
     def check_git(self):
         if not shutil.which("git"):
             self.skip("git.state", "git missing")
@@ -618,6 +679,7 @@ class Preflight:
         self.check_kubeconfig()
         self.check_cni_ready()
         self.check_velero_backup_fresh()
+        self.check_git_deploy_key()
         self.check_git()
 
     def counts(self):

@@ -66,7 +66,7 @@ aws ec2 describe-instances --instance-ids <id> --query 'Reservations[].Instances
 
 - Bypass works because devcontainer reaches the k3s API directly over Tailscale; no SSM session involved.
 
-**Permanent fix (TODO):** add an `instance_requirements` block to the fleet config to floor on memory (e.g. ≥ 2 GiB), or pin to non-spot for staging.
+**Permanent fix (applied):** dropped `t3.micro`/`t3a.micro` from the fleet `override` list in `infra/aws/modules/compute/main.tf` so the spot fleet can only substitute among `t3.small`/`t3a.small`/`t3.medium` (all ≥ 2 GiB). Chose this over `instance_requirements` to keep the AMI's x86_64 constraint enforced (an `instance_requirements` block could otherwise substitute Graviton `t4g.*` and silently break user-data).
 
 ### 4. `spot_options.instance_pools_to_use_count` drift forces fleet replacement
 
@@ -87,26 +87,51 @@ lifecycle {
 }
 ```
 
-### 5. ArgoCD `apps-root` won't sync without the SSH cred secret
+### 5. ArgoCD `apps-root` won't sync without the SSH repo secret
 
-`k8s/gitops/apps-root.yaml` uses `repoURL: git@github.com:...` (SSH URL). The cluster needs the SSH deploy key in a Kubernetes secret named `argocd-repo-server-ssh` in the `argocd` namespace, plus that secret has to be mounted into the `argocd-repo-server` Deployment.
+`k8s/gitops/apps-root.yaml` uses `repoURL: git@github.com:...` (SSH URL). ArgoCD picks up repository credentials from a Secret labelled `argocd.argoproj.io/secret-type: repository`. In this repo that secret is **`homelab-repo-secret`**, created by `ansible/roles/argocd/tasks/configure_repo.yml`.
+
+> **Note:** earlier versions of this runbook called the missing secret `argocd-repo-server-ssh`. That is **not** the right name — `argocd-repo-server-ssh` is just an `emptyDir` volume mounted at `/app/config/ssh` for known-hosts material (see `k8s/gitops/sops/argocd-repo-server-patch.yaml:81,166`). Creating a generic Secret with that name does **not** register a credential with ArgoCD.
+
+**Real root cause on 2026-05-03:** `configure_repo.yml` reads `~/.ssh/homelab-deploy-key` from the control machine. When that file was absent on a fresh devcontainer, the create-secret task was silently skipped (no error), and `bootstrap_apps.yml` then applied `apps-root.yaml` with no repository credentials wired up.
 
 **Symptom after a fresh deploy:** `kubectl -n argocd get application` shows `Sync = Unknown`, with status condition `error creating SSH agent: "SSH agent requested but SSH_AUTH_SOCK not-specified"`.
 
-**Setup steps:**
+**Setup steps (one-time per operator):**
 
-1. Generate (or reuse) a GitHub deploy key for the `homelab` repo with read-only access.
-2. Create the Kubernetes secret:
-
+1. Generate the deploy key and register the public key as a read-only deploy key on the GitHub repo:
    ```bash
-   kubectl -n argocd create secret generic argocd-repo-server-ssh \
-     --from-file=sshPrivateKey=/path/to/deploy_key \
-     --type=Opaque
+   ssh-keygen -t ed25519 -f ~/.ssh/homelab-deploy-key -C "argocd@homelab" -N ""
+   cat ~/.ssh/homelab-deploy-key.pub   # paste at https://github.com/<owner>/homelab/settings/keys/new
+   ssh -T -i ~/.ssh/homelab-deploy-key git@github.com   # confirm authenticated
    ```
+2. Re-run `make ansible-deploy`. `configure_repo.yml` will create `homelab-repo-secret` automatically.
 
-3. Patch `argocd-repo-server` Deployment to mount it (template at `k8s/gitops/sops/argocd-repo-server-patch.yaml:81/166`).
+**Manual recovery (only if `apps-root` is already wedged):**
 
-**Permanent fix (TODO):** turn this into an Ansible role task or a SOPS-encrypted secret committed to the repo and applied during `bootstrap_apps`.
+```bash
+KEY=~/.ssh/homelab-deploy-key
+KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml kubectl -n argocd apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: homelab-repo-secret
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  type: git
+  url: git@github.com:ariel-extending851/homelab.git
+  sshPrivateKey: |
+$(sed 's/^/    /' "$KEY")
+EOF
+```
+
+**Permanent fixes (PR pending — see Fase 0.1 of `prod-deploy` plan):**
+
+- `configure_repo.yml`: replace silent skip with an explicit `fail` when the key file is missing (so the operator can't proceed without noticing).
+- `bin/preflight.py`: add `git.deploy_key` check that fails before deploy starts if `~/.ssh/homelab-deploy-key` is absent.
 
 ### 6. Versioned S3 buckets break `terraform destroy`
 
@@ -180,9 +205,9 @@ If you see `BucketNotEmpty`, see Gotcha #6.
 
 These are TODO commits, separate PRs:
 
-- [ ] `argocd-repo-server-ssh` secret bootstrap (Gotcha #5)
+- [ ] `homelab-repo-secret` bootstrap hardening — fail loud + preflight check (Gotcha #5)
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)
 - [ ] `session-manager-plugin` in devcontainer setup (Gotcha #2)
-- [ ] `instance_requirements` floor on fleet memory (Gotcha #3)
+- [x] Fleet memory floor — dropped `t3.micro` from overrides (Gotcha #3)

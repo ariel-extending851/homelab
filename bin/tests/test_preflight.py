@@ -691,6 +691,82 @@ def test_check_velero_backup_fresh_warn_no_backups(mock_which, mock_run):
 # ── run_all wires everything ───────────────────────────────────────────────
 
 
+def test_parse_sops_double_encrypt_clean_returns_empty_list():
+    decrypted = """
+ssh_public_key: ssh-ed25519 AAAA...
+k3s_token: K10abcdef::server::secret
+tailscale_auth_key: tskey-abc123
+tailscale_api_key: tskey-api-def456
+"""
+    assert preflight.parse_sops_double_encrypt(decrypted) == []
+
+
+def test_parse_sops_double_encrypt_detects_enc_prefix():
+    decrypted = """
+ssh_public_key: ENC[AES256_GCM,data:abc==,type:str]
+k3s_token: K10normaltoken
+tailscale_auth_key: ENC[AES256_GCM,data:xyz==,type:str]
+tailscale_api_key: tskey-good
+"""
+    bad = preflight.parse_sops_double_encrypt(decrypted)
+    assert set(bad) == {"ssh_public_key", "tailscale_auth_key"}
+
+
+def test_parse_sops_double_encrypt_handles_empty_and_invalid_yaml():
+    assert preflight.parse_sops_double_encrypt("") == []
+    assert preflight.parse_sops_double_encrypt("not: yaml: ::") == []
+
+
+def test_parse_sops_double_encrypt_ignores_missing_fields():
+    """Fields not present in the file shouldn't trigger false positives."""
+    decrypted = "ssh_public_key: ssh-ed25519 AAAA...\n"
+    assert preflight.parse_sops_double_encrypt(decrypted) == []
+
+
+def test_check_sops_decrypt_fails_on_double_encrypt(monkeypatch, tmp_path):
+    canary = tmp_path / "tf.sops.yaml"
+    canary.write_text("dummy: encrypted")
+    monkeypatch.setattr(preflight, "SOPS_CANARY", canary)
+    pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
+    fake_decrypt = MagicMock()
+    fake_decrypt.returncode = 0
+    fake_decrypt.stdout = "ssh_public_key: ENC[AES256_GCM,data:foo==]\n"
+    with patch("preflight.shutil.which", return_value="/usr/bin/sops"), patch.object(
+        pf, "run", return_value=fake_decrypt
+    ):
+        pf.check_sops_decrypt()
+    assert pf.checks[-1]["status"] == "fail"
+    assert "double-encrypted" in pf.checks[-1]["message"]
+    assert "ssh_public_key" in pf.checks[-1]["message"]
+
+
+def test_check_git_deploy_key_pass(monkeypatch, tmp_path):
+    key = tmp_path / "homelab-deploy-key"
+    key.write_text("dummy private key")
+    monkeypatch.setattr(preflight, "GIT_DEPLOY_KEY_PATH", key)
+    pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
+    pf.check_git_deploy_key()
+    assert pf.checks[-1]["status"] == "pass"
+
+
+def test_check_git_deploy_key_fail_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(preflight, "GIT_DEPLOY_KEY_PATH", tmp_path / "nope-key")
+    pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
+    pf.check_git_deploy_key()
+    assert pf.checks[-1]["status"] == "fail"
+    assert "ssh-keygen" in pf.checks[-1]["message"]
+
+
+def test_check_git_deploy_key_fail_empty(monkeypatch, tmp_path):
+    key = tmp_path / "empty-key"
+    key.write_text("")
+    monkeypatch.setattr(preflight, "GIT_DEPLOY_KEY_PATH", key)
+    pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
+    pf.check_git_deploy_key()
+    assert pf.checks[-1]["status"] == "fail"
+    assert "empty" in pf.checks[-1]["message"]
+
+
 def test_run_all_includes_new_checks(monkeypatch, tmp_path):
     """All four new checks must be registered in run_all() — regression guard.
 
@@ -700,6 +776,7 @@ def test_run_all_includes_new_checks(monkeypatch, tmp_path):
     """
     monkeypatch.setattr(preflight, "SOPS_CANARY", tmp_path / "nope.yaml")
     monkeypatch.setattr(preflight, "ANSIBLE_INVENTORY", tmp_path / "nope.yml")
+    monkeypatch.setattr(preflight, "GIT_DEPLOY_KEY_PATH", tmp_path / "nope-key")
 
     pf = preflight.Preflight(_args(skip_aws=True, skip_ssh=True))
     # Stub external probes so check_tailscale_key_expiry / cni / velero
@@ -711,3 +788,4 @@ def test_run_all_includes_new_checks(monkeypatch, tmp_path):
     assert "tailscale.key_expiry" in names
     assert "cluster.cni_ready" in names
     assert "velero.backup_fresh" in names
+    assert "git.deploy_key" in names
