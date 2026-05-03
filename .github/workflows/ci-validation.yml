@@ -261,6 +261,31 @@ jobs:
       - name: Run Shell Test Suite
         run: make test-contracts test-shell
 
+  python-tests-collect:
+    # PR-fast guard against import-level regressions in the Python test tree.
+    # The full python-tests job is nightly-only because coverage runs are slow,
+    # but a broken import in a live-only test (e.g., test_velero_restore_live.py)
+    # would silently neuter the staging-canary Velero gate in ci-deployment.yml.
+    # `pytest --collect-only` is ~5s and catches that class of regression at PR time.
+    name: "Python: Test Collection (import guard)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest + minimal test deps
+        run: |
+          python3 -m pip install --quiet pytest pytest-cov pyyaml jinja2 boto3
+
+      - name: Verify all test modules import cleanly
+        run: make test-python-collect
+
   python-tests:
     name: "Python: Unit Tests + Coverage"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -877,7 +902,7 @@ jobs:
   pipeline-gate-pr:
     name: Pipeline Gate
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name != 'schedule'
     steps:
       - name: Validate Required Job Outcomes
@@ -896,6 +921,7 @@ jobs:
             'sops-validation',
             'qa-audit-evidence',
             'offline-required-profile',
+            'python-tests-collect',
           }
 
           failed = []
@@ -916,7 +942,7 @@ jobs:
   pipeline-gate-nightly:
     name: Pipeline Gate (Nightly)
     runs-on: ubuntu-latest
-    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
+    needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name == 'schedule'
     steps:
       - name: Validate Nightly Required Outcomes

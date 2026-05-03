@@ -35,6 +35,6 @@
         "BW_SESSION": "${localEnv:BW_SESSION}",
         "NODE_OPTIONS": "--dns-result-order=ipv4first"
     },
-    "postCreateCommand": "mise trust && mise reshim && mise x -- make setup",
+    "postCreateCommand": "mise trust && mise reshim && mise x -- make setup && mise run install-ssm-plugin",
     "remoteUser": "vscode"
 }

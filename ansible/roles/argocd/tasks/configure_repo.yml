@@ -28,6 +28,31 @@
   tags:
     - validate
 
+# Postmortem 2026-05-03 (gotcha #5): if the key file is absent, the apply-secret
+# task below was previously skipped silently — apps-root would then fail to sync
+# with "SSH_AUTH_SOCK not-specified" because no homelab-repo-secret was created.
+# Fail explicitly so the operator fixes it before bootstrap_apps.yml runs.
+- name: Fail loudly if SSH deploy key required but missing
+  ansible.builtin.fail:
+    msg: |
+      git_repo_url is "{{ git_repo_url }}" (SSH) but no key found at
+      {{ git_ssh_private_key_path }} on the control machine.
+
+      Generate one and register the public key as a GitHub deploy key:
+        ssh-keygen -t ed25519 -f {{ git_ssh_private_key_path }} -C "argocd@homelab" -N ""
+        cat {{ git_ssh_private_key_path }}.pub
+        # paste at https://github.com/<owner>/<repo>/settings/keys/new
+        ssh -T -i {{ git_ssh_private_key_path }} git@github.com   # confirm OK
+
+      Without this, apps-root will be applied with no repository credentials and
+      ArgoCD will report Sync=Unknown forever.
+  when:
+    - git_repo_url is match('git@.*')
+    - not ansible_check_mode
+    - ssh_key_file is defined
+    - ssh_key_file.stat is defined
+    - not ssh_key_file.stat.exists
+
 - name: Read SSH private key
   ansible.builtin.slurp:
     src: "{{ git_ssh_private_key_path }}"
