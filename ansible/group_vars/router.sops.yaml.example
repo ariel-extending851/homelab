@@ -3,3 +3,15 @@
 # This file is intentionally plaintext example data only.
 wifi_password: "REPLACE_WITH_REAL_WIFI_PASSWORD"
 wifi_guest_password: "REPLACE_WITH_REAL_GUEST_WIFI_PASSWORD"
+
+# DHCP reservations pin Raspberry Pi MACs to stable LAN IPs.
+# Section names must use underscores (UCI rejects hyphens).
+pi_dhcp_reservations:
+  - section: rasp_pi_04
+    name: rasp-pi-04
+    pi_mac: AA:BB:CC:DD:EE:01
+    pi_ip: 192.168.8.11
+  - section: rasp_pi_03
+    name: rasp-pi-03
+    pi_mac: AA:BB:CC:DD:EE:02
+    pi_ip: 192.168.8.12

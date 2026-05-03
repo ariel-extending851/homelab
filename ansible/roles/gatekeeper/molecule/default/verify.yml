@@ -150,6 +150,23 @@
       changed_when: false
       failed_when: verify_zero_trust_target.rc != 0
 
+    - name: Verify guest-to-modem block rule exists
+      ansible.builtin.raw: |
+        uci show firewall | grep -q "name='block_guest_to_modem'"
+      register: verify_block_modem
+      changed_when: false
+      failed_when: verify_block_modem.rc != 0
+
+    - name: Verify guest-to-modem block rule target is REJECT and dest_ip matches
+      ansible.builtin.raw: |
+        rule=$(uci show firewall | grep "name='block_guest_to_modem'" | cut -d'.' -f2 | cut -d'=' -f1)
+        uci -q show firewall.$rule.target | grep -q "='REJECT'" && \
+        uci -q show firewall.$rule.dest_ip | grep -q "='{{ modem_subnet_cidr }}'" && \
+        uci -q show firewall.$rule.src_ip | grep -q "='{{ guest_network_cidr }}'"
+      register: verify_block_modem_config
+      changed_when: false
+      failed_when: verify_block_modem_config.rc != 0
+
     - name: Verify DNS hijack rule is absent when Pi is unreachable (Molecule default)
       ansible.builtin.raw: |
         if uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then
@@ -167,8 +184,68 @@
       changed_when: false
       failed_when: verify_rebind.rc != 0
 
-    - name: Verify dnsmasq upstream is fallback DNS when Pi is unreachable (Molecule default)
-      ansible.builtin.raw: uci -q show dhcp | grep -q "server='{{ wan_dns }}'"
-      register: verify_dns_server
+    - name: Verify dnsmasq upstream contains Mullvad DNS when Pi unreachable (Molecule default)
+      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "194.242.2.2"
+      register: verify_dns_server_mullvad
       changed_when: false
-      failed_when: verify_dns_server.rc != 0
+      failed_when: verify_dns_server_mullvad.rc != 0
+
+    - name: Verify dnsmasq upstream contains Quad9 DNS when Pi unreachable (Molecule default)
+      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "9.9.9.9"
+      register: verify_dns_server_quad9
+      changed_when: false
+      failed_when: verify_dns_server_quad9.rc != 0
+
+    - name: Verify dnsmasq upstream contains Cloudflare DNS when Pi unreachable (Molecule default)
+      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "1.1.1.1"
+      register: verify_dns_server_cf
+      changed_when: false
+      failed_when: verify_dns_server_cf.rc != 0
+
+    - name: Verify WAN interface has multiple DNS servers configured
+      ansible.builtin.raw: uci -q get network.wan.dns | grep -qw "194.242.2.2"
+      register: verify_wan_dns_list
+      changed_when: false
+      failed_when: verify_wan_dns_list.rc != 0
+
+    - name: Verify AdGuard failover script is installed and executable
+      ansible.builtin.raw: test -x /usr/bin/adguard-failover
+      register: verify_failover_script
+      changed_when: false
+      failed_when: verify_failover_script.rc != 0
+
+    - name: Verify failover script references the Pi IP and public DNS
+      ansible.builtin.raw: |
+        grep -q 'PI_IP="{{ pi_adguard_ip }}"' /usr/bin/adguard-failover && \
+        grep -q '194.242.2.2' /usr/bin/adguard-failover
+      register: verify_failover_script_content
+      changed_when: false
+      failed_when: verify_failover_script_content.rc != 0
+
+    - name: Verify cron entry for AdGuard failover exists
+      ansible.builtin.raw: grep -Fq "/usr/bin/adguard-failover" /etc/crontabs/root
+      register: verify_failover_cron
+      changed_when: false
+      failed_when: verify_failover_cron.rc != 0
+
+    - name: Verify cron service is enabled at boot
+      ansible.builtin.raw: ls /etc/rc.d/S*cron >/dev/null 2>&1
+      register: verify_cron_enabled
+      changed_when: false
+      failed_when: verify_cron_enabled.rc != 0
+
+    - name: Verify DHCP reservation for rasp-pi-04 exists with test fixture MAC and IP
+      ansible.builtin.raw: |
+        uci -q get dhcp.rasp_pi_04.ip | grep -qw "192.168.8.11" && \
+        uci -q get dhcp.rasp_pi_04.mac | grep -qi "00:11:22:33:44:55"
+      register: verify_dhcp_pi04
+      changed_when: false
+      failed_when: verify_dhcp_pi04.rc != 0
+
+    - name: Verify DHCP reservation for rasp-pi-03 exists with test fixture MAC and IP
+      ansible.builtin.raw: |
+        uci -q get dhcp.rasp_pi_03.ip | grep -qw "192.168.8.12" && \
+        uci -q get dhcp.rasp_pi_03.mac | grep -qi "66:77:88:99:AA:BB"
+      register: verify_dhcp_pi03
+      changed_when: false
+      failed_when: verify_dhcp_pi03.rc != 0

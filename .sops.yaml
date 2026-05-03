@@ -21,7 +21,13 @@ creation_rules:
     encrypted_regex: ^(argocd_extra_.*)$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
 
-  # Encrypt Ansible router credentials in group_vars
+  # Encrypt Ansible router secrets + DHCP reservation hardware data
+  # (rule must come before the generic group_vars rule to take precedence)
+  - path_regex: ansible/group_vars/router\.sops\.ya?ml$
+    encrypted_regex: ^(wifi_password|wifi_guest_password|pi_mac|pi_ip)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+  # Encrypt Ansible router credentials in group_vars (catch-all for other files)
   - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
     encrypted_regex: ^(wifi_password|wifi_guest_password)$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
