@@ -230,7 +230,7 @@ plugin init error: open /tmp/plugin112169602: read-only file system
 
 **Partial fix (PR #32):** added a `tmp` emptyDir volume mounted at `/tmp` on the Velero container, alongside the existing `scratch` and `cloud-credentials` mounts. `readOnlyRootFilesystem: true` stays — only `/tmp` becomes writable for plugin extraction. Same emptyDir-with-readonly-root pattern that ArgoCD repo-server already uses.
 
-**Still broken after PR #32 (sub-gotcha #10b):** the Velero v1.14.1 binary also requires CRDs `velero.io/v2alpha1.DataDownload` and `DataUpload`, but `k8s/apps/velero/crds.yaml` only contains the v1 CRDs. Both the deployment and the `node-agent` DaemonSet fail at startup with `custom resource DataUpload not found`. Permanent fix needs either: (a) refresh `crds.yaml` from upstream Velero v1.14 release manifests, or (b) pin to an older Velero version that doesn't require the v2alpha1 group. Tracked separately.
+**Sub-gotcha #10b (fixed in PR #34):** the Velero v1.14.1 binary also requires CRDs `velero.io/v2alpha1.DataDownload` and `DataUpload`, but `k8s/apps/velero/crds.yaml` only contained the v1 CRDs. Both the deployment and the `node-agent` DaemonSet fail at startup with `custom resource DataUpload not found`. Fix: appended the two upstream `v2alpha1` CRD definitions (sourced verbatim from `vmware-tanzu/velero/v1.14.1/config/crd/v2alpha1/bases/`) to `crds.yaml`, taking the file from 11 to 13 CRDs.
 
 **Other smoke-test failures observed but not analyzed deeply** (likely additional config-drift gotchas in `k8s/apps/`): `monitoring` namespace not created, 8 deployments at 0/0 replicas (adguard, blackbox, grafana, kube-state-metrics, loki, node-exporter, otel-collector, prometheus), `unifi` PVCs Pending. These would each need a separate look — out of scope for the prod-deploy plan.
 
@@ -254,7 +254,7 @@ These are TODO commits, separate PRs:
 - [x] apps-root CRD ordering — alerts migrated to plain Prometheus rules, no operator needed (Gotcha #8, PR #30)
 - [x] Cilium takeover during apps-root sync bricks the cluster — Cilium app removed from apps-root in PR #31; re-enable via Ansible pre-cluster install when ready (Gotcha #9)
 - [x] Velero `/tmp` emptyDir for plugin loader — added in PR #32 (Gotcha #10a)
-- [ ] Velero v2alpha1 CRDs (`DataDownload`/`DataUpload`) missing from `crds.yaml` — refresh from upstream or pin older Velero version (Gotcha #10b)
+- [x] Velero v2alpha1 CRDs (`DataDownload`/`DataUpload`) appended to `crds.yaml` from upstream v1.14.1 (Gotcha #10b, PR #34)
 - [ ] Several apps not converging on first-deploy: monitoring namespace, adguard/blackbox/grafana/loki/prometheus deployments at 0/0 replicas, unifi PVCs Pending — needs per-app investigation (gotchas #11+)
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
