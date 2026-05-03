@@ -40,6 +40,34 @@ setup() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GITOPS REPOSITORY CREDENTIALS
+# ──────────────────────────────────────────────────────────────────────────────
+# Postmortem 2026-05-03 (gotcha #5): apps-root previously failed to sync silently
+# when homelab-repo-secret was not created (Ansible task skipped because
+# ~/.ssh/homelab-deploy-key was absent on the control machine). These tests
+# catch that regression — both the secret's existence and the resulting
+# apps-root sync state.
+
+@test "E2E: homelab-repo-secret exists with repository label" {
+  # ArgoCD discovers Git credentials by scanning for Secrets labelled
+  # argocd.argoproj.io/secret-type=repository in its namespace.
+  kubectl -n "$ARGOCD_NS" get secret homelab-repo-secret >/dev/null
+
+  LABEL=$(kubectl -n "$ARGOCD_NS" get secret homelab-repo-secret \
+    -o jsonpath='{.metadata.labels.argocd\.argoproj\.io/secret-type}' 2>/dev/null)
+  [ "$LABEL" = "repository" ]
+}
+
+@test "E2E: apps-root sync status is not Unknown" {
+  # "Unknown" is the symptom of missing repo credentials — ArgoCD can't
+  # connect to GitHub. "Synced" or "OutOfSync" both prove connectivity works.
+  STATUS=$(kubectl -n "$ARGOCD_NS" get application homelab-apps-root \
+    -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
+  [ -n "$STATUS" ]
+  [ "$STATUS" != "Unknown" ]
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # APPLICATION HEALTH
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -72,9 +100,6 @@ declare -a APPS=(
   [ "${READY}" -ge 1 ]
 }
 
-  [ "${READY}" -ge 1 ]
-}
-
 @test "E2E: prometheus deployment is Ready" {
   READY=$(kubectl get deploy prometheus -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
   [ "${READY}" -ge 1 ]
@@ -82,9 +107,6 @@ declare -a APPS=(
 
 @test "E2E: loki deployment is Ready" {
   READY=$(kubectl get deploy loki -n monitoring -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-  [ "${READY}" -ge 1 ]
-}
-
   [ "${READY}" -ge 1 ]
 }
 
@@ -99,9 +121,6 @@ declare -a APPS=(
 
 @test "E2E: adguard PVC is mounted" {
   PHASE=$(kubectl get pvc -n adguard -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "")
-  [ "$PHASE" == "Bound" ]
-}
-
   [ "$PHASE" == "Bound" ]
 }
 

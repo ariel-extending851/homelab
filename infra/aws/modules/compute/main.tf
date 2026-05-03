@@ -226,6 +226,14 @@ resource "aws_launch_template" "k3s_agent" {
 }
 
 # EC2 Fleet for k3s server (single spot instance)
+#
+# Override list floors at 2 GiB RAM (t3.small) — see postmortem 2026-05-03
+# gotcha #3: spot fleet's price-capacity-optimized strategy may substitute the
+# launch-template instance_type with the cheapest pool from these overrides.
+# Including t3.micro (1 GiB) here let staging silently downsize to a 1 GiB host,
+# which OOMs ArgoCD reconcile + breaks SSM exec timeouts. Dropping micros
+# keeps the floor at 2 GiB while preserving Intel/AMD diversity for the
+# allocation strategy.
 resource "aws_ec2_fleet" "k3s_server" {
   launch_template_config {
     launch_template_specification {
@@ -233,13 +241,13 @@ resource "aws_ec2_fleet" "k3s_server" {
       version            = "$Latest"
     }
     override {
-      instance_type = "t3.micro"
-    }
-    override {
-      instance_type = "t3a.micro"
-    }
-    override {
       instance_type = "t3.small"
+    }
+    override {
+      instance_type = "t3a.small"
+    }
+    override {
+      instance_type = "t3.medium"
     }
   }
 
@@ -257,6 +265,13 @@ resource "aws_ec2_fleet" "k3s_server" {
   terminate_instances                 = true
   terminate_instances_with_expiration = false
   type                                = "maintain"
+
+  # AWS reports instance_pools_to_use_count = 0 in state while the provider
+  # default is 1, causing every plan to flag "forces replacement" on the fleet.
+  # Postmortem 2026-05-03 (gotcha #4): docs/runbooks/staging-deploy-2026-05-postmortem.md
+  lifecycle {
+    ignore_changes = [spot_options[0].instance_pools_to_use_count]
+  }
 
   tags = {
     Name = "hl-k3s-server-fleet"
@@ -280,6 +295,7 @@ data "aws_instances" "k3s_server" {
 }
 
 # EC2 Fleet for k3s agent (single spot instance)
+# See server fleet note above — same 2 GiB floor applies.
 resource "aws_ec2_fleet" "k3s_agent" {
   launch_template_config {
     launch_template_specification {
@@ -287,13 +303,13 @@ resource "aws_ec2_fleet" "k3s_agent" {
       version            = "$Latest"
     }
     override {
-      instance_type = "t3.micro"
-    }
-    override {
-      instance_type = "t3a.micro"
-    }
-    override {
       instance_type = "t3.small"
+    }
+    override {
+      instance_type = "t3a.small"
+    }
+    override {
+      instance_type = "t3.medium"
     }
   }
 
@@ -311,6 +327,11 @@ resource "aws_ec2_fleet" "k3s_agent" {
   terminate_instances                 = true
   terminate_instances_with_expiration = false
   type                                = "maintain"
+
+  # See postmortem note above (k3s_server fleet).
+  lifecycle {
+    ignore_changes = [spot_options[0].instance_pools_to_use_count]
+  }
 
   tags = {
     Name = "hl-k3s-agent-fleet"

@@ -18,7 +18,12 @@ resources:
 - ./golink
 - ./adguard
 - ./velero
-- ./cilium
+# Cilium temporarily removed — its `cni.exclusive: true` Helm value forced a
+# CNI takeover from the flannel that k3s installs at boot. apps-root sync would
+# brick the cluster mid-bootstrap (kubectl + SSM both timeout). To re-enable,
+# install Cilium pre-cluster (Ansible role with `--flannel-backend=none`) or
+# add a sync-wave that runs after cluster is fully Ready.
+# See gotcha #9 in docs/runbooks/staging-deploy-2026-05-postmortem.md.
 - ./falco
 - ./hl-kyverno
 - ./unifi
