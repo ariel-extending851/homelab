@@ -326,6 +326,9 @@ def test_main_all_skipped_exits_on_tool_checks(
     # With fake tools present and external probes skipped, everything passes.
     monkeypatch.setattr(preflight, "SOPS_CANARY", tmp_path / "nope.yaml")
     monkeypatch.setattr(preflight, "ANSIBLE_INVENTORY", tmp_path / "nope.yml")
+    deploy_key = tmp_path / "homelab-deploy-key"
+    deploy_key.write_text("dummy")
+    monkeypatch.setattr(preflight, "GIT_DEPLOY_KEY_PATH", deploy_key)
     mock_run.return_value = _proc(
         0, json.dumps({"BackendState": "Running", "Peer": {}})
     )
