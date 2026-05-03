@@ -13,7 +13,6 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 |---|---|---|---|---|---|
 | AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> | @ariel-extending851 | `rpi3-only` |
 | blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — | @ariel-extending851 | `any` |
-| Cilium | [cilium.md](cilium.md) | `—` | — | @ariel-extending851 | `any` |
 | Falco | [falco.md](falco.md) | `falco` | — | @ariel-extending851 | `any` |
 | GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> | @ariel-extending851 | `any` |
 | Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
@@ -45,7 +44,6 @@ graph LR
   storage-latency --> prometheus
   storage-latency --> loki
   adguard
-  cilium
   falco
   golink
   hl-kyverno
