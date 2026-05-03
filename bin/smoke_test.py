@@ -299,6 +299,13 @@ class SmokeTest:
 
     # ── 7. PVC validation ────────────────────────────────────────────────────
 
+    # Namespaces whose apps are on-demand (replicas=0 by default). With the
+    # local-path provisioner's WaitForFirstConsumer mode, PVCs in these
+    # namespaces stay Pending until the operator manually scales the workload
+    # up — that is the design, not a smoke-test failure. See gotcha #12 in
+    # docs/runbooks/staging-deploy-2026-05-postmortem.md.
+    ON_DEMAND_PVC_NAMESPACES = frozenset({"unifi"})
+
     def check_pvcs(self):
         print("▶ Persistent Volume Claims (PVCs)")
         result = self.kubectl(["get", "pvc", "-A", "--no-headers"])
@@ -306,11 +313,21 @@ class SmokeTest:
         unbound = [
             f"    {p.namespace}/{p.name} ({p.status}, volume={p.volume})"
             for p in pvcs
-            if p.status != "Bound"
+            if p.status != "Bound" and p.namespace not in self.ON_DEMAND_PVC_NAMESPACES
+        ]
+        on_demand_pending = [
+            p
+            for p in pvcs
+            if p.status != "Bound" and p.namespace in self.ON_DEMAND_PVC_NAMESPACES
         ]
 
         if not unbound:
-            self.pass_(f"All {len(pvcs)} PVCs are Bound")
+            msg = (
+                f"All {len(pvcs) - len(on_demand_pending)} non-on-demand PVCs are Bound"
+            )
+            if on_demand_pending:
+                msg += f" ({len(on_demand_pending)} on-demand PVCs Pending — expected)"
+            self.pass_(msg)
         else:
             self.fail("PVCs not Bound:")
             for line in unbound:

@@ -232,7 +232,22 @@ plugin init error: open /tmp/plugin112169602: read-only file system
 
 **Sub-gotcha #10b (fixed in PR #34):** the Velero v1.14.1 binary also requires CRDs `velero.io/v2alpha1.DataDownload` and `DataUpload`, but `k8s/apps/velero/crds.yaml` only contained the v1 CRDs. Both the deployment and the `node-agent` DaemonSet fail at startup with `custom resource DataUpload not found`. Fix: appended the two upstream `v2alpha1` CRD definitions (sourced verbatim from `vmware-tanzu/velero/v1.14.1/config/crd/v2alpha1/bases/`) to `crds.yaml`, taking the file from 11 to 13 CRDs.
 
-**Other smoke-test failures observed but not analyzed deeply** (likely additional config-drift gotchas in `k8s/apps/`): `monitoring` namespace not created, 8 deployments at 0/0 replicas (adguard, blackbox, grafana, kube-state-metrics, loki, node-exporter, otel-collector, prometheus), `unifi` PVCs Pending. These would each need a separate look — out of scope for the prod-deploy plan.
+### Investigated but no manifest bug found (falco, kyverno)
+
+Earlier canary runs showed `falco-*` and `kyverno-*` pods CrashLooping. With the cluster torn down, the only review available is manifest-level — and both manifests look clean:
+
+- `k8s/apps/falco/daemonset.yaml` uses modern eBPF (`--modern-bpf`) with the right capabilities (`BPF`, `PERFMON`, `SYS_ADMIN`, etc.) and volume mounts. AmazonLinux 2023 kernel 6.1+ supports everything required.
+- `k8s/system/kyverno/application.yaml` installs Helm chart 3.3.7 with sync-wave `-10`, amd64 node selector, and adequate memory requests.
+
+The most likely cause of the observed CrashLoops on 2026-05-03 was **collateral damage from Cilium's CNI takeover** (gotcha #9): both falco's hostPID/hostNetwork pods and kyverno's admission/reports controllers depend on the kube-apiserver being reachable at startup. When Cilium broke pod networking mid-install, anything that tried to reach the API server failed. PR #31 dropped Cilium, so this should clear on the next staging deploy.
+
+If they still CrashLoop after PR #31 lands and a fresh canary runs, capture pod logs (`kubectl -n falco logs ds/falco`, `kubectl -n kyverno logs deploy/kyverno-admission-controller`) and document as a real gotcha #13/#14.
+
+### 12. Unifi PVCs stay `Pending` (by design, not a smoke-test failure) (fixed in PR #36)
+
+`k8s/apps/unifi/deployment-{mongo,unifi}.yaml` declare `replicas: 0` because UniFi is on-demand (operator scales it up only when adopting/provisioning a switch). The `local-path` storage class uses `WaitForFirstConsumer`, so the two PVCs (`unifi-mongo-pvc`, `unifi-config-pvc`) stay `Pending` until a pod actually mounts them. Smoke test was flagging this as a failure. Fix: smoke test now whitelists `unifi` as an on-demand namespace and reports its Pending PVCs as expected (not failures).
+
+(Gotcha #11 about smoke-test namespace mismatch is tracked in PR #35.)
 
 ### 9. Cilium takeover bricks the cluster on first deploy
 
@@ -255,7 +270,7 @@ These are TODO commits, separate PRs:
 - [x] Cilium takeover during apps-root sync bricks the cluster — Cilium app removed from apps-root in PR #31; re-enable via Ansible pre-cluster install when ready (Gotcha #9)
 - [x] Velero `/tmp` emptyDir for plugin loader — added in PR #32 (Gotcha #10a)
 - [x] Velero v2alpha1 CRDs (`DataDownload`/`DataUpload`) appended to `crds.yaml` from upstream v1.14.1 (Gotcha #10b, PR #34)
-- [ ] Several apps not converging on first-deploy: monitoring namespace, adguard/blackbox/grafana/loki/prometheus deployments at 0/0 replicas, unifi PVCs Pending — needs per-app investigation (gotchas #11+)
+- [x] Smoke-test fails on unifi on-demand PVCs (Gotcha #12, PR #36) — `replicas: 0` + `WaitForFirstConsumer` → expected Pending
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)

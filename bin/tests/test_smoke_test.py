@@ -283,7 +283,7 @@ def test_check_pvcs_reports_total_when_all_bound(capsys):
     with patch("smoke_test.subprocess.run", side_effect=_build_kubectl_fake(overrides)):
         st.check_pvcs()
     assert st.failed == 0
-    assert "All 2 PVCs are Bound" in capsys.readouterr().out
+    assert "All 2 non-on-demand PVCs are Bound" in capsys.readouterr().out
 
 
 def test_check_statefulsets_detects_replica_mismatch(capsys):
