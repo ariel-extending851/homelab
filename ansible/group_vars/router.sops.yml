@@ -1,17 +1,29 @@
-wifi_password: ENC[AES256_GCM,data:OrNO3TalmY8Erw==,iv:GuPk0Ip3NknkBQt5+6VoSXwUwwf/lb/+2CiSFQTKqLI=,tag:w8Q0vgJPIiefwVfeqqVyHQ==,type:str]
-wifi_guest_password: ENC[AES256_GCM,data:y8ZDq1t40Kl5WweztrU=,iv:SyaqEC3SaQyoW24fg7ZltfEgZ87U+Ce7NAum0F5ush4=,tag:mXSEM6h0E4NbZfagdZ79GA==,type:str]
+wifi_password: ENC[AES256_GCM,data:RhVxUVe0e31XiA==,iv:KbXh9f/h6pfyX3YHz8U0w9nwZzNcj2I8zwdSgSYJvRs=,tag:1B0mri9bWK1jsRfyZxEBHQ==,type:str]
+wifi_guest_password: ENC[AES256_GCM,data:nSqmkPFjf7G5GnJPW6o=,iv:PvWt4HDJZ5KAJD0VW9oBIBZrd5GaBIe8eCWsEHUOUhg=,tag:BVXSntgQkxVXSgaHMVYCQw==,type:str]
+# DHCP reservations: pin Raspberry Pi MACs to stable LAN IPs.
+# MAC addresses are hardware identifiers (visible on the LAN anyway), kept
+# here for hygiene — separates physical-hardware data from role defaults.
+pi_dhcp_reservations:
+    - section: rasp_pi_04
+      name: rasp-pi-04
+      pi_mac: ENC[AES256_GCM,data:k09SVjNJBT8Ar/yMkivmxQ8=,iv:zn+3y7ev20jT2NDvA5FMpKszBAVrasVfrhciXpJEyLU=,tag:yq/fHMT9y3c6SufrqLRMeA==,type:str]
+      pi_ip: ENC[AES256_GCM,data:hAzyfHYI0Ty60hGX,iv:bFJRKIUK0n+CHw60ALiRwwIPZj+6EpV70bXnv4IN1sE=,tag:UFxVS5rBknOuM01LsaLEPw==,type:str]
+    - section: rasp_pi_03
+      name: rasp-pi-03
+      pi_mac: ENC[AES256_GCM,data:dXv2+CGS9TSQ8EqwmDkQZXI=,iv:78dxOpd3mmwAm3y46Pa8G+nXAORK124mAdQ6Lai6/ng=,tag:CRTdB8bzELXE3cfrCslc/w==,type:str]
+      pi_ip: ENC[AES256_GCM,data:M+yCaQwuffoHjd7N,iv:rrnbKWdtLnAI4lRp5BCoTvJDAUIfOAudaQ8VlDUwlrM=,tag:dEcHwphFXaXFJGxRLkB0cQ==,type:str]
 sops:
     age:
         - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGWlJ0VU1hT1h4ZEoweVRN
-            d2RMRFVjaG1YREhEbW5QVTFPU292M3lqYlhVCjR3TERWcUhYbGxFWS9tTGZCUUNE
-            cWJnYjIrV0dQa0JoTTIyZExxU1dKWFkKLS0tIHdkekQwWk5YU2lVS1JXSEgrVC9s
-            ejFZY2RtSFhsc1FUemVwSU1EZ1NqVmsKy7cXL3S1e1zk8uniZNZiHc3CKBppvRpW
-            SBopxNIWLuHS8hwOCJH8aHjCZphGWqt9zUdbwLKwHp8pqe9y3ncTLA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBqeDhueGpwTnlZdlpYbk9S
+            VUIybXVXRWNTOStLdlAwOFkxU2dqOEh3ZFZ3CmJ6OWZsUGdLNUkxNnBnTUFOVTdQ
+            djBXQVRPYm1Gejk0U3V6WlVuVjlXZTAKLS0tIHlZTjVEZVRNWnFEaEJ3MEQvYXVC
+            WWtsbEVDb3hSNjNoVTcyYW5sRjIwRlEKrcYtWvPvZQfFe7YclXQHlCTGPyX4JERy
+            Ri6JKWxGlbMHkoTrXhZc2S7mennU+GFbopdSR7lhcj3M6ayTX7JXvQ==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-04-17T22:38:34Z"
-    mac: ENC[AES256_GCM,data:Z7wZlTAr7rrR4lwX8x2A8mXlezIEpJpNVNjegfrEQIloCiE1YZq2vqv8+Cc+AjzubDXj8riNk1yUfhCOq9H3YzrySCLqu0u/sVbhvognS4ZA/kFuH8ByNk2M0rH5IyDJT7cjCouO0LF7tMsL0/5RhOTNdmoA4nWTn4gs8xa2NtY=,iv:P7P4f+9WFm/fsKZDy0v8Q3uTTJd1kaqm8Qy6dfohLr0=,tag:hwvq5Qe8HqULEjqWVfkPew==,type:str]
-    encrypted_regex: ^(wifi_password|wifi_guest_password)$
+    lastmodified: "2026-05-03T20:34:32Z"
+    mac: ENC[AES256_GCM,data:YNMjFTwLRB6pYTHLTUWohrPeJQrXWXCDGjJfk0vR4R8xNKJI3mWrz+pddzqOz1xewYVRyNpVtN+4bJxvyr03WWhg0bB+tVFwA37+ID2hfKanbdOBDiQKwmaWso810xJi9W0/hVcxHhbU7tdGA8vy2/L8A5qunzEFxZydnNATZes=,iv:laYIrTz6DwJ0KJML/W9CoPSqO3e+ABvJ62gMs3aLQ8o=,tag:QTcIniXq7bFv3Gja9rgAIQ==,type:str]
+    encrypted_regex: ^(wifi_password|wifi_guest_password|pi_mac|pi_ip)$
     version: 3.12.2

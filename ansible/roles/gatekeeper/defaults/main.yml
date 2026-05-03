@@ -8,8 +8,30 @@ wifi_password: vaulted
 wifi_guest_password: vaulted_guest
 pi_tailscale_ip: 192.168.8.10
 pi_adguard_ip: 192.168.8.11
+# Real DHCP reservations live in group_vars/router.sops.yml (hardware MACs).
+# Empty list means no reservations are applied.
+pi_dhcp_reservations: []
 network_cidr: 192.168.8.0/24
 guest_network_cidr: 192.168.9.0/24
+modem_subnet_cidr: 192.168.0.0/24
 wan_static_ip: 192.168.0.2
 wan_gateway: 192.168.0.1
-wan_dns: 1.1.1.1
+wan_dns_servers:
+  # Mullvad (no logging)
+  - 194.242.2.2
+  - 2a07:e340::2
+  # Quad9 (malware filtering)
+  - 9.9.9.9
+  - 149.112.112.112
+  - 2620:fe::fe
+  - 2620:fe::9
+  # Cloudflare
+  - 1.1.1.1
+  - 1.0.0.1
+  - 2606:4700:4700::1111
+  - 2606:4700:4700::1001
+  # Google
+  - 8.8.8.8
+  - 8.8.4.4
+  - 2001:4860:4860::8888
+  - 2001:4860:4860::8844
