@@ -218,6 +218,17 @@ Was masked on 2026-05-03 because the operator bypassed the patch step (Gotcha #3
 
 **Permanent fix (applied):** migrated the two alerts (`StorageLatencyDegraded`, `StorageLatencyMonitorStalled`) to plain Prometheus rules under the `storage-latency.rules` group inside `k8s/apps/prometheus/configmap.yaml` (same pattern the rest of the homelab alerts use). Deleted `k8s/apps/storage-latency/prometheusrule.yaml` and removed it from `k8s/apps/storage-latency/kustomization.yaml`. No prometheus-operator dependency, alerts preserved.
 
+### 9. Cilium takeover bricks the cluster on first deploy
+
+After PR #28+#29+#30 unblocked apps-root sync, the `homelab-apps-root` Application reached `Synced/Degraded/Succeeded` and started cascading children. **Cilium** (`k8s/apps/cilium/`) was the first to install — it tried to take over CNI from the existing flannel that k3s installed at bootstrap time. Result: networking broke mid-flight, both `kubectl` over Tailscale **and** SSM agent commands stopped responding (server EC2 still `running`, but ssm-agent stuck in `Pending`). The 2026-05-03 19:43 UTC canary cluster ended up unrecoverable from the devcontainer.
+
+This is unrelated to the prod-deploy plan changes — those validated end-to-end before this. But the same takeover would happen on a fresh prod deploy unless `k8s/apps/cilium/` either:
+
+- Replaces flannel atomically via the `--flannel-backend=none --disable-network-policy` k3s install flags **at cluster boot time** (Ansible role change), or
+- Is removed from the apps-root pattern and Cilium is installed pre-cluster instead.
+
+Same class of issue as #8 (apps-root assumes a clean dependency order that doesn't hold on first deploy). **TODO, separate PR**.
+
 ## Permanent fixes still owed
 
 These are TODO commits, separate PRs:
@@ -225,6 +236,7 @@ These are TODO commits, separate PRs:
 - [x] `homelab-repo-secret` bootstrap hardening — fail loud + preflight check (Gotcha #5, PR #28)
 - [x] SOPS sidecar patch — drop redundant volume overrides (Gotcha #7, PR #29)
 - [x] apps-root CRD ordering — alerts migrated to plain Prometheus rules, no operator needed (Gotcha #8, PR #30)
+- [x] Cilium takeover during apps-root sync bricks the cluster — Cilium app removed from apps-root in PR #31; re-enable via Ansible pre-cluster install when ready (Gotcha #9)
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)
