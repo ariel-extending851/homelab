@@ -201,11 +201,30 @@ mise exec -- terraform -chdir=infra/aws destroy -var-file=staging.tfvars -auto-a
 
 If you see `BucketNotEmpty`, see Gotcha #6.
 
+## New gotchas surfaced during the 2026-05-03 canary re-deploy (post PR #28)
+
+### 7. SOPS sidecar patch redefined upstream volumes (Fixed in PR #29)
+
+`k8s/gitops/sops/argocd-repo-server-patch.yaml` declared 5 volumes (`argocd-repo-server-{tmp,ssh,tls,gpg-source,gpg-keys}`) as `emptyDir`, mounting them at the same paths upstream uses for its `tmp`, `ssh-known-hosts`, `argocd-repo-server-tls`, `gpg-keys`, `gpg-keyring` configMaps/secrets. Two failure modes:
+
+- **Strategic-merge invalid spec** for `argocd-repo-server-tls` (upstream secret + patch emptyDir → "more than 1 volume type").
+- **`ssh-known-hosts` shadowed** by the patch's emptyDir at `/app/config/ssh` — apps-root sync then failed with `unable to find any valid known_hosts file, set SSH_KNOWN_HOSTS env variable`.
+
+Was masked on 2026-05-03 because the operator bypassed the patch step (Gotcha #3 workaround). Fix: keep only the SOPS-pipeline-owned volumes (`sops-age-key`, `custom-tools`, `cmp-plugin`, `cmp-tmp`) in the patch.
+
+### 8. apps-root CRD ordering — `PrometheusRule` applied before its CRD
+
+`k8s/apps/storage-latency/prometheusrule.yaml` declares `apiVersion: monitoring.coreos.com/v1` `PrometheusRule`, but the repo's Prometheus deployment (`k8s/apps/prometheus/`) is a plain `Deployment` — not prometheus-operator — so the `monitoring.coreos.com` CRD is never installed. ArgoCD `apps-root` then loops through 5 retries and gives up: `The Kubernetes API could not find monitoring.coreos.com/PrometheusRule for requested resource storage-latency/storage-latency`.
+
+**Permanent fix (TODO, separate PR):** either deploy prometheus-operator (with its CRDs) and group it as a sync-wave -1 child Application, or drop the `PrometheusRule` and replace it with a Prometheus scrape rule via the existing `prometheus-config` ConfigMap. **Affects prod too** — the same retry loop will happen on a fresh prod deploy.
+
 ## Permanent fixes still owed
 
 These are TODO commits, separate PRs:
 
-- [ ] `homelab-repo-secret` bootstrap hardening — fail loud + preflight check (Gotcha #5)
+- [x] `homelab-repo-secret` bootstrap hardening — fail loud + preflight check (Gotcha #5, PR #28)
+- [x] SOPS sidecar patch — drop redundant volume overrides (Gotcha #7, PR #29)
+- [ ] apps-root CRD ordering — install prometheus-operator OR remove PrometheusRule (Gotcha #8, separate PR)
 - [ ] `lifecycle { ignore_changes = [spot_options[0]…] }` (Gotcha #4)
 - [ ] Staging-aware `ANSIBLE_AWS_SSM_BUCKET_NAME` default (Gotcha #1)
 - [ ] `force_destroy = true` on staging S3 buckets (Gotcha #6)
