@@ -137,7 +137,11 @@ def encrypt_secret_in_place(secret_path: Path, plaintext: str) -> None:
     Uses NamedTemporaryFile with mode 0o600. Cleans up the tempfile in a
     try/finally regardless of outcome.
     """
-    fd, tmp_path = tempfile.mkstemp(prefix="velero-secret-", suffix=".yaml", dir="/tmp")
+    # Use the secret's parent dir so os.replace() stays on the same filesystem
+    # (devcontainer /tmp can be on a different device than the workspace).
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".velero-secret-", suffix=".yaml", dir=str(secret_path.parent)
+    )
     try:
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w") as f:

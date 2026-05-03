@@ -167,7 +167,11 @@
   environment:
     INSTALL_K3S_VERSION: "{{ k3s_version }}"
     INSTALL_K3S_CHANNEL: "{{ k3s_channel }}"
-    INSTALL_K3S_NAME: "k3s-agent"
+    # No INSTALL_K3S_NAME: the k3s installer's default for agent already
+    # produces /etc/systemd/system/k3s-agent.service — the same name used
+    # by the systemd tasks below. Setting INSTALL_K3S_NAME=k3s-agent would
+    # produce 'k3s-k3s-agent.service' (installer prepends 'k3s-') and break
+    # the subsequent enable/start tasks.
     INSTALL_K3S_BIN_DIR: "/usr/local/bin"
     INSTALL_K3S_SYSTEMD_DIR: "/etc/systemd/system"
     K3S_URL: "{{ k3s_server_url }}"
