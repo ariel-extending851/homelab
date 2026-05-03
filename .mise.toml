@@ -108,6 +108,9 @@ experimental = true
 AWS_PROFILE = "Homelab"
 AWS_DEFAULT_REGION = "us-east-1"
 
+# Defaults to the production bucket name. Staging deploys MUST override at runtime:
+#   ANSIBLE_AWS_SSM_BUCKET_NAME=homelab-ssm-transfer-bucket-staging make ansible-deploy
+# See docs/runbooks/staging-deploy-2026-05-postmortem.md gotcha #1.
 ANSIBLE_AWS_SSM_BUCKET_NAME = "homelab-ssm-transfer-bucket"
 
 SOPS_AGE_KEY_FILE = "/home/vscode/.config/sops/age/keys.txt"

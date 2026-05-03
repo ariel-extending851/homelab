@@ -16,6 +16,7 @@ Reactive on-call references. Each runbook is severity-tagged and tested.
 | [GitHub Environments setup](github-environments.md) | 🟡 Setup | — (one-time) |
 | [Observability stack — single-replica trade-off](observability-availability.md) | 🟢 Info | — (design rationale) |
 | [Grafana dashboards broken](grafana-dashboards.md) | 🟢 Info | 2026-01-23 |
+| [Staging deploy postmortem 2026-05](staging-deploy-2026-05-postmortem.md) | 🟡 Setup | 2026-05-03 |
 
 Template for new runbooks: [`docs/contributing/doc-style.md`](../contributing/doc-style.md#runbook-template).
 
