@@ -69,6 +69,12 @@ spec:
           env:
             - name: SOPS_AGE_KEY_FILE
               value: /helm-sops-tools/age-key/keys.txt
+          # Only mount what the SOPS pipeline actually needs. Upstream already
+          # provides tmp, ssh-known-hosts, gpg-keys, gpg-keyring, argocd-repo-
+          # server-tls — redefining them as emptyDir here either produces
+          # invalid volume specs (multiple types) or shadows upstream
+          # configMap/secret content (e.g. ssh_known_hosts gets blanked,
+          # breaking GitHub host-key validation).
           volumeMounts:
             - name: sops-age-key
               mountPath: /helm-sops-tools/age-key
@@ -76,16 +82,6 @@ spec:
             - name: custom-tools
               mountPath: /usr/local/bin/sops
               subPath: sops
-            - name: argocd-repo-server-tmp
-              mountPath: /tmp
-            - name: argocd-repo-server-ssh
-              mountPath: /app/config/ssh
-            - name: argocd-repo-server-tls
-              mountPath: /app/config/tls
-            - name: argocd-repo-server-gpg-source
-              mountPath: /app/config/gpg/source
-            - name: argocd-repo-server-gpg-keys
-              mountPath: /app/config/gpg/keys
           resources:
             requests:
               cpu: 100m
@@ -161,13 +157,8 @@ spec:
             name: cmp-plugin
         - name: cmp-tmp
           emptyDir: {}
-        - name: argocd-repo-server-tmp
-          emptyDir: {}
-        - name: argocd-repo-server-ssh
-          emptyDir: {}
-        - name: argocd-repo-server-tls
-          emptyDir: {}
-        - name: argocd-repo-server-gpg-source
-          emptyDir: {}
-        - name: argocd-repo-server-gpg-keys
-          emptyDir: {}
+        # argocd-repo-server-{tmp,ssh,tls,gpg-source,gpg-keys} intentionally not
+        # declared here — see comment in volumeMounts above. Upstream provides
+        # tmp, ssh-known-hosts, argocd-repo-server-tls, gpg-keys, gpg-keyring
+        # with the right types; redefining them as emptyDir would shadow the
+        # upstream configMap/secret content.
