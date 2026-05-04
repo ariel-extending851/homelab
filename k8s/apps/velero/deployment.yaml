@@ -36,6 +36,8 @@ spec:
         - name: velero-plugin-for-aws
           image: velero/velero-plugin-for-aws:v1.10.1
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           volumeMounts:
             - name: plugins
               mountPath: /target
