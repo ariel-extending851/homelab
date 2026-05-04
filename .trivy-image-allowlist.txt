@@ -31,5 +31,6 @@ quay.io/prometheus/blackbox-exporter:v0.28.0         # review-by: 2026-08-01  (8
 quay.io/prometheus/node-exporter:v1.9.1              # review-by: 2026-08-01  (11 CVEs from Go stdlib + selinux; awaiting prometheus/node-exporter rebuild — was 17 on v1.7.0)
 registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0  # review-by: 2026-08-01  (10 CVEs from Go stdlib + grpc + otel-sdk; awaiting kube-state-metrics rebuild — was 20 on v2.9.2)
 velero/velero:v1.14.1                                # review-by: 2026-07-30  (Velero v1.15+ — verify CRD compat — Phase 2)
+velero/velero-plugin-for-aws:v1.10.1                 # review-by: 2026-07-30  (paired with Velero v1.14.1 — bumps together to v1.11.x when Velero hits v1.15; HIGH=21 CRITICAL=3)
 mongo:7.0                                            # review-by: 2026-07-31  (UniFi requires Mongo 4-7; pin patch tag once 8.0 compat verified)
 lscr.io/linuxserver/unifi-network-application:10.3.58 # review-by: 2026-07-31  (bump alongside next lsio release; see k8s/apps/unifi/README.md)

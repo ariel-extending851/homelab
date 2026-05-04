@@ -278,6 +278,19 @@ resource "aws_ec2_fleet" "k3s_server" {
   }
 }
 
+# aws_ec2_fleet returns once AWS accepts the request, before instances are
+# actually running. Without a wait, the data source below resolves to an empty
+# list and propagates "" through the module outputs — terraform_inventory_aws.py
+# then sees an empty k3s_agent host group and ansible-deploy fails at "Wait for
+# agent to join". Workaround "terraform apply -refresh-only" confirmed live
+# during canary 2 (2026-05-04). 60s is the smallest delay that consistently let
+# the spot fleet provision both nodes during canary; aws_instance has built-in
+# state waiters, aws_ec2_fleet does not.
+resource "time_sleep" "wait_server_fleet" {
+  depends_on      = [aws_ec2_fleet.k3s_server]
+  create_duration = "60s"
+}
+
 # Data source to get the server instance details
 # Note: In LocalStack, fleet-id tag is not set, so we use Name tag as fallback
 data "aws_instances" "k3s_server" {
@@ -291,7 +304,7 @@ data "aws_instances" "k3s_server" {
     values = ["running", "pending"]
   }
 
-  depends_on = [aws_ec2_fleet.k3s_server]
+  depends_on = [time_sleep.wait_server_fleet]
 }
 
 # EC2 Fleet for k3s agent (single spot instance)
@@ -340,6 +353,11 @@ resource "aws_ec2_fleet" "k3s_agent" {
   depends_on = [aws_ec2_fleet.k3s_server]
 }
 
+resource "time_sleep" "wait_agent_fleet" {
+  depends_on      = [aws_ec2_fleet.k3s_agent]
+  create_duration = "60s"
+}
+
 # Data source to get agent instance details
 # Note: In LocalStack, fleet-id tag is not set, so we use Name tag as fallback
 data "aws_instances" "k3s_agent" {
@@ -353,5 +371,5 @@ data "aws_instances" "k3s_agent" {
     values = ["running", "pending"]
   }
 
-  depends_on = [aws_ec2_fleet.k3s_agent]
+  depends_on = [time_sleep.wait_agent_fleet]
 }

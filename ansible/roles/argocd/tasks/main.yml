@@ -31,6 +31,11 @@
   ansible.builtin.include_tasks: configure_repo.yml
   tags: ['repo']
 
+- name: Include primary root Application bootstrap
+  ansible.builtin.include_tasks: bootstrap_apps_root.yml
+  when: apps_root_enabled | bool
+  tags: ['bootstrap']
+
 - name: Include second-repo configuration (optional, runs only when argocd_extra_repo_url is defined)
   ansible.builtin.include_tasks: configure_repo_extra.yml
   when: argocd_extra_repo_url is defined

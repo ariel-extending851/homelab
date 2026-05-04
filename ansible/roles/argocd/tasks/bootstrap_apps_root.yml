@@ -1,0 +1,70 @@
+---
+# Bootstrap the primary ArgoCD Application (apps-root) from the main git repository.
+# Applies k8s/gitops/apps-root.yaml, which implements the App-of-Apps pattern to
+# manage all applications in k8s/apps/ recursively. Without this, a CI-driven
+# deploy would leave ArgoCD installed but without any Applications to reconcile.
+
+- name: Render root Application manifest
+  ansible.builtin.copy:
+    src: apps-root.yaml
+    dest: /tmp/apps-root.yaml
+    mode: '0644'
+  when:
+    - apps_root_enabled | bool
+    - not ansible_check_mode
+
+- name: Apply root Application
+  ansible.builtin.command: kubectl apply -f /tmp/apps-root.yaml
+  environment: "{{ kubeconfig_env }}"
+  register: apps_root_apply
+  changed_when: "'created' in apps_root_apply.stdout or 'configured' in apps_root_apply.stdout"
+  when:
+    - apps_root_enabled | bool
+    - not ansible_check_mode
+
+- name: Wait for root Application to sync
+  ansible.builtin.command: >
+    kubectl wait application/{{ apps_root_name }}
+    -n {{ argocd_namespace }}
+    --for=jsonpath='{.status.sync.status}'=Synced
+    --timeout=300s
+  environment: "{{ kubeconfig_env }}"
+  register: apps_root_wait
+  changed_when: false
+  failed_when: false
+  when:
+    - apps_root_enabled | bool
+    - not ansible_check_mode
+    - apps_root_apply is defined
+    - apps_root_apply is changed
+
+- name: Remove temp root app manifest
+  ansible.builtin.file:
+    path: /tmp/apps-root.yaml
+    state: absent
+  when:
+    - apps_root_enabled | bool
+    - not ansible_check_mode
+
+- name: Display root Application sync status
+  ansible.builtin.command: >
+    kubectl get application {{ apps_root_name }}
+    -n {{ argocd_namespace }}
+    -o jsonpath='{.status.sync.status}/{.status.health.status}'
+  environment: "{{ kubeconfig_env }}"
+  register: apps_root_status
+  changed_when: false
+  failed_when: false
+  when:
+    - apps_root_enabled | bool
+    - not ansible_check_mode
+  tags:
+    - validate
+
+- name: Print root Application status
+  ansible.builtin.debug:
+    msg: "{{ apps_root_name }} status: {{ apps_root_status.stdout | default('skipped') }}"
+  when:
+    - apps_root_enabled | bool
+  tags:
+    - validate
