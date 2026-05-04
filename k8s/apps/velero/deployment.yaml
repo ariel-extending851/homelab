@@ -26,6 +26,19 @@ spec:
     spec:
       serviceAccountName: velero
       restartPolicy: Always
+      # Velero ships without object-store backends in the base image. The AWS
+      # plugin must be staged into a shared emptyDir at /plugins before the
+      # main container starts, otherwise backups admit (CRDs are registered)
+      # but execution fails at runtime with:
+      #   unable to locate ObjectStore plugin named velero.io/aws
+      # Confirmed live in canary 2 (2026-05-04 ~00:36 UTC).
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: velero/velero-plugin-for-aws:v1.10.1
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: plugins
+              mountPath: /target
       containers:
         - name: velero
           image: velero/velero:v1.14.1
@@ -104,6 +117,8 @@ spec:
             # without relaxing the security context.
             - name: tmp
               mountPath: /tmp
+            - name: plugins
+              mountPath: /plugins
 
       volumes:
         - name: scratch
@@ -112,4 +127,6 @@ spec:
           secret:
             secretName: velero-aws-credentials
         - name: tmp
+          emptyDir: {}
+        - name: plugins
           emptyDir: {}
