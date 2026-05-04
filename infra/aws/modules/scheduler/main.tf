@@ -9,7 +9,8 @@
 
 # IAM Role for Lambda
 resource "aws_iam_role" "scheduler_lambda" {
-  name_prefix = "hl-ec2-scheduler-"
+  name_prefix          = "hl-ec2-scheduler-"
+  permissions_boundary = var.principal_boundary_arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

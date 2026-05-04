@@ -191,19 +191,22 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         Action   = ["ec2:*"]
         Resource = "*"
       },
-      # IAM — homelab principal ARN patterns only. Inline policy enforces
-      # iam:PermissionsBoundary condition on Create*; boundary just caps service.
+      # IAM — homelab principal ARN patterns only. ARN allowlist tracks
+      # the actual names produced by infra/aws/ (verified live):
+      #   - Roles use name_prefix "hl-k3s-node-" / "hl-ec2-scheduler-"
+      #   - Instance profile uses name_prefix "hl-k3s-node-"
+      #   - Velero IAM user is at path /system/ → ARN includes /system/
+      #   - Service-linked roles for spot fleet are AWS-managed.
       {
         Sid    = "IAMHomelabPrincipals"
         Effect = "Allow"
         Action = ["iam:*"]
         Resource = [
-          "arn:aws:iam::*:role/k3s-node*",
-          "arn:aws:iam::*:role/scheduler-lambda*",
+          "arn:aws:iam::*:role/hl-*",
           "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
           "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
-          "arn:aws:iam::*:user/velero*",
-          "arn:aws:iam::*:instance-profile/k3s-node*",
+          "arn:aws:iam::*:user/system/*",
+          "arn:aws:iam::*:instance-profile/hl-*",
         ]
       },
       # IAM read — narrow allowlist for terraform refresh. Excludes
@@ -232,26 +235,37 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         Action   = ["s3:ListAllMyBuckets", "s3:CreateBucket"]
         Resource = "*"
       },
-      # Lambda — homelab functions only.
+      # Lambda — actual function name uses "hl-" prefix (hl-ec2-scheduler).
       {
         Sid      = "Lambda"
         Effect   = "Allow"
         Action   = ["lambda:*"]
-        Resource = "arn:aws:lambda:*:*:function:homelab-*"
+        Resource = "arn:aws:lambda:*:*:function:hl-*"
       },
-      # EventBridge — homelab rules only.
+      # EventBridge — actual rule names use "hl-" prefix.
       {
         Sid      = "Events"
         Effect   = "Allow"
         Action   = ["events:*"]
-        Resource = "arn:aws:events:*:*:rule/homelab-*"
+        Resource = "arn:aws:events:*:*:rule/hl-*"
       },
-      # CloudTrail — homelab trail only.
+      # CloudTrail — trail named "homelab-audit", but DescribeTrails /
+      # ListTrails / LookupEvents are account-level reads (no resource-level
+      # condition support).
       {
-        Sid      = "CloudTrail"
+        Sid      = "CloudTrailHomelabTrail"
         Effect   = "Allow"
         Action   = ["cloudtrail:*"]
         Resource = "arn:aws:cloudtrail:*:*:trail/homelab*"
+      },
+      {
+        Sid    = "CloudTrailAccountReads"
+        Effect = "Allow"
+        Action = [
+          "cloudtrail:DescribeTrails", "cloudtrail:ListTrails",
+          "cloudtrail:LookupEvents", "cloudtrail:GetTrailStatus",
+        ]
+        Resource = "*"
       },
       # GuardDuty — detector is account-level.
       {
@@ -270,12 +284,12 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         ]
         Resource = "arn:aws:dynamodb:*:*:table/homelab-terraform-state-lock"
       },
-      # Logs — homelab Lambda log groups.
+      # Logs — Lambda function is named hl-* so log group is /aws/lambda/hl-*.
       {
         Sid      = "Logs"
         Effect   = "Allow"
         Action   = ["logs:*"]
-        Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/homelab-*"
+        Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/hl-*"
       },
       # KMS metadata only — no Decrypt, no Sign.
       {
@@ -401,18 +415,15 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         ]
         Resource = "*"
       },
-      # IAM CreateRole — homelab roles only, MUST attach the principal
-      # boundary so the new role inherits the cap on iam:* and AssumeRole.
-      # This closes the privilege-escalation chain identified in the PR
-      # security review.
+      # IAM CreateRole — actual prefixes are hl-k3s-node-* and
+      # hl-ec2-scheduler-* (per terraform name_prefix). Boundary attachment
+      # is enforced; the corresponding modules in infra/aws/ wire the
+      # principal boundary in via data.aws_iam_policy.principal_boundary.
       {
-        Sid    = "IAMCreateRoleBounded"
-        Effect = "Allow"
-        Action = ["iam:CreateRole"]
-        Resource = [
-          "arn:aws:iam::*:role/k3s-node*",
-          "arn:aws:iam::*:role/scheduler-lambda*",
-        ]
+        Sid      = "IAMCreateRoleBounded"
+        Effect   = "Allow"
+        Action   = ["iam:CreateRole"]
+        Resource = ["arn:aws:iam::*:role/hl-*"]
         Condition = {
           StringEquals = {
             "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
@@ -423,7 +434,7 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Sid      = "IAMCreateUserBounded"
         Effect   = "Allow"
         Action   = ["iam:CreateUser"]
-        Resource = ["arn:aws:iam::*:user/velero*"]
+        Resource = ["arn:aws:iam::*:user/system/*"]
         Condition = {
           StringEquals = {
             "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
@@ -445,9 +456,11 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
           "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
         ]
       },
-      # Other IAM actions on homelab principals — no Create*, no
-      # Delete*PermissionsBoundary, no Put*PermissionsBoundary (those
-      # are denied globally further down).
+      # Other IAM actions on homelab principals — actual ARN patterns
+      # (verified live from terraform plan failures):
+      #   - role/hl-* — k3s_node + scheduler_lambda use name_prefix
+      #   - user/system/homelab-velero — velero user is at /system/ path
+      #   - instance-profile/hl-* — k3s_node profile uses name_prefix
       {
         Sid    = "IAMHomelabPrincipalsManage"
         Effect = "Allow"
@@ -466,10 +479,9 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
           "iam:ListInstanceProfilesForRole", "iam:TagInstanceProfile",
         ]
         Resource = [
-          "arn:aws:iam::*:role/k3s-node*",
-          "arn:aws:iam::*:role/scheduler-lambda*",
-          "arn:aws:iam::*:user/velero*",
-          "arn:aws:iam::*:instance-profile/k3s-node*",
+          "arn:aws:iam::*:role/hl-*",
+          "arn:aws:iam::*:user/system/*",
+          "arn:aws:iam::*:instance-profile/hl-*",
         ]
       },
       # Global denies — boundary tampering is impossible regardless of
@@ -522,26 +534,37 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Action   = ["s3:ListAllMyBuckets"]
         Resource = "*"
       },
-      # Lambda — homelab functions only.
+      # Lambda — actual function name uses "hl-" prefix.
       {
         Sid      = "LambdaHomelab"
         Effect   = "Allow"
         Action   = ["lambda:*"]
-        Resource = "arn:aws:lambda:*:*:function:homelab-*"
+        Resource = "arn:aws:lambda:*:*:function:hl-*"
       },
-      # EventBridge — homelab rules only.
+      # EventBridge — actual rule names use "hl-" prefix.
       {
         Sid      = "EventsHomelab"
         Effect   = "Allow"
         Action   = ["events:*"]
-        Resource = "arn:aws:events:*:*:rule/homelab-*"
+        Resource = "arn:aws:events:*:*:rule/hl-*"
       },
-      # CloudTrail — homelab trail only.
+      # CloudTrail — trail named "homelab-audit"; resource-level scoping.
       {
         Sid      = "CloudTrailHomelab"
         Effect   = "Allow"
         Action   = ["cloudtrail:*"]
         Resource = "arn:aws:cloudtrail:*:*:trail/homelab*"
+      },
+      # CloudTrail account-wide reads — DescribeTrails, ListTrails,
+      # LookupEvents, GetTrailStatus do NOT support resource-level conditions.
+      {
+        Sid    = "CloudTrailAccountReads"
+        Effect = "Allow"
+        Action = [
+          "cloudtrail:DescribeTrails", "cloudtrail:ListTrails",
+          "cloudtrail:LookupEvents", "cloudtrail:GetTrailStatus",
+        ]
+        Resource = "*"
       },
       # GuardDuty — detector is account-level; no useful resource scoping.
       {
@@ -567,12 +590,12 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Action   = ["kms:DescribeKey", "kms:ListAliases"]
         Resource = "*"
       },
-      # CloudWatch Logs — homelab Lambda functions.
+      # CloudWatch Logs — Lambda function is named hl-* so log group is /aws/lambda/hl-*.
       {
         Sid      = "CloudWatchLogsHomelab"
         Effect   = "Allow"
         Action   = ["logs:*"]
-        Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/homelab-*"
+        Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/hl-*"
       },
       # STS identity inspection.
       {
