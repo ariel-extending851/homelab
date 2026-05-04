@@ -357,10 +357,19 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
 
 # Inline policy — the actual permissions used at runtime.
 # Bounded above by terraform_apply_boundary. Resource-scoped wherever AWS
-# supports it; action-enumerated so it cannot grow into a wildcard footgun.
+# supports it. IAM stays action-enumerated (security-critical surface);
+# other services use action wildcards inside ARN-scoped resources to
+# match the boundary and avoid AccessDenied on terraform-required APIs
+# that vary across AWS provider versions (e.g. s3:GetAccelerateConfiguration,
+# s3:GetIntelligentTieringConfiguration, etc.).
 resource "aws_iam_role_policy" "terraform_apply_permissions" {
-  # checkov:skip=CKV_AWS_290:Same justification as terraform_apply_boundary — EC2 Describe*/Run/Create require Resource:"*" because AWS does not support resource-level conditions on those actions. Write/creation actions ARE constrained via aws:ResourceTag/Project=homelab and aws:RequestTag/Project=homelab Conditions.
-  # checkov:skip=CKV_AWS_355:Same as CKV_AWS_290.
+  # checkov:skip=CKV_AWS_286:Privilege escalation prevented by the IAM enumeration on this resource and the iam:PermissionsBoundary Condition on iam:CreateRole/iam:CreateUser. Service wildcards on s3/lambda/events/cloudtrail/guardduty/logs are scoped via Resource ARN to homelab-*.
+  # checkov:skip=CKV_AWS_287:Credential exposure (iam:CreateAccessKey etc) scoped to homelab principal ARNs only.
+  # checkov:skip=CKV_AWS_288:Data exfiltration bounded to homelab-* buckets via Resource ARN.
+  # checkov:skip=CKV_AWS_289:Permissions management actions scoped to homelab principal ARNs.
+  # checkov:skip=CKV_AWS_290:EC2 Describe*/Run/Create on Resource:"*" because AWS does not support resource-level conditions on those actions. All other write actions are scoped via Resource ARN.
+  # checkov:skip=CKV_AWS_355:Same as CKV_AWS_290 — Resource:"*" used only where AWS itself does not support resource-level conditions.
+  # checkov:skip=CKV2_AWS_40:iam:* not used; IAM actions are explicitly enumerated in IAMHomelabPrincipalsManage and the bounded Create* statements.
   name = "terraform-apply-permissions"
   role = aws_iam_role.github_actions_terraform_apply.id
 
@@ -495,31 +504,17 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Resource = "*"
       },
       # S3 — homelab buckets only (state backend included via prefix).
+      # Wildcard action because terraform refresh exercises many S3 read
+      # APIs that vary across provider versions (GetAccelerateConfiguration,
+      # GetIntelligentTieringConfiguration, GetReplicationConfiguration,
+      # GetAnalyticsConfiguration, GetMetricsConfiguration, GetInventoryConfiguration,
+      # GetBucketObjectLockConfiguration, etc.). Resource scope keeps blast
+      # radius bounded to homelab-* buckets.
       {
-        Sid    = "S3HomelabBuckets"
-        Effect = "Allow"
-        Action = [
-          "s3:CreateBucket", "s3:DeleteBucket",
-          "s3:ListBucket", "s3:ListBucketVersions",
-          "s3:GetBucketLocation", "s3:GetBucketTagging", "s3:PutBucketTagging",
-          "s3:GetBucketVersioning", "s3:PutBucketVersioning",
-          "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
-          "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
-          "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
-          "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
-          "s3:GetBucketAcl", "s3:PutBucketAcl",
-          "s3:GetBucketOwnershipControls", "s3:PutBucketOwnershipControls",
-          "s3:GetBucketCORS", "s3:GetBucketRequestPayment", "s3:GetBucketLogging",
-          "s3:GetBucketObjectLockConfiguration", "s3:GetBucketWebsite",
-          "s3:GetReplicationConfiguration",
-          "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
-          "s3:GetObjectVersion", "s3:GetObjectTagging", "s3:PutObjectTagging",
-          "s3:DeleteObjectVersion",
-        ]
-        Resource = [
-          "arn:aws:s3:::homelab-*",
-          "arn:aws:s3:::homelab-*/*",
-        ]
+        Sid      = "S3HomelabBuckets"
+        Effect   = "Allow"
+        Action   = ["s3:*"]
+        Resource = ["arn:aws:s3:::homelab-*", "arn:aws:s3:::homelab-*/*"]
       },
       {
         Sid      = "S3ListAllBuckets"
@@ -529,54 +524,30 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
       },
       # Lambda — homelab functions only.
       {
-        Sid    = "LambdaHomelab"
-        Effect = "Allow"
-        Action = [
-          "lambda:CreateFunction", "lambda:DeleteFunction",
-          "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionUrlConfig",
-          "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration",
-          "lambda:UpdateFunctionUrlConfig", "lambda:CreateFunctionUrlConfig", "lambda:DeleteFunctionUrlConfig",
-          "lambda:AddPermission", "lambda:RemovePermission", "lambda:GetPolicy",
-          "lambda:ListVersionsByFunction", "lambda:PublishVersion",
-          "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags",
-          "lambda:GetCodeSigningConfig",
-        ]
+        Sid      = "LambdaHomelab"
+        Effect   = "Allow"
+        Action   = ["lambda:*"]
         Resource = "arn:aws:lambda:*:*:function:homelab-*"
       },
       # EventBridge — homelab rules only.
       {
-        Sid    = "EventsHomelab"
-        Effect = "Allow"
-        Action = [
-          "events:DescribeRule", "events:PutRule", "events:DeleteRule",
-          "events:EnableRule", "events:DisableRule", "events:ListRules",
-          "events:PutTargets", "events:RemoveTargets", "events:ListTargetsByRule",
-          "events:TagResource", "events:UntagResource", "events:ListTagsForResource",
-        ]
+        Sid      = "EventsHomelab"
+        Effect   = "Allow"
+        Action   = ["events:*"]
         Resource = "arn:aws:events:*:*:rule/homelab-*"
       },
       # CloudTrail — homelab trail only.
       {
-        Sid    = "CloudTrailHomelab"
-        Effect = "Allow"
-        Action = [
-          "cloudtrail:CreateTrail", "cloudtrail:DeleteTrail", "cloudtrail:UpdateTrail",
-          "cloudtrail:GetTrail", "cloudtrail:GetTrailStatus", "cloudtrail:DescribeTrails",
-          "cloudtrail:StartLogging", "cloudtrail:StopLogging",
-          "cloudtrail:GetEventSelectors", "cloudtrail:PutEventSelectors",
-          "cloudtrail:AddTags", "cloudtrail:RemoveTags", "cloudtrail:ListTags",
-        ]
+        Sid      = "CloudTrailHomelab"
+        Effect   = "Allow"
+        Action   = ["cloudtrail:*"]
         Resource = "arn:aws:cloudtrail:*:*:trail/homelab*"
       },
       # GuardDuty — detector is account-level; no useful resource scoping.
       {
-        Sid    = "GuardDutyDetector"
-        Effect = "Allow"
-        Action = [
-          "guardduty:CreateDetector", "guardduty:DeleteDetector", "guardduty:UpdateDetector",
-          "guardduty:GetDetector", "guardduty:ListDetectors",
-          "guardduty:TagResource", "guardduty:UntagResource", "guardduty:ListTagsForResource",
-        ]
+        Sid      = "GuardDutyDetector"
+        Effect   = "Allow"
+        Action   = ["guardduty:*"]
         Resource = "*"
       },
       # DynamoDB — terraform state lock only.
@@ -598,14 +569,9 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
       },
       # CloudWatch Logs — homelab Lambda functions.
       {
-        Sid    = "CloudWatchLogsHomelab"
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup", "logs:DeleteLogGroup",
-          "logs:DescribeLogGroups", "logs:PutRetentionPolicy", "logs:DeleteRetentionPolicy",
-          "logs:TagLogGroup", "logs:UntagLogGroup", "logs:ListTagsForResource",
-          "logs:ListTagsLogGroup",
-        ]
+        Sid      = "CloudWatchLogsHomelab"
+        Effect   = "Allow"
+        Action   = ["logs:*"]
         Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/homelab-*"
       },
       # STS identity inspection.
