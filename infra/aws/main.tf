@@ -85,6 +85,22 @@ module "network" {
 }
 
 # ==============================================================================
+# IAM Permissions Boundary for child principals
+# ==============================================================================
+# Created by infra/aws-oidc/. The github-actions-terraform-apply role REQUIRES
+# this boundary on every iam:CreateRole / iam:CreateUser it issues — closes
+# the privilege-escalation chain identified in the PR #38 security review.
+# Look up by name so we don't have to hardcode the ARN.
+data "aws_iam_policy" "principal_boundary" {
+  count = var.localstack_test == "no" ? 1 : 0
+  name  = "homelab-principal-boundary"
+}
+
+locals {
+  principal_boundary_arn = var.localstack_test == "no" ? data.aws_iam_policy.principal_boundary[0].arn : null
+}
+
+# ==============================================================================
 # Compute Module - k3s Cluster Nodes
 # ==============================================================================
 module "k3s_cluster" {
@@ -104,6 +120,8 @@ module "k3s_cluster" {
   tailscale_auth_key = local.secrets["tailscale_auth_key"]
 
   ssm_s3_bucket = var.ssm_s3_bucket
+
+  principal_boundary_arn = local.principal_boundary_arn
 }
 
 # ==============================================================================
@@ -254,8 +272,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "velero_backups" {
 # Dedicated IAM user for Velero — least privilege scoped to the backup bucket only.
 # Static credentials are required because k3s does not have an OIDC provider for IRSA.
 resource "aws_iam_user" "velero" {
-  name = "homelab-velero"
-  path = "/system/"
+  name                 = "homelab-velero"
+  path                 = "/system/"
+  permissions_boundary = local.principal_boundary_arn
 
   tags = {
     Name      = "homelab-velero"
@@ -326,4 +345,6 @@ module "scheduler" {
   schedule_timezone   = var.schedule_timezone
   schedule_start_hour = var.schedule_start_hour
   schedule_stop_hour  = var.schedule_stop_hour
+
+  principal_boundary_arn = local.principal_boundary_arn
 }

@@ -90,3 +90,9 @@ variable "ssm_s3_bucket" {
   description = "S3 bucket name used by the SSM connection plugin for Ansible file transfer (stdin/stdout relay). Must match the bucket configured in terraform_inventory_aws.py."
   type        = string
 }
+
+variable "principal_boundary_arn" {
+  description = "ARN of the IAM permissions boundary required on every IAM role created by this module. Set by infra/aws/main.tf via data.aws_iam_policy.principal_boundary; null in localstack."
+  type        = string
+  default     = null
+}

@@ -39,7 +39,8 @@ resource "aws_key_pair" "homelab" {
 
 # IAM Role for EC2 instances (SSM Session Manager support)
 resource "aws_iam_role" "k3s_node" {
-  name_prefix = "hl-k3s-node-"
+  name_prefix          = "hl-k3s-node-"
+  permissions_boundary = var.principal_boundary_arn
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

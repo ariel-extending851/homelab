@@ -39,3 +39,9 @@ variable "schedule_stop_hour" {
     error_message = "schedule_stop_hour must be between 0 and 23."
   }
 }
+
+variable "principal_boundary_arn" {
+  description = "ARN of the IAM permissions boundary required on every IAM role created by this module."
+  type        = string
+  default     = null
+}
