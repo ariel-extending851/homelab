@@ -474,9 +474,11 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
           "iam:GetUserPolicy", "iam:PutUserPolicy", "iam:DeleteUserPolicy", "iam:ListUserPolicies",
           "iam:AttachUserPolicy", "iam:DetachUserPolicy", "iam:ListAttachedUserPolicies",
           "iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey",
+          "iam:TagUser", "iam:UntagUser", "iam:ListUserTags",
           "iam:GetInstanceProfile", "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile",
           "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile",
-          "iam:ListInstanceProfilesForRole", "iam:TagInstanceProfile",
+          "iam:ListInstanceProfilesForRole", "iam:TagInstanceProfile", "iam:UntagInstanceProfile",
+          "iam:ListInstanceProfileTags",
         ]
         Resource = [
           "arn:aws:iam::*:role/hl-*",
