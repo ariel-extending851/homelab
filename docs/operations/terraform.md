@@ -45,16 +45,29 @@ See [`sops-setup.md`](sops-setup.md). Without this, `terraform plan` fails with 
 
 `infra/aws/terraform.tfvars.sops.yaml` must exist and contain three keys: `ssh_public_key`, `k3s_token`, `tailscale_auth_key`. The catch-all rule in [`.sops.yaml`](../../.sops.yaml) auto-encrypts on save.
 
-### 4. (Optional) GitHub Actions OIDC (`infra/aws-oidc`)
+### 4. GitHub Actions OIDC (`infra/aws-oidc`) — required for CI deploys
 
-For CI's read-only `terraform plan`. Run once locally to provision the IAM OIDC provider and `terraform plan` role.
+Provisions two IAM roles assumed by CI workflows via OIDC:
+
+- `github-actions-terraform-plan` — read-only, used by `ci-validation.yml` for plan-only PR checks.
+- `github-actions-terraform-apply` — Environment-pinned (`staging-deploy` / `production` / `production-approval` only), used by `ci-deployment.yml` and `rollback.yml`. Trust policy is locked to those Environments specifically — fork-PR runs cannot assume this role even though the repo is public.
+
+Run once locally with operator credentials:
 
 ```bash
 make oidc-init
 make oidc-plan
 make oidc-apply
-make oidc-output     # role ARN to paste into GitHub repo secrets / variables
+make oidc-output     # prints both role ARNs + AWS account ID
 ```
+
+Then set the GitHub repo variable so workflows can compose the role ARN:
+
+```bash
+gh variable set AWS_ACCOUNT_ID --body "$(terraform -chdir=infra/aws-oidc output -raw aws_account_id)"
+```
+
+Without `AWS_ACCOUNT_ID`, the role ARN expands to `arn:aws:iam:::role/...` and the OIDC `AssumeRoleWithWebIdentity` call fails with `Request ARN is invalid`.
 
 ---
 
