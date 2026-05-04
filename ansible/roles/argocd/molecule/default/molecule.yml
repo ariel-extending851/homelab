@@ -63,7 +63,15 @@ provisioner:
             cpu: 1000m
         argocd_install_wait_timeout: 600
         argocd_ready_wait_timeout: 300
-        apps_root_enabled: true
+        # Disabled in molecule — task copies a static manifest from
+        # roles/argocd/files/apps-root.yaml then issues kubectl apply. The
+        # kubectl stub returns 0 with empty stdout, so changed_when on Apply
+        # is False, which keeps Wait/cleanup gated. The Render task on its own
+        # then oscillates: cleanup removes /tmp/apps-root.yaml every converge,
+        # next run re-creates it, idempotence test fails. Skip the whole
+        # bootstrap in molecule the same way the extra-repo bootstrap is
+        # skipped via argocd_extra_repo_url undefined.
+        apps_root_enabled: false
         apps_root_name: homelab-apps-root
         apps_root_manifest_path: k8s/gitops/apps-root.yaml
         argocd_prune_on_deletion: true

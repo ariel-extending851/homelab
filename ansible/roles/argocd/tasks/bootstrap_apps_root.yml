@@ -6,9 +6,9 @@
 
 - name: Render root Application manifest
   ansible.builtin.copy:
+    src: apps-root.yaml
     dest: /tmp/apps-root.yaml
     mode: '0644'
-    content: "{{ lookup('file', apps_root_manifest_path) }}"
   when:
     - apps_root_enabled | bool
     - not ansible_check_mode
