@@ -236,34 +236,69 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
           }
         }
       },
-      # IAM — enumerated. Excludes privilege-escalation vectors:
-      # CreateLoginProfile, UpdateLoginProfile (console password backdoor),
-      # CreatePolicyVersion / SetDefaultPolicyVersion (managed-policy hijack),
-      # GenerateCredentialReport, GetCredentialReport, GetAccessKeyLastUsed.
+      # IAM — enumerated. Excludes privilege-escalation vectors at the
+      # action level: CreateLoginProfile (console backdoor), CreatePolicyVersion
+      # (managed-policy hijack), CreateSAMLProvider, GetCredentialReport.
+      # Excludes them at the structural level too: any new role/user MUST
+      # carry homelab_principal_boundary as its permissions boundary.
       {
-        Sid    = "BoundaryIAMScoped"
+        Sid    = "BoundaryIAMCreateRoleBounded"
+        Effect = "Allow"
+        Action = ["iam:CreateRole"]
+        Resource = [
+          "arn:aws:iam::*:role/k3s-node*",
+          "arn:aws:iam::*:role/scheduler-lambda*",
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
+      },
+      {
+        Sid      = "BoundaryIAMCreateUserBounded"
+        Effect   = "Allow"
+        Action   = ["iam:CreateUser"]
+        Resource = ["arn:aws:iam::*:user/velero*"]
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
+      },
+      {
+        Sid    = "BoundaryIAMServiceLinkedRoles"
         Effect = "Allow"
         Action = [
-          "iam:GetRole", "iam:CreateRole", "iam:DeleteRole",
+          "iam:CreateServiceLinkedRole",
+          "iam:DeleteServiceLinkedRole",
+          "iam:GetServiceLinkedRoleDeletionStatus",
+        ]
+        Resource = [
+          "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
+          "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
+        ]
+      },
+      {
+        Sid    = "BoundaryIAMHomelabPrincipalsManage"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole", "iam:DeleteRole",
           "iam:UpdateRole", "iam:UpdateRoleDescription", "iam:UpdateAssumeRolePolicy",
           "iam:GetRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
           "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:ListAttachedRolePolicies",
           "iam:PassRole", "iam:TagRole", "iam:UntagRole", "iam:ListRoleTags",
-          "iam:GetUser", "iam:CreateUser", "iam:DeleteUser",
+          "iam:GetUser", "iam:DeleteUser",
           "iam:GetUserPolicy", "iam:PutUserPolicy", "iam:DeleteUserPolicy", "iam:ListUserPolicies",
           "iam:AttachUserPolicy", "iam:DetachUserPolicy", "iam:ListAttachedUserPolicies",
           "iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey",
           "iam:GetInstanceProfile", "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile",
           "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile",
           "iam:ListInstanceProfilesForRole", "iam:TagInstanceProfile",
-          "iam:CreateServiceLinkedRole", "iam:DeleteServiceLinkedRole",
-          "iam:GetServiceLinkedRoleDeletionStatus",
         ]
         Resource = [
           "arn:aws:iam::*:role/k3s-node*",
           "arn:aws:iam::*:role/scheduler-lambda*",
-          "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
-          "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
           "arn:aws:iam::*:user/velero*",
           "arn:aws:iam::*:instance-profile/k3s-node*",
         ]
@@ -436,6 +471,28 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         ]
         Resource = "*"
       },
+      # Explicit deny: removing the homelab_principal_boundary from any
+      # existing role/user. Closes the bypass where an attacker would
+      # detach the boundary, then expand the role's policy.
+      {
+        Sid      = "BoundaryDenyPermissionsBoundaryRemoval"
+        Effect   = "Deny"
+        Action   = ["iam:DeleteRolePermissionsBoundary", "iam:DeleteUserPermissionsBoundary"]
+        Resource = "*"
+      },
+      # Explicit deny: replacing the boundary with anything other than
+      # the homelab_principal_boundary itself.
+      {
+        Sid      = "BoundaryDenyPermissionsBoundaryReplacement"
+        Effect   = "Deny"
+        Action   = ["iam:PutRolePermissionsBoundary", "iam:PutUserPermissionsBoundary"]
+        Resource = "*"
+        Condition = {
+          StringNotEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
+      },
     ]
   })
 
@@ -482,34 +539,95 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         ]
         Resource = "*"
       },
-      # IAM — homelab principals only. Same scoping as boundary.
+      # IAM CreateRole — homelab roles only, MUST attach the principal
+      # boundary so the new role inherits the cap on iam:* and AssumeRole.
+      # This closes the privilege-escalation chain identified in the PR
+      # security review.
       {
-        Sid    = "IAMHomelabPrincipals"
+        Sid    = "IAMCreateRoleBounded"
+        Effect = "Allow"
+        Action = ["iam:CreateRole"]
+        Resource = [
+          "arn:aws:iam::*:role/k3s-node*",
+          "arn:aws:iam::*:role/scheduler-lambda*",
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
+      },
+      {
+        Sid      = "IAMCreateUserBounded"
+        Effect   = "Allow"
+        Action   = ["iam:CreateUser"]
+        Resource = ["arn:aws:iam::*:user/velero*"]
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
+      },
+      # Service-linked role lifecycle: AWS-managed, cannot accept a
+      # user-supplied permissions boundary, so no Condition.
+      {
+        Sid    = "IAMServiceLinkedRoles"
         Effect = "Allow"
         Action = [
-          "iam:GetRole", "iam:CreateRole", "iam:DeleteRole",
+          "iam:CreateServiceLinkedRole",
+          "iam:DeleteServiceLinkedRole",
+          "iam:GetServiceLinkedRoleDeletionStatus",
+        ]
+        Resource = [
+          "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
+          "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
+        ]
+      },
+      # Other IAM actions on homelab principals — no Create*, no
+      # Delete*PermissionsBoundary, no Put*PermissionsBoundary (those
+      # are denied globally further down).
+      {
+        Sid    = "IAMHomelabPrincipalsManage"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole", "iam:DeleteRole",
           "iam:UpdateRole", "iam:UpdateRoleDescription", "iam:UpdateAssumeRolePolicy",
           "iam:GetRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
           "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:ListAttachedRolePolicies",
           "iam:PassRole", "iam:TagRole", "iam:UntagRole", "iam:ListRoleTags",
-          "iam:GetUser", "iam:CreateUser", "iam:DeleteUser",
+          "iam:GetUser", "iam:DeleteUser",
           "iam:GetUserPolicy", "iam:PutUserPolicy", "iam:DeleteUserPolicy", "iam:ListUserPolicies",
           "iam:AttachUserPolicy", "iam:DetachUserPolicy", "iam:ListAttachedUserPolicies",
           "iam:CreateAccessKey", "iam:DeleteAccessKey", "iam:ListAccessKeys", "iam:UpdateAccessKey",
           "iam:GetInstanceProfile", "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile",
           "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile",
           "iam:ListInstanceProfilesForRole", "iam:TagInstanceProfile",
-          "iam:CreateServiceLinkedRole", "iam:DeleteServiceLinkedRole",
-          "iam:GetServiceLinkedRoleDeletionStatus",
         ]
         Resource = [
           "arn:aws:iam::*:role/k3s-node*",
           "arn:aws:iam::*:role/scheduler-lambda*",
-          "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/*",
-          "arn:aws:iam::*:role/aws-service-role/spotfleet.amazonaws.com/*",
           "arn:aws:iam::*:user/velero*",
           "arn:aws:iam::*:instance-profile/k3s-node*",
         ]
+      },
+      # Global denies — boundary tampering is impossible regardless of
+      # which homelab principal name is targeted.
+      {
+        Sid      = "DenyPermissionsBoundaryRemoval"
+        Effect   = "Deny"
+        Action   = ["iam:DeleteRolePermissionsBoundary", "iam:DeleteUserPermissionsBoundary"]
+        Resource = "*"
+      },
+      {
+        Sid      = "DenyPermissionsBoundaryReplacement"
+        Effect   = "Deny"
+        Action   = ["iam:PutRolePermissionsBoundary", "iam:PutUserPermissionsBoundary"]
+        Resource = "*"
+        Condition = {
+          StringNotEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.homelab_principal_boundary.arn
+          }
+        }
       },
       # IAM read — narrow allowlist (no access-key enumeration on other users).
       {
@@ -646,4 +764,80 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
       },
     ]
   })
+}
+
+# ── homelab_principal_boundary ───────────────────────────────────────────────
+#
+# Permissions boundary required on every IAM role and user that the apply
+# role creates. Closes the privilege-escalation chain identified in the
+# PR #38 security review:
+#
+#   1. Apply role calls iam:CreateRole "k3s-node-evil" with attacker trust.
+#   2. Apply role calls iam:PutRolePolicy granting Action:"*" Resource:"*".
+#   3. Attacker assumes k3s-node-evil from their account → effective admin.
+#
+# Without this boundary, AWS does not propagate the apply role's own
+# permissions boundary to roles it creates. With this boundary required
+# on every Create*, the new role is hard-capped to "do almost anything
+# in AWS EXCEPT IAM modification and AssumeRole" — so the third step
+# (escalate further or pivot cross-account) is structurally blocked.
+#
+# Note: this boundary is intentionally permissive on non-IAM/non-STS
+# actions because the legitimate child principals (k3s-node, scheduler
+# Lambda, velero IAM user) need broad service access (SSM, S3, EC2
+# describe/start/stop/snapshot, Lambda logging). Tightening below this
+# level would require knowing each child's exact permission set, which
+# is iteration-heavy and the inline policies on each child role are
+# already explicit and reviewed.
+resource "aws_iam_policy" "homelab_principal_boundary" {
+  # checkov:skip=CKV_AWS_62:Action:"*" is the boundary's intentional permissive ceiling. The Deny statements on iam:* and sts:AssumeRole* are what give the boundary its security value — tightening Action would require knowing every child principal's needed permission set without adding security beyond the existing Denies.
+  # checkov:skip=CKV_AWS_63:Same as CKV_AWS_62 — Action:"*" is intentional in this allow-then-deny boundary design.
+  # checkov:skip=CKV2_AWS_40:Same as CKV_AWS_62 — the iam:* Deny is the load-bearing cap on full IAM privileges, not the Allow.
+  # checkov:skip=CKV_AWS_290:Allow Action:"*" is the boundary's deliberate "permissive ceiling minus IAM/STS"; tightening to enumerated actions would require knowing every child principal's needed permission set, which the explicit Deny on iam:* and sts:AssumeRole* already caps from the privilege-escalation angle.
+  # checkov:skip=CKV_AWS_355:Same as CKV_AWS_290 — boundary is intentionally allow-everything-then-deny-dangerous.
+  # checkov:skip=CKV_AWS_286:Privilege escalation is structurally blocked by the explicit Deny on iam:* and sts:AssumeRole* below.
+  # checkov:skip=CKV_AWS_287:Credential exposure via iam:CreateAccessKey etc is blocked by the iam:* Deny.
+  # checkov:skip=CKV_AWS_288:Data exfiltration risk is the documented residual (child role can read homelab S3 buckets); the inline policy attached to each child principal is the next layer of defense.
+  # checkov:skip=CKV_AWS_289:Permissions management is blocked by iam:* Deny.
+  name        = "homelab-principal-boundary"
+  description = "Hard cap on every IAM role/user created by github-actions-terraform-apply. Allows broad AWS service access EXCEPT IAM modification and sts:AssumeRole, structurally blocking privilege-escalation chains."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowMostAWSServices"
+        Effect   = "Allow"
+        Action   = "*"
+        Resource = "*"
+      },
+      {
+        Sid      = "DenyAllIAMModification"
+        Effect   = "Deny"
+        Action   = ["iam:*"]
+        Resource = "*"
+      },
+      {
+        Sid    = "DenyAssumeRoleEscalation"
+        Effect = "Deny"
+        Action = [
+          "sts:AssumeRole",
+          "sts:AssumeRoleWithWebIdentity",
+          "sts:AssumeRoleWithSAML",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid      = "DenyOrganizationsAccess"
+        Effect   = "Deny"
+        Action   = ["organizations:*", "account:*"]
+        Resource = "*"
+      },
+    ]
+  })
+
+  tags = {
+    Name    = "homelab-principal-boundary"
+    Project = "homelab"
+  }
 }

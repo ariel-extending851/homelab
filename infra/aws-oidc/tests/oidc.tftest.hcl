@@ -96,3 +96,73 @@ run "apply_role_boundary_denies_admin_attach" {
     error_message = "Permissions boundary must deny attaching iam:AttachRolePolicy with admin/poweruser/iamfull policies"
   }
 }
+
+# ── homelab principal boundary (cap on roles created by apply role) ───────────
+
+run "principal_boundary_exists_and_denies_iam" {
+  assert {
+    condition     = aws_iam_policy.homelab_principal_boundary.name == "homelab-principal-boundary"
+    error_message = "homelab_principal_boundary must exist with the canonical name"
+  }
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_policy.homelab_principal_boundary.policy).Statement :
+      stmt.Effect == "Deny" && contains(try(stmt.Action, []), "iam:*")
+    ])
+    error_message = "homelab_principal_boundary must explicitly Deny iam:* — closes the privilege-escalation chain"
+  }
+}
+
+run "principal_boundary_denies_assume_role" {
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_policy.homelab_principal_boundary.policy).Statement :
+      stmt.Effect == "Deny" && contains(try(stmt.Action, []), "sts:AssumeRole")
+    ])
+    error_message = "homelab_principal_boundary must Deny sts:AssumeRole — blocks cross-account pivot from a hijacked child role"
+  }
+}
+
+# ── apply role enforces the boundary on every Create ──────────────────────────
+
+run "apply_create_role_requires_principal_boundary" {
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_role_policy.terraform_apply_permissions.policy).Statement :
+      contains(try(stmt.Action, []), "iam:CreateRole") &&
+      try(stmt.Condition.StringEquals["iam:PermissionsBoundary"], null) == aws_iam_policy.homelab_principal_boundary.arn
+    ])
+    error_message = "Inline policy: iam:CreateRole must be Conditioned on iam:PermissionsBoundary = homelab_principal_boundary.arn"
+  }
+}
+
+run "apply_create_user_requires_principal_boundary" {
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_role_policy.terraform_apply_permissions.policy).Statement :
+      contains(try(stmt.Action, []), "iam:CreateUser") &&
+      try(stmt.Condition.StringEquals["iam:PermissionsBoundary"], null) == aws_iam_policy.homelab_principal_boundary.arn
+    ])
+    error_message = "Inline policy: iam:CreateUser must be Conditioned on iam:PermissionsBoundary = homelab_principal_boundary.arn"
+  }
+}
+
+run "apply_inline_denies_boundary_removal" {
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_role_policy.terraform_apply_permissions.policy).Statement :
+      stmt.Effect == "Deny" && contains(try(stmt.Action, []), "iam:DeleteRolePermissionsBoundary")
+    ])
+    error_message = "Inline policy must Deny iam:DeleteRolePermissionsBoundary so the boundary cannot be detached"
+  }
+}
+
+run "apply_boundary_denies_boundary_removal" {
+  assert {
+    condition = anytrue([
+      for stmt in jsondecode(aws_iam_policy.terraform_apply_boundary.policy).Statement :
+      stmt.Effect == "Deny" && contains(try(stmt.Action, []), "iam:DeleteRolePermissionsBoundary")
+    ])
+    error_message = "Apply role boundary must Deny iam:DeleteRolePermissionsBoundary too — defense in depth"
+  }
+}

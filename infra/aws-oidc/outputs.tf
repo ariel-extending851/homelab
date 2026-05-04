@@ -13,6 +13,11 @@ output "oidc_provider_arn" {
   value       = aws_iam_openid_connect_provider.github_actions.arn
 }
 
+output "homelab_principal_boundary_arn" {
+  description = "ARN of the permissions boundary attached to every IAM role/user the apply role creates. Referenced by infra/aws/ when defining child principals."
+  value       = aws_iam_policy.homelab_principal_boundary.arn
+}
+
 output "aws_account_id" {
   description = "AWS account ID — set as the GitHub repo variable AWS_ACCOUNT_ID after first apply."
   value       = data.aws_caller_identity.current.account_id
