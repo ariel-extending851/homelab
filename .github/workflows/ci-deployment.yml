@@ -75,7 +75,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      pull-requests: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -123,28 +122,13 @@ jobs:
             infra/aws/plan.txt
           retention-days: 7
 
-      - name: Post Plan Summary on Commit
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('infra/aws/plan.txt', 'utf8');
-            const body = plan.length > 60000
-              ? plan.slice(0, 60000) + '\n...(truncated, see workflow artifact terraform-plan-prod-logs)'
-              : plan;
-            await github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `## Terraform Plan — awaiting prod approval\n\n\`\`\`\n${body}\n\`\`\``,
-            });
-
   # ============================================================================
   # MANUAL APPROVAL GATE
   # ----------------------------------------------------------------------------
-  # Reviewer inspects the plan posted as a commit comment by terraform-plan-prod
-  # before approving. Configured at GitHub UI: Settings → Environments →
-  # production-approval → required reviewers.
+  # Reviewer inspects the plan via the workflow artifact `terraform-plan-prod-logs`
+  # (download `plan.txt` from the GitHub Actions run page) before approving.
+  # Configured at GitHub UI: Settings → Environments → production-approval →
+  # required reviewers.
   # ============================================================================
   await-prod-approval:
     name: "Approval: Reviewer approves plan"
