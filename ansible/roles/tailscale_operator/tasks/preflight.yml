@@ -1,0 +1,41 @@
+---
+- name: Verify helm is installed on the controller
+  ansible.builtin.command: helm version --short
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  register: _ts_op_helm_version
+  when: not ansible_check_mode
+
+- name: Show detected helm version
+  ansible.builtin.debug:
+    msg: "Helm: {{ _ts_op_helm_version.stdout | default('(check mode — not invoked)') }}"
+
+- name: Stat kubeconfig on controller
+  ansible.builtin.stat:
+    path: "{{ tailscale_operator_kubeconfig }}"
+  delegate_to: localhost
+  become: false
+  register: _ts_op_kubeconfig
+
+- name: Fail if kubeconfig is missing
+  ansible.builtin.fail:
+    msg: >
+      Kubeconfig not found at {{ tailscale_operator_kubeconfig }}.
+      Run site.yml so the pre-flight play populates it, or pass
+      `-e tailscale_operator_kubeconfig=<path>`.
+  when: not _ts_op_kubeconfig.stat.exists
+
+- name: Stat the SOPS-encrypted values file
+  ansible.builtin.stat:
+    path: "{{ tailscale_operator_secrets_file }}"
+  delegate_to: localhost
+  become: false
+  register: _ts_op_secrets
+
+- name: Fail if SOPS values file is missing
+  ansible.builtin.fail:
+    msg: >
+      SOPS values file not found at {{ tailscale_operator_secrets_file }}.
+      Provision OAuth credentials first (see docs/services/tailscale-operator.md).
+  when: not _ts_op_secrets.stat.exists
