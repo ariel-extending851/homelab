@@ -222,6 +222,35 @@
       changed_when: false
       failed_when: verify_failover_script_content.rc != 0
 
+    - name: Verify failover script checks DNS service health, not just ICMP
+      ansible.builtin.raw: grep -q 'nslookup .* "$PI_IP"' /usr/bin/adguard-failover
+      register: verify_failover_dns_check
+      changed_when: false
+      failed_when: verify_failover_dns_check.rc != 0
+
+    - name: Verify failover script self-heals LAN DNAT (toggles firewall.dns_hijack_adguard)
+      ansible.builtin.raw: |
+        grep -q 'firewall.dns_hijack_adguard' /usr/bin/adguard-failover && \
+        grep -q '/etc/init.d/firewall reload' /usr/bin/adguard-failover
+      register: verify_failover_dnat_toggle
+      changed_when: false
+      failed_when: verify_failover_dnat_toggle.rc != 0
+
+    - name: Verify failover script has hysteresis + force-reconcile
+      ansible.builtin.raw: |
+        grep -q 'HYSTERESIS=' /usr/bin/adguard-failover && \
+        grep -q 'COUNTER_FILE=' /usr/bin/adguard-failover && \
+        grep -q 'dnat_should_exist' /usr/bin/adguard-failover
+      register: verify_failover_hysteresis
+      changed_when: false
+      failed_when: verify_failover_hysteresis.rc != 0
+
+    - name: Verify rc.local launches failover at boot
+      ansible.builtin.raw: grep -Fq '/usr/bin/adguard-failover' /etc/rc.local
+      register: verify_failover_rc_local
+      changed_when: false
+      failed_when: verify_failover_rc_local.rc != 0
+
     - name: Verify cron entry for AdGuard failover exists
       ansible.builtin.raw: grep -Fq "/usr/bin/adguard-failover" /etc/crontabs/root
       register: verify_failover_cron
