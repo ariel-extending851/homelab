@@ -1007,6 +1007,11 @@ test-e2e-observability: ## Run observability pipeline tests only (Prometheus, Lo
 	@command -v bats >/dev/null || (echo "❌ bats not found"; exit 1)
 	@$(MISE_EXEC) bats bin/tests/e2e_post_deploy.bats --verbose --filter "observability\|Prometheus\|Loki"
 
+test-e2e-tailscale-operator: ## Verify the Tailscale Kubernetes Operator is healthy on the live cluster
+	@echo "🛰️  Running Tailscale Operator E2E tests..."
+	@command -v kubectl >/dev/null || (echo "❌ kubectl not found"; exit 1)
+	@$(MISE_EXEC) python3 -m pytest bin/tests/test_tailscale_operator_e2e.py --run-live -v
+
 test-contracts: ## Verify App-of-Apps path contracts and SOPS secret structure (offline)
 	@echo "🧪 Running contract tests..."
 	@command -v bats >/dev/null || (echo "❌ bats not found. Install: https://github.com/bats-core/bats-core"; exit 1)
