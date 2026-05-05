@@ -228,13 +228,18 @@ resource "aws_launch_template" "k3s_agent" {
 
 # EC2 Fleet for k3s server (single spot instance)
 #
-# Override list floors at 2 GiB RAM (t3.small) — see postmortem 2026-05-03
-# gotcha #3: spot fleet's price-capacity-optimized strategy may substitute the
-# launch-template instance_type with the cheapest pool from these overrides.
-# Including t3.micro (1 GiB) here let staging silently downsize to a 1 GiB host,
-# which OOMs ArgoCD reconcile + breaks SSM exec timeouts. Dropping micros
-# keeps the floor at 2 GiB while preserving Intel/AMD diversity for the
-# allocation strategy.
+# Override list floors at 4 GiB RAM (t3.medium) — see project_prod_deploy_2026_05
+# 2026-05-04 deploy postmortem (gotcha #16): spot fleet's price-capacity-optimized
+# strategy picks the cheapest pool that has capacity, ignoring the launch
+# template's instance_type. The earlier floor at 2 GiB (t3.small) let prod
+# silently come up as t3.small, where the control plane (etcd + kube-apiserver
+# + ArgoCD repo-server CMP sidecar) ran tight and the kustomize manifest
+# generation pushed close to the 2 GiB ceiling — same shape as the recurring
+# k3d CMP-sidecar startup race we see in CI. Pinning to t3.medium-class
+# preserves Intel/AMD diversity for the allocation strategy.
+#
+# Agent fleet (below) keeps the wider override list — workers are kubelet +
+# small DaemonSets and run comfortably at 2 GiB.
 resource "aws_ec2_fleet" "k3s_server" {
   launch_template_config {
     launch_template_specification {
@@ -242,13 +247,10 @@ resource "aws_ec2_fleet" "k3s_server" {
       version            = "$Latest"
     }
     override {
-      instance_type = "t3.small"
-    }
-    override {
-      instance_type = "t3a.small"
-    }
-    override {
       instance_type = "t3.medium"
+    }
+    override {
+      instance_type = "t3a.medium"
     }
   }
 
