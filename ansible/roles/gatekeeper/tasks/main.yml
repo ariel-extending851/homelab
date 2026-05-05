@@ -567,51 +567,6 @@
   register: gatekeeper_block_modem
   changed_when: "'CHANGED' in gatekeeper_block_modem.stdout"
 
-- name: Harden guest zone — REJECT input/forward, allow only DHCP/DNS/ICMP
-  ansible.builtin.raw: |
-    set -eu
-    changed=0
-
-    # Find guest zone section (matches WAN-zone-hardening pattern at line 449)
-    for zone in $(uci show firewall | sed -n "s/^firewall\.\([^=]*\)=zone$/\1/p"); do
-      if uci -q show firewall.$zone | grep -Eq "network='[^']*guest([^']*)?'"; then
-        cur_input="$(uci -q get firewall.$zone.input || true)"
-        if [ "$cur_input" != "REJECT" ]; then
-          uci set firewall.$zone.input='REJECT'
-          changed=1
-        fi
-        cur_forward="$(uci -q get firewall.$zone.forward || true)"
-        if [ "$cur_forward" != "REJECT" ]; then
-          uci set firewall.$zone.forward='REJECT'
-          changed=1
-        fi
-      fi
-    done
-
-    # Allow rules so guest clients can still: get DHCP lease, query DNS, ping gateway
-    add_allow_rule() {
-      name="$1"; proto="$2"; dport="$3"; extra="$4"
-      if ! uci show firewall | grep -q "name='$name'"; then
-        idx=$(uci add firewall rule)
-        uci set "firewall.$idx.name=$name"
-        uci set "firewall.$idx.src=guest"
-        uci set "firewall.$idx.proto=$proto"
-        [ -n "$dport" ] && uci set "firewall.$idx.dest_port=$dport"
-        [ -n "$extra" ] && eval "uci set firewall.$idx.$extra"
-        uci set "firewall.$idx.target=ACCEPT"
-        uci set "firewall.$idx.enabled=1"
-        changed=1
-      fi
-    }
-    add_allow_rule "allow_guest_dhcp"    "udp"  "67" ""
-    add_allow_rule "allow_guest_dns_udp" "udp"  "53" ""
-    add_allow_rule "allow_guest_dns_tcp" "tcp"  "53" ""
-    add_allow_rule "allow_guest_icmp"    "icmp" ""   "icmp_type=echo-request"
-
-    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
-  register: gatekeeper_guest_zone
-  changed_when: "'CHANGED' in gatekeeper_guest_zone.stdout"
-
 - name: Configure DHCP reservations for known Raspberry Pis
   ansible.builtin.raw: |
     set -eu
@@ -818,7 +773,6 @@
       or gatekeeper_dnsmasq is changed
       or gatekeeper_wan is changed
       or gatekeeper_block_modem is changed
-      or gatekeeper_guest_zone is changed
       or gatekeeper_services is changed
 
 - name: Remove DNS DNAT rules when Pi (AdGuard) is unreachable
