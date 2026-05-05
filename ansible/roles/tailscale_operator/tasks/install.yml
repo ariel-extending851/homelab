@@ -1,0 +1,64 @@
+---
+- name: Add tailscale helm repo
+  ansible.builtin.command:
+    cmd: >-
+      helm repo add {{ tailscale_operator_chart_repo_name }}
+      {{ tailscale_operator_chart_repo_url }}
+      --force-update
+  delegate_to: localhost
+  become: false
+  register: _ts_op_repo_add
+  changed_when: '"already exists" not in _ts_op_repo_add.stdout'
+  when: not ansible_check_mode
+
+- name: Update tailscale helm repo index
+  ansible.builtin.command: helm repo update {{ tailscale_operator_chart_repo_name }}
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Decrypt SOPS values to memory
+  ansible.builtin.command: sops --decrypt {{ tailscale_operator_secrets_file }}
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  register: _ts_op_decrypted_secrets
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Stage decrypted secrets to a 0600 tempfile (so helm -f can read them)
+  ansible.builtin.copy:
+    content: "{{ _ts_op_decrypted_secrets.stdout }}\n"
+    dest: /tmp/tailscale-operator-secrets.yaml
+    mode: '0600'
+  delegate_to: localhost
+  become: false
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Install/upgrade tailscale-operator chart
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade --install {{ tailscale_operator_release_name }}
+      {{ tailscale_operator_chart_repo_name }}/{{ tailscale_operator_chart_name }}
+      --namespace {{ tailscale_operator_namespace }}
+      --create-namespace
+      -f {{ tailscale_operator_values_file }}
+      -f /tmp/tailscale-operator-secrets.yaml
+      --wait --timeout={{ tailscale_operator_helm_timeout }}
+  environment:
+    KUBECONFIG: "{{ tailscale_operator_kubeconfig }}"
+  delegate_to: localhost
+  become: false
+  register: _ts_op_helm
+  changed_when: '"unchanged" not in _ts_op_helm.stdout'
+  when: not ansible_check_mode
+
+- name: Remove decrypted-secret tempfile
+  ansible.builtin.file:
+    path: /tmp/tailscale-operator-secrets.yaml
+    state: absent
+  delegate_to: localhost
+  become: false
+  when: not ansible_check_mode

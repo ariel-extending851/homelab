@@ -1,0 +1,27 @@
+---
+# Tailscale Kubernetes Operator — defaults
+#
+# Installs the upstream tailscale/tailscale-operator Helm chart against the
+# in-cluster API. The chart is run from the controller (delegate_to: localhost)
+# so that we can reuse the freshly templated kubeconfig at
+# /tmp/k3s-homelab-kubeconfig.yaml without putting Helm on the k3s server.
+
+tailscale_operator_namespace: tailscale
+tailscale_operator_release_name: tailscale-operator
+tailscale_operator_chart_repo_name: tailscale
+tailscale_operator_chart_repo_url: https://pkgs.tailscale.com/helmcharts
+tailscale_operator_chart_name: tailscale-operator
+
+# Manifest tree under k8s/system/tailscale-operator/
+tailscale_operator_manifests_dir: "{{ playbook_dir }}/../../k8s/system/tailscale-operator"
+tailscale_operator_values_file: "{{ tailscale_operator_manifests_dir }}/values.yaml"
+tailscale_operator_secrets_file: "{{ tailscale_operator_manifests_dir }}/values.sops.yaml"
+tailscale_operator_proxyclass_files:
+  - "{{ tailscale_operator_manifests_dir }}/proxyclass.yaml"
+  - "{{ tailscale_operator_manifests_dir }}/high-bandwidth-proxyclass.yaml"
+
+# Path to the kubeconfig produced by site.yml's pre-flight refresh play.
+tailscale_operator_kubeconfig: /tmp/k3s-homelab-kubeconfig.yaml
+
+# Bound the helm wait so a slow image pull doesn't pin the play forever.
+tailscale_operator_helm_timeout: 5m

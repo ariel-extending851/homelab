@@ -1,0 +1,42 @@
+---
+# Molecule test suite for the tailscale_operator role.
+# Driver: Docker — runs offline, no real cluster needed.
+#
+# Strategy: run with check_mode=true so every helm/kubectl/sops command is
+# guarded by `when: not ansible_check_mode`. Molecule then validates:
+#   - All vars/defaults render without errors
+#   - Banner debug tasks execute
+#   - No undefined-variable failures from skipped tasks (default() guards)
+#   - ansible-lint + yamllint pass
+
+driver:
+  name: docker
+
+platforms:
+  - name: tailscale-operator-test
+    image: debian:bookworm-slim
+    pre_build_image: true
+    hostname: tailscale-operator-test
+    command: /bin/bash -c "sleep infinity"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    hosts:
+      all:
+        hosts:
+          tailscale-operator-test:
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint

@@ -1,0 +1,23 @@
+---
+# Verify: confirm the converge play left a coherent state. In check_mode there
+# are no real artifacts to assert against, so we only assert that ansible
+# finished without errors and the role's defaults are well-formed.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Defaults — namespace
+      ansible.builtin.assert:
+        that:
+          - tailscale_operator_namespace == "tailscale"
+          - tailscale_operator_release_name == "tailscale-operator"
+          - tailscale_operator_chart_repo_name == "tailscale"
+          - tailscale_operator_chart_repo_url is match('^https://')
+          - (tailscale_operator_proxyclass_files | length) == 2
+        success_msg: "tailscale_operator defaults look correct"
+
+    - name: Confirm the verify play actually ran (sanity)
+      ansible.builtin.debug:
+        msg: "✓ tailscale_operator role verified (check-mode molecule run)"

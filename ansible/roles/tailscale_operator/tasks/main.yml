@@ -1,0 +1,37 @@
+---
+# Install/upgrade the Tailscale Kubernetes Operator and apply ProxyClass
+# resources used by the homelab ingresses (`default`, `high-bandwidth`).
+#
+# Why this role exists: the operator was previously installed by an out-of-band
+# `helm upgrade --install` documented in docs/services/tailscale-operator.md.
+# Rebuilding the cluster from a fresh EBS skipped that step, which left every
+# Ingress with `class: tailscale` un-materialized (no tailnet hostname). This
+# role folds the install into ansible so any clean re-deploy gets it for free.
+
+- name: Display tailscale-operator install banner
+  ansible.builtin.debug:
+    msg: |
+      ===========================================
+      Tailscale Operator Installation
+      ===========================================
+      Release:    {{ tailscale_operator_release_name }}
+      Namespace:  {{ tailscale_operator_namespace }}
+      Chart:      {{ tailscale_operator_chart_repo_name }}/{{ tailscale_operator_chart_name }}
+      Kubeconfig: {{ tailscale_operator_kubeconfig }}
+      ===========================================
+
+- name: Pre-flight checks (helm + kubeconfig present on controller)
+  ansible.builtin.include_tasks: preflight.yml
+  tags: ['preflight']
+
+- name: Install/upgrade the operator chart
+  ansible.builtin.include_tasks: install.yml
+  tags: ['install']
+
+- name: Apply ProxyClass resources (depends on operator CRDs)
+  ansible.builtin.include_tasks: proxyclass.yml
+  tags: ['proxyclass']
+
+- name: Verify operator pod is Running
+  ansible.builtin.include_tasks: verify.yml
+  tags: ['verify', 'validate']

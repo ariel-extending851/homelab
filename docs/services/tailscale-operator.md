@@ -18,25 +18,32 @@ Without the operator, getting Kubernetes Services onto a tailnet requires a side
 - **Auth:** OAuth client credentials in a Helm-managed Secret
 - **Tags:** every operator-created tailnet device gets `tag:k8s-operator`
 
-## Installation (Helm)
+## Installation
 
-This is one of the few cluster components installed by Helm (not Kustomize). Reason: the upstream chart bakes in the OAuth wiring and has tighter version compatibility guarantees.
+The operator is installed by the **`tailscale_operator` ansible role**, wired into `site.yml` as Phase 2.3 (after ArgoCD is up). A clean `make ansible-deploy` brings it up automatically — no manual `helm` step required.
 
 ```bash
-helm repo add tailscale https://pkgs.tailscale.com/helmcharts
-helm repo update
+# Bundled into the full deploy:
+make ansible-deploy
 
-helm upgrade --install tailscale-operator tailscale/tailscale-operator \
-  --namespace=tailscale \
-  --create-namespace \
-  --set-string oauth.clientId=<YOUR_CLIENT_ID> \
-  --set-string oauth.clientSecret=<YOUR_CLIENT_SECRET> \
-  --set operatorConfig.defaultTags="tag:k8s-operator" \
-  --set proxyConfig.defaultTags="tag:k8s-operator" \
-  --wait
+# Or, run just the operator install (useful when adding/upgrading):
+ansible-playbook -i ansible/inventory/production.yml \
+  -i ansible/terraform_inventory_aws.py \
+  ansible/playbooks/system/install_tailscale_operator.yml
 ```
 
+The role:
+1. Verifies `helm` is available on the controller and the kubeconfig at `/tmp/k3s-homelab-kubeconfig.yaml` exists (`site.yml`'s pre-flight populates it).
+2. Adds the upstream `tailscale` Helm repo and refreshes its index.
+3. Decrypts `k8s/system/tailscale-operator/values.sops.yaml` (OAuth credentials) into a 0600 tempfile on the controller.
+4. Runs `helm upgrade --install tailscale-operator tailscale/tailscale-operator -f values.yaml -f <decrypted-tempfile> --wait` against the cluster.
+5. Removes the tempfile.
+6. Applies `proxyclass.yaml` and `high-bandwidth-proxyclass.yaml`.
+7. Waits for the operator pod to reach `Running`.
+
 OAuth credentials come from <https://login.tailscale.com/admin/settings/oauth> (scope: `auth_keys` + `devices`). Store them in `k8s/system/tailscale-operator/values.sops.yaml` (SOPS-encrypted) — see [`../operations/sops-setup.md`](../operations/sops-setup.md).
+
+> **Why Helm and not Kustomize:** the upstream chart bundles the OAuth wiring and guards version compatibility tighter than a static manifest set would; running it through ansible keeps the install reproducible from a fresh cluster.
 
 ## Proxy Classes
 
@@ -58,14 +65,13 @@ metadata:
 
 ### Upgrade
 
-```bash
-helm repo update
-helm upgrade tailscale-operator tailscale/tailscale-operator \
-  --namespace=tailscale \
-  --reuse-values
-```
+Re-run the operator playbook — the role's `helm upgrade --install` command is idempotent and will pick up any new chart version pinned in `k8s/system/tailscale-operator/values.yaml`:
 
-(Or re-pass the OAuth flags if not using `--reuse-values`.)
+```bash
+ansible-playbook -i ansible/inventory/production.yml \
+  -i ansible/terraform_inventory_aws.py \
+  ansible/playbooks/system/install_tailscale_operator.yml
+```
 
 ### Uninstall
 

@@ -254,6 +254,10 @@
   ansible.builtin.import_playbook: gitops/bootstrap_apps.yml
   tags: ['phase2', 'bootstrap', 'apps', 'validate']
 
+- name: Phase 2.3 — Install Tailscale Kubernetes Operator (system component)
+  ansible.builtin.import_playbook: system/install_tailscale_operator.yml
+  tags: ['phase2', 'tailscale-operator', 'system']
+
 # =============================================================================
 # PHASE 3: Final Verification & Summary
 # Queries the AWS k3s_server for cluster state.  Guards every reference to
