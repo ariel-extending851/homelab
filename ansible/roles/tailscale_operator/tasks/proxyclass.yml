@@ -1,15 +1,17 @@
 ---
 - name: Apply ProxyClass manifests
-  ansible.builtin.command: kubectl apply -f {{ item }}
+  ansible.builtin.command: "{{ tailscale_operator__kubectl_bin }} apply -f {{ item }}"
   environment:
     KUBECONFIG: "{{ tailscale_operator_kubeconfig }}"
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   loop: "{{ tailscale_operator_proxyclass_files }}"
   loop_control:
     label: "{{ item | basename }}"
-  register: _ts_op_proxyclass
+  register: tailscale_operator__proxyclass
   changed_when: >-
-    'created' in _ts_op_proxyclass.stdout or
-    'configured' in _ts_op_proxyclass.stdout
+    'created' in tailscale_operator__proxyclass.stdout or
+    'configured' in tailscale_operator__proxyclass.stdout
   when: not ansible_check_mode

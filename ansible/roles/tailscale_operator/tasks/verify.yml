@@ -1,18 +1,20 @@
 ---
 - name: Wait for the operator pod to reach Running
   ansible.builtin.command: >-
-    kubectl get pods -n {{ tailscale_operator_namespace }}
-    -l app.kubernetes.io/name=tailscale-operator
+    {{ tailscale_operator__kubectl_bin }} get pods -n {{ tailscale_operator_namespace }}
+    -l app=operator
     -o jsonpath={.items[0].status.phase}
   environment:
     KUBECONFIG: "{{ tailscale_operator_kubeconfig }}"
   delegate_to: localhost
   become: false
-  register: _ts_op_phase
+  vars:
+    ansible_become: false
+  register: tailscale_operator__phase
   changed_when: false
   retries: 12
   delay: 10
-  until: _ts_op_phase.stdout == "Running"
+  until: tailscale_operator__phase.stdout == "Running"
   when: not ansible_check_mode
 
 - name: Display tailscale-operator readiness summary
@@ -21,7 +23,7 @@
       ===========================================
       Tailscale Operator Ready
       ===========================================
-      Pod phase: {{ _ts_op_phase.stdout | default('(check mode — not invoked)') }}
+      Pod phase: {{ tailscale_operator__phase.stdout | default('(check mode — not invoked)') }}
       Namespace: {{ tailscale_operator_namespace }}
 
       Existing ingresses with `class: tailscale` will materialize on the tailnet
