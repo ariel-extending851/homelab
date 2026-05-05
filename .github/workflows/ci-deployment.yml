@@ -218,7 +218,14 @@ jobs:
         working-directory: infra/aws
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        # set -o pipefail is REQUIRED — without it, `tee` masks a failed
+        # apply by always returning 0. A 2026-05-04 deploy reported success
+        # while terraform errored "Cannot apply incomplete plan" mid-pipeline,
+        # leaving prod state unmodified but the workflow green. Future
+        # operators trust the green check; the silent failure mode is worse
+        # than a noisy one.
         run: |
+          set -o pipefail
           terraform apply -lock=true plan.tfplan 2>&1 | tee apply.log
 
       - name: Operator Handoff Notice

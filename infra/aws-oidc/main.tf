@@ -43,73 +43,29 @@ resource "aws_iam_role" "github_actions_terraform_plan" {
   }
 }
 
-# Minimal policy for terraform plan — read-only access to every service
-# touched by infra/aws/: EC2, VPC, S3, IAM, Lambda, EventBridge, and the
-# Terraform state backend (S3 + DynamoDB).
-resource "aws_iam_role_policy" "terraform_plan_readonly" {
-  name = "terraform-plan-readonly"
-  role = aws_iam_role.github_actions_terraform_plan.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "EC2Read"
-        Effect   = "Allow"
-        Action   = ["ec2:Describe*"]
-        Resource = "*"
-      },
-      {
-        Sid    = "S3Read"
-        Effect = "Allow"
-        Action = [
-          "s3:GetBucketVersioning",
-          "s3:GetBucketEncryption",
-          "s3:GetBucketPublicAccessBlock",
-          "s3:GetLifecycleConfiguration",
-          "s3:GetBucketTagging",
-          "s3:ListBucket",
-          "s3:GetObject",
-        ]
-        Resource = "*"
-      },
-      {
-        Sid      = "IAMRead"
-        Effect   = "Allow"
-        Action   = ["iam:Get*", "iam:List*"]
-        Resource = "*"
-      },
-      {
-        Sid      = "LambdaRead"
-        Effect   = "Allow"
-        Action   = ["lambda:Get*", "lambda:List*"]
-        Resource = "*"
-      },
-      {
-        Sid      = "EventBridgeRead"
-        Effect   = "Allow"
-        Action   = ["events:List*", "events:Describe*"]
-        Resource = "*"
-      },
-      # Terraform state backend — S3 write needed for .tflock file (use_lockfile=true),
-      # but CI uses -lock=false so only read is required.
-      {
-        Sid    = "TerraformStateRead"
-        Effect = "Allow"
-        Action = ["s3:GetObject", "s3:ListBucket"]
-        Resource = [
-          "arn:aws:s3:::homelab-terraform-state-kkuhocyv",
-          "arn:aws:s3:::homelab-terraform-state-kkuhocyv/*",
-        ]
-      },
-      {
-        Sid      = "TerraformLockRead"
-        Effect   = "Allow"
-        Action   = ["dynamodb:DescribeTable", "dynamodb:GetItem"]
-        Resource = "arn:aws:dynamodb:us-east-1:${data.aws_caller_identity.current.account_id}:table/homelab-terraform-state-lock"
-      },
-    ]
-  })
+# Read-only access for terraform plan via the AWS-managed ReadOnlyAccess
+# policy. This is intentionally broader than the resource-specific enumerated
+# allow-list it replaces.
+#
+# Why managed-broad over enumerated-tight here (and only here):
+#   - This role is plan-only — every action it can call is read-only by
+#     definition. There is no privilege-escalation surface to mitigate by
+#     enumerating; the worst case is "reads more than it strictly needs."
+#   - The enumerated approach kept producing a recurring class of incident:
+#     each new resource type in infra/aws/ surfaced a new missing read
+#     (s3:GetBucketPolicy, guardduty:GetDetector, cloudtrail:DescribeTrails,
+#     etc.). When refresh fails, terraform marks the plan binary "incomplete"
+#     and the apply step downstream fails with `Cannot apply incomplete plan`
+#     — a SILENT failure if the apply step doesn't `set -o pipefail`. The
+#     2026-05-04 deploy ran a green CI workflow that did not actually apply.
+#   - The apply role keeps its tight enumerated set + permissions boundary —
+#     that is where escalation surface lives and where tightening pays off.
+#
+# Concretely: the managed policy grants Get/List/Describe on every AWS
+# service. It cannot mutate anything.
+resource "aws_iam_role_policy_attachment" "terraform_plan_readonly" {
+  role       = aws_iam_role.github_actions_terraform_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
 # ── github-actions-terraform-apply ───────────────────────────────────────────
