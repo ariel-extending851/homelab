@@ -1,0 +1,37 @@
+---
+# Converge: apply tailscale_operator role in check mode.
+# Every helm/kubectl/sops shell-out is gated with `when: not ansible_check_mode`,
+# so this verifies var rendering, defaults, and banner tasks without touching
+# the network.
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  check_mode: true
+
+  pre_tasks:
+    # Provide a fake kubeconfig so preflight stat passes (the actual stat task
+    # itself runs in check mode but reads the file from the controller).
+    - name: Create /tmp/k3s-homelab-kubeconfig.yaml stub on the controller
+      ansible.builtin.copy:
+        dest: /tmp/k3s-homelab-kubeconfig.yaml
+        content: "# molecule stub\n"
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+      check_mode: false
+
+    # Ditto for the SOPS values file — preflight stats it.
+    - name: Create /tmp molecule SOPS-values stub
+      ansible.builtin.copy:
+        dest: /tmp/tailscale-operator-values.sops.yaml
+        content: "# molecule stub (would be SOPS ciphertext in prod)\n"
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+      check_mode: false
+
+  roles:
+    - role: tailscale_operator
+      tailscale_operator_secrets_file: /tmp/tailscale-operator-values.sops.yaml

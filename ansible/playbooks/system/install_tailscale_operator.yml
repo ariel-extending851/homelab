@@ -1,0 +1,23 @@
+---
+# Standalone entry point for the Tailscale Operator role.
+#
+# Usage (one-shot):
+#   ansible-playbook -i inventory/production.yml -i terraform_inventory_aws.py \
+#     playbooks/system/install_tailscale_operator.yml
+#
+# Bundled into the full deploy via site.yml -> Phase 2.3.
+
+- name: Install Tailscale Kubernetes Operator
+  hosts: k3s_server
+  become: false
+  gather_facts: false
+  tags: ['tailscale-operator', 'system', 'phase2']
+
+  pre_tasks:
+    - name: Skip when no k3s_server host is in inventory (Pi-only / dry-run)
+      ansible.builtin.meta: end_play
+      when: groups['k3s_server'] | default([]) | length == 0
+      run_once: true
+
+  roles:
+    - role: tailscale_operator
