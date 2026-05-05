@@ -7,7 +7,7 @@ data:
   # AWS region used by the BackupStorageLocation below.
   aws-region: "us-east-1"
   # S3 bucket name (provisioned by infra/aws — see velero_backup_bucket var).
-  s3-bucket: "homelab-velero-backups"
+  s3-bucket: "homelab-velero-backups-kkuhocyv"
 ---
 # BackupStorageLocation — points Velero at the S3 bucket for backup storage.
 # CRDs are installed by Velero's chart/install command separately; this manifest
@@ -21,7 +21,7 @@ spec:
   provider: aws
   default: true
   objectStorage:
-    bucket: homelab-velero-backups
+    bucket: homelab-velero-backups-kkuhocyv
     prefix: cluster-backups
   config:
     region: us-east-1
