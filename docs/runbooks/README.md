@@ -17,6 +17,7 @@ Reactive on-call references. Each runbook is severity-tagged and tested.
 | [Observability stack — single-replica trade-off](observability-availability.md) | 🟢 Info | — (design rationale) |
 | [Grafana dashboards broken](grafana-dashboards.md) | 🟢 Info | 2026-01-23 |
 | [Staging deploy postmortem 2026-05](staging-deploy-2026-05-postmortem.md) | 🟡 Setup | 2026-05-03 |
+| [Prod deploy postmortem 2026-05-04](prod-deploy-2026-05-04-postmortem.md) | 🟡 Setup | 2026-05-04 |
 
 Template for new runbooks: [`docs/contributing/doc-style.md`](../contributing/doc-style.md#runbook-template).
 
