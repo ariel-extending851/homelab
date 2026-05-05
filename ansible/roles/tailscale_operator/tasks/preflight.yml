@@ -1,22 +1,89 @@
 ---
-- name: Verify helm is installed on the controller
-  ansible.builtin.command: helm version --short
+# Locate helm + kubectl on the controller and verify the kubeconfig + SOPS
+# values file are in place. The lookup tasks force `become: false` because
+# ansible.cfg sets a global `become = True` — without explicitly disabling
+# it here, `delegate_to: localhost` runs as root, which has no mise install
+# in $HOME and the binaries cannot be found.
+
+- name: Locate helm binary on the controller (mise-installed binaries aren't on ansible's stripped PATH)
+  ansible.builtin.shell: |
+    set -eo pipefail
+    if command -v helm >/dev/null 2>&1; then
+      command -v helm
+    elif [ -x "$HOME/.local/share/mise/shims/helm" ]; then
+      echo "$HOME/.local/share/mise/shims/helm"
+    else
+      ls -1 "$HOME"/.local/share/mise/installs/helm/*/linux-*/helm 2>/dev/null | head -1
+    fi
+  args:
+    executable: /bin/bash
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   changed_when: false
-  register: _ts_op_helm_version
+  register: tailscale_operator__helm_lookup
+  when: not ansible_check_mode
+
+- name: Fail if helm cannot be located
+  ansible.builtin.fail:
+    msg: >-
+      helm not found on the controller. Install via mise:
+      `mise install helm` (or `mise use --global helm@latest`).
+  when:
+    - not ansible_check_mode
+    - (tailscale_operator__helm_lookup.stdout | default('') | trim) == ''
+
+- name: Set helm binary fact
+  ansible.builtin.set_fact:
+    tailscale_operator__helm_bin: "{{ (tailscale_operator__helm_lookup.stdout | default('helm')) | trim }}"
+
+- name: Verify helm is callable
+  ansible.builtin.command: "{{ tailscale_operator__helm_bin }} version --short"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_become: false
+  changed_when: false
+  register: tailscale_operator__helm_version
   when: not ansible_check_mode
 
 - name: Show detected helm version
   ansible.builtin.debug:
-    msg: "Helm: {{ _ts_op_helm_version.stdout | default('(check mode — not invoked)') }}"
+    msg: "Helm: {{ tailscale_operator__helm_version.stdout | default('(check mode — not invoked)') }} ({{ tailscale_operator__helm_bin }})"
+
+- name: Locate kubectl binary on the controller (same PATH issue as helm)
+  ansible.builtin.shell: |
+    set -eo pipefail
+    if command -v kubectl >/dev/null 2>&1; then
+      command -v kubectl
+    elif [ -x "$HOME/.local/share/mise/shims/kubectl" ]; then
+      echo "$HOME/.local/share/mise/shims/kubectl"
+    else
+      ls -1 "$HOME"/.local/share/mise/installs/kubectl/*/kubectl 2>/dev/null | head -1
+    fi
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_become: false
+  changed_when: false
+  register: tailscale_operator__kubectl_lookup
+  when: not ansible_check_mode
+
+- name: Set kubectl binary fact
+  ansible.builtin.set_fact:
+    tailscale_operator__kubectl_bin: "{{ (tailscale_operator__kubectl_lookup.stdout | default('kubectl')) | trim }}"
 
 - name: Stat kubeconfig on controller
   ansible.builtin.stat:
     path: "{{ tailscale_operator_kubeconfig }}"
   delegate_to: localhost
   become: false
-  register: _ts_op_kubeconfig
+  vars:
+    ansible_become: false
+  register: tailscale_operator__kubeconfig
 
 - name: Fail if kubeconfig is missing
   ansible.builtin.fail:
@@ -24,18 +91,20 @@
       Kubeconfig not found at {{ tailscale_operator_kubeconfig }}.
       Run site.yml so the pre-flight play populates it, or pass
       `-e tailscale_operator_kubeconfig=<path>`.
-  when: not _ts_op_kubeconfig.stat.exists
+  when: not tailscale_operator__kubeconfig.stat.exists
 
 - name: Stat the SOPS-encrypted values file
   ansible.builtin.stat:
     path: "{{ tailscale_operator_secrets_file }}"
   delegate_to: localhost
   become: false
-  register: _ts_op_secrets
+  vars:
+    ansible_become: false
+  register: tailscale_operator__secrets
 
 - name: Fail if SOPS values file is missing
   ansible.builtin.fail:
     msg: >
       SOPS values file not found at {{ tailscale_operator_secrets_file }}.
       Provision OAuth credentials first (see docs/services/tailscale-operator.md).
-  when: not _ts_op_secrets.stat.exists
+  when: not tailscale_operator__secrets.stat.exists
