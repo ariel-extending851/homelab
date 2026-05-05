@@ -123,7 +123,7 @@ variable "ssm_s3_bucket" {
 variable "velero_backup_bucket" {
   description = "S3 bucket name for Velero cluster backups. Versioned, encrypted, lifecycle-tiered (Standard → IA → Glacier → expire 365d)."
   type        = string
-  default     = "homelab-velero-backups"
+  default     = "homelab-velero-backups-kkuhocyv"
 }
 
 variable "audit_trail_bucket" {
