@@ -379,6 +379,18 @@ ansible-router: ## Configure the GL.iNet Opal Router (Gatekeeper)
 	@echo "🛡️  Configuring OpenWrt Gatekeeper..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/configure_router.yml
 
+ansible-cilium-prepull: ## Pre-pull Cilium container images on all k3s nodes
+	@echo "📦 Pre-pulling Cilium images..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/cilium-prepull.yml
+
+validate-network-config: ## Static check of inventory/group_vars/role network topology
+	@echo "🔎 Validating network config..."
+	@cd $(ANSIBLE_DIR) && python3 scripts/validate_network_config.py
+
+dns-status: ## Inspect Opal DNS state (failover state, current upstream, sample queries)
+	@echo "🔍 Querying Opal DNS state..."
+	@python3 bin/dns-status.py
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml

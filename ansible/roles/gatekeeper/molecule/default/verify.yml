@@ -184,8 +184,8 @@
       changed_when: false
       failed_when: verify_rebind.rc != 0
 
-    - name: Verify dnsmasq upstream contains Mullvad DNS when Pi unreachable (Molecule default)
-      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "194.242.2.2"
+    - name: Verify dnsmasq upstream contains Mullvad family DNS when Pi unreachable
+      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "194.242.2.6"
       register: verify_dns_server_mullvad
       changed_when: false
       failed_when: verify_dns_server_mullvad.rc != 0
@@ -203,7 +203,7 @@
       failed_when: verify_dns_server_cf.rc != 0
 
     - name: Verify WAN interface has multiple DNS servers configured
-      ansible.builtin.raw: uci -q get network.wan.dns | grep -qw "194.242.2.2"
+      ansible.builtin.raw: uci -q get network.wan.dns | grep -qw "194.242.2.6"
       register: verify_wan_dns_list
       changed_when: false
       failed_when: verify_wan_dns_list.rc != 0
@@ -214,10 +214,10 @@
       changed_when: false
       failed_when: verify_failover_script.rc != 0
 
-    - name: Verify failover script references the Pi IP and public DNS
+    - name: Verify failover script references the Pi IP and Mullvad family DNS
       ansible.builtin.raw: |
         grep -q 'PI_IP="{{ pi_adguard_ip }}"' /usr/bin/adguard-failover && \
-        grep -q '194.242.2.2' /usr/bin/adguard-failover
+        grep -q '194.242.2.6' /usr/bin/adguard-failover
       register: verify_failover_script_content
       changed_when: false
       failed_when: verify_failover_script_content.rc != 0
@@ -249,3 +249,43 @@
       register: verify_dhcp_pi03
       changed_when: false
       failed_when: verify_dhcp_pi03.rc != 0
+
+    - name: Verify guest zone has input=REJECT
+      ansible.builtin.raw: |
+        for zone in $(uci show firewall | sed -n "s/^firewall\.\([^=]*\)=zone$/\1/p"); do
+          if uci -q show firewall.$zone | grep -Eq "network='[^']*guest([^']*)?'"; then
+            uci -q get firewall.$zone.input | grep -q "='REJECT'" || exit 1
+          fi
+        done
+      register: verify_guest_zone_input
+      changed_when: false
+      failed_when: verify_guest_zone_input.rc != 0
+
+    - name: Verify guest zone has forward=REJECT
+      ansible.builtin.raw: |
+        for zone in $(uci show firewall | sed -n "s/^firewall\.\([^=]*\)=zone$/\1/p"); do
+          if uci -q show firewall.$zone | grep -Eq "network='[^']*guest([^']*)?'"; then
+            uci -q get firewall.$zone.forward | grep -q "='REJECT'" || exit 1
+          fi
+        done
+      register: verify_guest_zone_forward
+      changed_when: false
+      failed_when: verify_guest_zone_forward.rc != 0
+
+    - name: Verify guest allow rules (DHCP, DNS UDP, DNS TCP, ICMP) exist with target=ACCEPT
+      ansible.builtin.raw: |
+        set -e
+        for r in allow_guest_dhcp allow_guest_dns_udp allow_guest_dns_tcp allow_guest_icmp; do
+          idx=$(uci show firewall | grep "name='$r'" | cut -d'.' -f2 | cut -d'=' -f1)
+          [ -n "$idx" ] || exit 1
+          [ "$(uci -q get firewall.$idx.target)" = "ACCEPT" ] || exit 1
+        done
+      register: verify_guest_allow_rules
+      changed_when: false
+      failed_when: verify_guest_allow_rules.rc != 0
+
+    - name: Verify Mullvad family DNS (.6) is configured in dnsmasq upstream
+      ansible.builtin.raw: uci -q get dhcp.@dnsmasq[0].server | grep -qw "194.242.2.6"
+      register: verify_mullvad_family
+      changed_when: false
+      failed_when: verify_mullvad_family.rc != 0
