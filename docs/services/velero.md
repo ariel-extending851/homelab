@@ -13,7 +13,7 @@ Cluster-state backup operator. Snapshots K8s resources (Deployments, ConfigMaps,
 |---|---|
 | Controller (`Deployment`) | Watches `Backup`/`Restore`/`Schedule` CRDs, drives the lifecycle. |
 | node-agent (`DaemonSet`) | restic uploader on each node — copies PVC bytes to S3. Excludes `rasp-pi-03` (1GB RAM too tight). |
-| `BackupStorageLocation` (CRD) | Points Velero at the S3 bucket `homelab-velero-backups`. |
+| `BackupStorageLocation` (CRD) | Points Velero at the S3 bucket `homelab-velero-backups-kkuhocyv`. |
 | `Schedule` (CRD) `daily-backup` | Runs at 14:00 UTC (11:00 BRT) — inside the AWS scheduler's daily window. Retention 14d. |
 | AWS S3 bucket | Versioned, AES256-encrypted, lifecycle: Standard → IA (30d) → Glacier (90d) → expire (365d). |
 | IAM user `homelab-velero` | Least privilege — only S3 access scoped to the backup bucket. Static credentials in SOPS-encrypted Secret (k3s has no IRSA). |
@@ -92,7 +92,7 @@ kubectl get pods,svc,pvc -n grafana
 ```bash
 velero backup-location get
 velero backup describe <name>
-aws s3 ls s3://homelab-velero-backups/cluster-backups/
+aws s3 ls s3://homelab-velero-backups-kkuhocyv/cluster-backups/
 ```
 
 ## Recovery time objective (target)

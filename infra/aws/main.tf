@@ -206,7 +206,7 @@ resource "aws_s3_bucket" "velero_backups" {
   force_destroy = false # backups are precious — opt-out of accidental deletion
 
   tags = {
-    Name        = "homelab-velero-backups"
+    Name        = "homelab-velero-backups-kkuhocyv"
     Environment = "production"
     Purpose     = "Velero cluster backup storage"
     ManagedBy   = "Terraform"
