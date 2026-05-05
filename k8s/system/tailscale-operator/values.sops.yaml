@@ -1,6 +1,6 @@
 oauth:
-    clientId: ENC[AES256_GCM,data:KPYhuZlVbsirYaGFOTTHbLg=,iv:gVpy+x4RrEbKnWPjTwkXAwmKyTu95gq5rkKTOpvV/bg=,tag:rMWEd+OMM3m5ZFmIbalWFQ==,type:str]
-    clientSecret: ENC[AES256_GCM,data:twdi/9GSmBsuD+Fe8FcPdQdvHdyWZbYlmUPo+4be3JGNh+M7eklisHKoLiSB+Z5jzpgjB+PFbMDfYH7RT5FO,iv:D8Wv1et8O5BADXHOjuRazsrbW2KjwzsfewlHzrUwW8Q=,tag:UqnKfycAi9gSkBk1x0zkqQ==,type:str]
+    clientId: ENC[AES256_GCM,data:2a1OhcILpfUW7zvbl3Y82Y0=,iv:xH4wOAVejnEsWaT8zIVZNum+ZZBZZ1yphN8zwuFrFZc=,tag:vs4nureBwLFJj+Q7ya5JOg==,type:str]
+    clientSecret: ENC[AES256_GCM,data:cUshkSrb8NrRXsgO4oykGPmQ5EMThV9aFpuKWCPzS9qwX0etgFwEK2itbPrcXBULfY7H9ZUtdgveLtqlf38h,iv:pA5IwFffTyOp25kSrqo44JBSgcyqkb7cN2CK852KN/U=,tag:XXBKhga0dj2LJsIlOnq7qw==,type:str]
 operatorConfig:
     defaultTags:
         - ENC[AES256_GCM,data:yUZmCVsMYLKWbdWfsNnoTA==,iv:x58egodXchrEoZheE7ovCofxUwenZbvn0wc/3XBxYBA=,tag:fV8iHIVJeHZqt2qyAfTvBA==,type:str]
@@ -17,7 +17,7 @@ sops:
             eWcvcjQvN2dtbDl0K04wWUQwc2hkSGMK/WYb87qzoyFMvPA23gkAuN/Jd0FIDWEX
             Gethe2DwU11Ti/f5rIjEXozqEzSDCISH7PaNIXHq/mDX/MoHNtuw+w==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-02-14T18:17:42Z"
-    mac: ENC[AES256_GCM,data:xgyuO7OZfQELu7sLDZOSIE4rmsUaWZrHprRKUS92MmpXe+L0evGxOt6rtPdsTOZfpKf8nZhs/PZmWq04Qtc3KjLf74hFy0dB4mbxM6PVrGD2bLdI2nk29Hmj2GNoWWkhTq4wYqUruts0cy/3VDhmrOLQo07tqEO93Kaf3cDlIw0=,iv:5pcmjY+CezQxN36vD9q5oiwewnDcf7R9x2a7dfrQffU=,tag:3SIh5q8AuAX30VfKLSJoJg==,type:str]
+    lastmodified: "2026-05-05T18:52:06Z"
+    mac: ENC[AES256_GCM,data:LVE2r3W9fQBDEagkGCbz6Ql0yYxfy/7qRmy5ZX2E5K79tFUzAhi/PKBIXl2ByTOTPD9MxJo4T5Y9t7gCCV3hkwmBb4qJ+c7sBWNDRhDtzYiFLlKUheYDJ+U/cLm6LdcY5ae73AymxGbLqlzEcOMlUtyFdWH7wmwVV5YRyco7ZXQ=,iv:cc8Y32QsSQLuJx2/RIdeunipRelCN4AJGocxllc4F9Y=,tag:M8fJfMwNdvDxvBj3VZx62g==,type:str]
     unencrypted_suffix: _unencrypted
-    version: 3.11.0
+    version: 3.12.2
