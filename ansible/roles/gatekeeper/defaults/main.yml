@@ -17,9 +17,10 @@ modem_subnet_cidr: 192.168.0.0/24
 wan_static_ip: 192.168.0.2
 wan_gateway: 192.168.0.1
 wan_dns_servers:
-  # Mullvad (no logging)
-  - 194.242.2.2
-  - 2a07:e340::2
+  # Mullvad family DNS — blocks ads, trackers, malware, adult, gambling
+  # (.2 = base/no-filter, .3 = ads, .4 = +malware, .5 = +adult, .6 = +gambling)
+  - 194.242.2.6
+  - 2a07:e340::6
   # Quad9 (malware filtering)
   - 9.9.9.9
   - 149.112.112.112
