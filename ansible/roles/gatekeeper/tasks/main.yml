@@ -235,8 +235,13 @@
   register: gatekeeper_route
   changed_when: "'CHANGED' in gatekeeper_route.stdout"
 
-- name: Check Pi (AdGuard Home) reachability
-  ansible.builtin.raw: ping -c1 -W2 {{ pi_adguard_ip }} >/dev/null 2>&1 && echo REACHABLE || echo UNREACHABLE
+- name: Check Pi (AdGuard Home) reachability — ICMP + DNS service health
+  # ICMP-only is insufficient: host can respond to ping while AdGuard pod is
+  # CrashLoopBackOff/restarting, leaving DNAT pointing at a dead :53 listener.
+  ansible.builtin.raw: |
+    ping -c1 -W2 {{ pi_adguard_ip }} >/dev/null 2>&1 || { echo UNREACHABLE; exit 0; }
+    timeout 3 nslookup google.com {{ pi_adguard_ip }} 2>/dev/null | grep -q "Address" \
+      && echo REACHABLE || echo UNREACHABLE
   register: gatekeeper_pi_check
   changed_when: false
 
@@ -325,36 +330,86 @@
     tmp=$(mktemp)
     cat > "$tmp" << 'FAILOVER'
     #!/bin/sh
-    # Monitor Pi AdGuard reachability and toggle dnsmasq upstream DNS.
-    # Pi up   -> use AdGuard (filtering + ad blocking)
-    # Pi down -> use public DNS list (Mullvad/Quad9/Cloudflare/Google)
+    # Self-healing AdGuard failover with hysteresis + force-reconcile.
+    # Runs every minute via cron and once at boot via /etc/rc.local.
+    # ICMP + DNS health (not just ping — pod can crashloop while host pings).
+    # On state transition, toggles BOTH dnsmasq upstream AND the LAN DNAT.
+    # Hysteresis: flip only after HYSTERESIS consecutive divergent observations
+    # (avoids flap on transient packet loss). Force-reconcile: if config drifted
+    # from committed state (e.g., manual UCI edit, half-applied role run), apply.
     PI_IP="{{ pi_adguard_ip }}"
     STATE_FILE="/var/run/adguard-failover.state"
+    COUNTER_FILE="/var/run/adguard-failover.counter"
     PUBLIC_DNS="{{ wan_dns_servers | join(' ') }}"
+    HYSTERESIS=2
 
-    if ping -c2 -W2 "$PI_IP" >/dev/null 2>&1; then
-      current="up"
+    if ping -c2 -W2 "$PI_IP" >/dev/null 2>&1 && \
+       timeout 3 nslookup google.com "$PI_IP" 2>/dev/null | grep -q "Address"; then
+      obs="up"
     else
-      current="down"
+      obs="down"
     fi
 
-    last="$(cat "$STATE_FILE" 2>/dev/null || echo unknown)"
-    [ "$current" = "$last" ] && exit 0
+    prev="$(cat "$STATE_FILE" 2>/dev/null || echo unknown)"
+
+    if [ "$obs" = "$prev" ]; then
+      count=0
+    else
+      count="$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)"
+      count=$((count + 1))
+    fi
+    echo "$count" > "$COUNTER_FILE"
+
+    if [ "$prev" = "unknown" ] || [ "$count" -ge "$HYSTERESIS" ]; then
+      state="$obs"
+    else
+      state="$prev"
+    fi
+
+    dnat_should_exist=0
+    [ "$state" = "up" ] && dnat_should_exist=1
+    dnat_exists=0
+    uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1 && dnat_exists=1
+
+    if [ "$state" = "$prev" ] && [ "$dnat_should_exist" = "$dnat_exists" ]; then
+      exit 0
+    fi
 
     uci -q delete dhcp.@dnsmasq[0].server 2>/dev/null || true
-    if [ "$current" = "up" ]; then
+    if [ "$state" = "up" ]; then
       uci add_list dhcp.@dnsmasq[0].server="$PI_IP"
-      logger -t adguard-failover "Pi RECOVERED - restored AdGuard ($PI_IP) as upstream DNS"
     else
       for srv in $PUBLIC_DNS; do
         uci add_list dhcp.@dnsmasq[0].server="$srv"
       done
-      logger -t adguard-failover "Pi UNREACHABLE - switched to public DNS fallback"
     fi
     uci commit dhcp
     /etc/init.d/dnsmasq reload
 
-    echo "$current" > "$STATE_FILE"
+    if [ "$state" = "up" ]; then
+      if [ "$dnat_exists" = "0" ]; then
+        uci set firewall.dns_hijack_adguard='redirect'
+        uci set firewall.dns_hijack_adguard.name='Force-DNS-to-AdGuard'
+        uci set firewall.dns_hijack_adguard.src='lan'
+        uci set firewall.dns_hijack_adguard.proto='tcp udp'
+        uci set firewall.dns_hijack_adguard.src_dport='53'
+        uci set firewall.dns_hijack_adguard.dest_ip="$PI_IP"
+        uci set firewall.dns_hijack_adguard.dest_port='53'
+        uci commit firewall
+        /etc/init.d/firewall reload
+      fi
+      logger -t adguard-failover "Pi RECOVERED - dnsmasq+DNAT restored to AdGuard ($PI_IP)"
+    else
+      if [ "$dnat_exists" = "1" ]; then
+        uci delete firewall.dns_hijack_adguard
+        uci commit firewall
+        /etc/init.d/firewall reload
+      fi
+      logger -t adguard-failover "Pi UNREACHABLE - dnsmasq fallback to public DNS, DNAT removed (LAN clients use router dnsmasq)"
+    fi
+
+    echo "$state" > "$STATE_FILE"
+    echo 0 > "$COUNTER_FILE"
     FAILOVER
     if cmp -s "$tmp" /usr/bin/adguard-failover; then
       rm -f "$tmp"
@@ -398,6 +453,28 @@
     [ "$changed" -eq 1 ] && echo CHANGED || echo OK
   register: gatekeeper_cron_service
   changed_when: "'CHANGED' in gatekeeper_cron_service.stdout"
+
+- name: Run AdGuard failover at boot via /etc/rc.local
+  # Cron's first tick is up to 60s after boot. If AdGuard is down at boot, LAN
+  # clients have no DNS during that window. Running the script via rc.local
+  # (backgrounded with sleep) reconciles within 30s of boot.
+  ansible.builtin.raw: |
+    set -eu
+    line='( sleep 30 && /usr/bin/adguard-failover ) >/dev/null 2>&1 &'
+    [ -f /etc/rc.local ] || printf '%s\n' '#!/bin/sh' 'exit 0' > /etc/rc.local
+    if grep -Fq '/usr/bin/adguard-failover' /etc/rc.local; then
+      echo OK
+    else
+      if grep -q '^exit 0$' /etc/rc.local; then
+        sed -i "/^exit 0\$/i $line" /etc/rc.local
+      else
+        printf '%s\n' "$line" >> /etc/rc.local
+      fi
+      chmod +x /etc/rc.local
+      echo CHANGED
+    fi
+  register: gatekeeper_failover_boot
+  changed_when: "'CHANGED' in gatekeeper_failover_boot.stdout"
 
 - name: Configure WAN interface with static IP for DMZ (Technicolor upstream)
   ansible.builtin.raw: |
