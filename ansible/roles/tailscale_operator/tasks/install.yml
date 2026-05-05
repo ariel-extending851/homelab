@@ -2,19 +2,23 @@
 - name: Add tailscale helm repo
   ansible.builtin.command:
     cmd: >-
-      helm repo add {{ tailscale_operator_chart_repo_name }}
+      {{ tailscale_operator__helm_bin }} repo add {{ tailscale_operator_chart_repo_name }}
       {{ tailscale_operator_chart_repo_url }}
       --force-update
   delegate_to: localhost
   become: false
-  register: _ts_op_repo_add
-  changed_when: '"already exists" not in _ts_op_repo_add.stdout'
+  vars:
+    ansible_become: false
+  register: tailscale_operator__repo_add
+  changed_when: '"already exists" not in tailscale_operator__repo_add.stdout'
   when: not ansible_check_mode
 
 - name: Update tailscale helm repo index
-  ansible.builtin.command: helm repo update {{ tailscale_operator_chart_repo_name }}
+  ansible.builtin.command: "{{ tailscale_operator__helm_bin }} repo update {{ tailscale_operator_chart_repo_name }}"
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   changed_when: false
   when: not ansible_check_mode
 
@@ -22,25 +26,29 @@
   ansible.builtin.command: sops --decrypt {{ tailscale_operator_secrets_file }}
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   changed_when: false
-  register: _ts_op_decrypted_secrets
+  register: tailscale_operator__decrypted_secrets
   no_log: true
   when: not ansible_check_mode
 
 - name: Stage decrypted secrets to a 0600 tempfile (so helm -f can read them)
   ansible.builtin.copy:
-    content: "{{ _ts_op_decrypted_secrets.stdout }}\n"
+    content: "{{ tailscale_operator__decrypted_secrets.stdout }}\n"
     dest: /tmp/tailscale-operator-secrets.yaml
     mode: '0600'
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   no_log: true
   when: not ansible_check_mode
 
 - name: Install/upgrade tailscale-operator chart
   ansible.builtin.command:
     cmd: >-
-      helm upgrade --install {{ tailscale_operator_release_name }}
+      {{ tailscale_operator__helm_bin }} upgrade --install {{ tailscale_operator_release_name }}
       {{ tailscale_operator_chart_repo_name }}/{{ tailscale_operator_chart_name }}
       --namespace {{ tailscale_operator_namespace }}
       --create-namespace
@@ -51,8 +59,10 @@
     KUBECONFIG: "{{ tailscale_operator_kubeconfig }}"
   delegate_to: localhost
   become: false
-  register: _ts_op_helm
-  changed_when: '"unchanged" not in _ts_op_helm.stdout'
+  vars:
+    ansible_become: false
+  register: tailscale_operator__helm
+  changed_when: '"unchanged" not in tailscale_operator__helm.stdout'
   when: not ansible_check_mode
 
 - name: Remove decrypted-secret tempfile
@@ -61,4 +71,6 @@
     state: absent
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   when: not ansible_check_mode
