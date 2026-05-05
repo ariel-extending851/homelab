@@ -38,7 +38,7 @@ jobs:
       contents: write  # gh-pages deploy needs to push
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # mkdocs gh-deploy needs full history
 
