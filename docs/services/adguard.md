@@ -69,6 +69,37 @@ If empty, the pod didn't get `hostNetwork` privileges or the node has port 53 al
 
 ### Filter lists not updating
 
+## Upstream DNS — Mullvad family (manual config)
+
+AdGuard's filter lists are excellent but the upstream resolver matters for
+defense-in-depth: anything AdGuard's lists miss should still be blocked
+upstream. Pair AdGuard's blocklists with **Mullvad family DNS** as upstream:
+
+1. Open `https://adguard.tail57bf10.ts.net` → **Settings → DNS settings**.
+2. Replace **Upstream DNS servers** with:
+
+   ```text
+   tls://family.dns.mullvad.net
+   tls://1dot1dot1dot1.cloudflare-dns.com
+   https://dns.quad9.net/dns-query
+   ```
+
+   (Use `tls://all.dns.mullvad.net` instead of `family` if you also want
+   social-media domains blocked. `family` covers ads, trackers, malware,
+   adult, and gambling — but keeps Twitter / Instagram reachable.)
+3. **Bootstrap DNS servers**: `1.1.1.1, 9.9.9.9`
+4. **Save** and **Apply**.
+
+Why: when the Pi is up, clients hit AdGuard first (rich blocklists, per-client
+rules, query log). AdGuard then resolves anything-not-blocked via Mullvad
+family DNS, which still drops gambling/adult/malware. When the Pi crashes,
+the Opal failover script (cron, every minute) reconfigures dnsmasq to use
+the same Mullvad family IPs (`194.242.2.6` / `2a07:e340::6`) directly, so
+clients keep filtered DNS even during AdGuard outage.
+
+Quick visibility: `make dns-status` from the dev machine shows current
+upstream + a sample query against a gambling sentinel domain.
+
 ## Related
 
 - **Networking model:** [`../architecture/networking.md`](../architecture/networking.md)

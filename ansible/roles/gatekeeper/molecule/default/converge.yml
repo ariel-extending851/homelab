@@ -92,6 +92,14 @@
       register: gatekeeper_fixture_wireless_seed
       changed_when: "'CHANGED' in gatekeeper_fixture_wireless_seed.stdout"
 
+    - name: Stub ping for deterministic UNREACHABLE Pi in Molecule
+      ansible.builtin.raw: |
+        # Avoid following the symlink to busybox; remove first then write a stub.
+        rm -f /bin/ping
+        printf '%s\n' '#!/bin/sh' 'exit 1' > /bin/ping
+        chmod +x /bin/ping
+      changed_when: false
+
     - name: Stub OpenWrt restart scripts when ubus is unavailable in Molecule
       ansible.builtin.raw: |
         set -eu
