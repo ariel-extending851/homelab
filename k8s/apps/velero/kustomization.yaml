@@ -12,3 +12,4 @@ resources:
   - deployment.yaml
   - daemonset.yaml
   - schedule.yaml
+  - networkpolicy.yaml

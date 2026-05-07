@@ -1,0 +1,71 @@
+# NetworkPolicy for otel-collector namespace (DaemonSet log/metric forwarder).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: otel-collector
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-opentelemetry
+  namespace: otel-collector
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: opentelemetry
+spec:
+  podSelector:
+    matchLabels:
+      app: opentelemetry
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # OTLP receivers (gRPC + HTTP) reachable from any cluster pod.
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: TCP, port: 4317 }   # OTLP gRPC
+        - { protocol: TCP, port: 4318 }   # OTLP HTTP
+    # Prometheus scrape on /metrics.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 8888 }
+        - { protocol: TCP, port: 8889 }
+  egress:
+    # Push logs to Loki, metrics to Prometheus remote-write (if configured).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: loki
+      ports:
+        - { protocol: TCP, port: 3100 }
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 9090 }
+    # DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }

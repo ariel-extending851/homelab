@@ -9,3 +9,4 @@ resources:
 - configmap.yaml
 - daemonset.yaml
 - pdb.yaml
+- networkpolicy.yaml

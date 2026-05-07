@@ -1,0 +1,53 @@
+# NetworkPolicy for falco namespace (DaemonSet, eBPF syscall monitor).
+# Falco uses hostNetwork for kernel introspection, so ingress rules are
+# best-effort under most CNIs. Egress rules apply since they're pod-scoped.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: falco
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-falco
+  namespace: falco
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: falco
+spec:
+  podSelector:
+    matchLabels:
+      app: falco
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrapes Falco's /metrics on 8765.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 8765 }
+  egress:
+    # DNS only — Falco emits via stderr → cluster log collector, no direct network.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
