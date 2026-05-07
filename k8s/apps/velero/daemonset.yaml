@@ -32,7 +32,7 @@ spec:
 
       containers:
         - name: node-agent
-          image: velero/velero:v1.14.1
+          image: velero/velero:v1.14.1@sha256:c14904c6f93d129f5ba1fad1a0bbbb20a71f5a003a3cc615313097c7f49eb3e0
           imagePullPolicy: IfNotPresent
 
           command:

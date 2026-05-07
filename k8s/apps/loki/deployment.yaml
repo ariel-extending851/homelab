@@ -26,7 +26,7 @@ spec:
       containers:
         # Loki Application
         - name: loki
-          image: grafana/loki:2.9.2
+          image: grafana/loki:2.9.2@sha256:6074e01dbe03cbf8f848c478f7e98df326f984d263162eff5bd47db3970f7ffb
           imagePullPolicy: IfNotPresent
 
           securityContext:

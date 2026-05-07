@@ -21,7 +21,7 @@ spec:
         fsGroup: 999
       containers:
         - name: mongo
-          image: mongo:7.0
+          image: mongo:7.0@sha256:32979a1189dfdc44da3f5ed40d910495f5ad8f6f7f77556646f890a30b2d3f56
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

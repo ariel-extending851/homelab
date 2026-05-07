@@ -24,7 +24,7 @@ spec:
       # Init container: install SOPS binary (architecture-aware)
       initContainers:
         - name: install-sops
-          image: alpine:3.21
+          image: alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
           command:
             - sh
             - -c
@@ -102,7 +102,7 @@ spec:
         # CMP sidecar: runs argocd-cmp-server with SOPS plugin
         # Discovers SOPS-encrypted files and decrypts before kustomize build
         - name: cmp-sops
-          image: quay.io/argoproj/argocd:v3.3.0
+          image: quay.io/argoproj/argocd:v3.3.0@sha256:ed0740273790e58154816104c1e1b41fb308a9c516ade3d0f195fa56f1840cca
           command:
             - /var/run/argocd/argocd-cmp-server
           securityContext:
