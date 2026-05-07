@@ -36,8 +36,25 @@ spec:
         - name: velero-plugin-for-aws
           image: velero/velero-plugin-for-aws:v1.10.1@sha256:fdf710a65c6ead48b1018cda19360943abe17ca8c3e9ef5ab7be73a63b99a6d3
           imagePullPolicy: IfNotPresent
+          # Init does a single `cp` of the plugin binary into the shared
+          # /target emptyDir; rootfs read-only is fine (it only reads its
+          # own image). UID 65534 works because upstream packages the
+          # plugin world-readable. Closes Checkov code-scanning alerts
+          # CKV_K8S_8/9/10/11/12/13/22/28/37/49.
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
           volumeMounts:
             - name: plugins
               mountPath: /target
