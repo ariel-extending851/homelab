@@ -190,7 +190,8 @@ jobs:
           python-version: '3.12'
 
       - name: Install PyYAML for idempotence checker
-        run: python3 -m pip install --quiet pyyaml
+        # Pinned via pyproject.toml [project.optional-dependencies] ci.
+        run: python3 -m pip install --quiet -e '.[ci]'
 
       - name: Validate New Roles Have Molecule Structure
         run: make validate-ansible-structure
@@ -280,8 +281,8 @@ jobs:
           python-version: '3.12'
 
       - name: Install pytest + minimal test deps
-        run: |
-          python3 -m pip install --quiet pytest pytest-cov pyyaml jinja2 boto3
+        # Pinned via pyproject.toml [project.optional-dependencies] ci.
+        run: python3 -m pip install --quiet -e '.[ci]'
 
       - name: Verify all test modules import cleanly
         run: make test-python-collect
