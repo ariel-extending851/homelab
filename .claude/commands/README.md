@@ -16,6 +16,31 @@ Automatically reviews staged changes before committing using the Tech Lead agent
 
 ---
 
+### `/security` - Targeted Security Audit
+Audits staged changes that touch IAM, RBAC, SOPS, NetworkPolicy, image pins, or supply-chain config via the `security-reviewer` subagent. Skips with a notice if no security-relevant paths changed (use `/review` for general review).
+
+**Reads first:** `docs/security/audit-history.md`, `.trivyignore.yaml`, `.checkov.baseline`
+**Blocks on:** Wildcard IAM, plaintext secrets, `:latest` tags, unjustified allowlist exceptions
+
+```bash
+/security              # manual; recommended on PRs touching infra/aws-oidc, k8s/**/secret.yaml, etc.
+```
+
+---
+
+### `/incident` - Incident Response Orchestrator
+Runbook-first incident response via the `sre` subagent. Reads the matching runbook before any action; gates destructive recovery on explicit human confirmation; opens postmortem in the same PR.
+
+**Reads first:** `docs/runbooks/*.md` matching the symptom
+**Confirmation gate:** Any `warn-destructive.sh` pattern (terraform destroy, rollback APPLY=1, etc.)
+
+```bash
+/incident                                # interactive — asks for symptom
+/incident "control plane unresponsive"   # symptom as arg
+```
+
+---
+
 ### `/commit` - Conventional Commit Generator
 Generate GPG-signed Conventional Commits with detailed body.
 
@@ -108,6 +133,8 @@ View comprehensive PR status with CI checks and review conversations.
 | Command | Purpose | Auto-Run |
 |---------|---------|----------|
 | `/review` | Pre-commit security & quality checks | Via `/commit` |
+| `/security` | Targeted security audit (IAM/RBAC/SOPS/NetworkPolicy) | Manual |
+| `/incident` | Runbook-first incident response | Manual |
 | `/commit` | Generate conventional commit | Manual |
 | `/test` | Run linters and validators | Manual |
 | `/learn` | Research topics | Manual |
@@ -143,5 +170,5 @@ When creating new commands:
 
 ---
 
-**Total Commands:** 9 (review, commit, test, learn, bug, rollback, deploy-verify, pr-resolve, pr-review)
+**Total Commands:** 11 (review, security, incident, commit, test, learn, bug, rollback, deploy-verify, pr-resolve, pr-review)
 **Last Updated:** 2026-05-07
