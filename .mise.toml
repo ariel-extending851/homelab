@@ -1,9 +1,18 @@
 [tools]
 # Core Infrastructure.
-# `terraform` is pinned to match the CI workflow's setup-terraform pin
-# (ci-validation.yml `terraform_version: "1.11.0"`) — keeps local + CI on the
-# same minor and avoids the for_each-with-sensitive-values changes in 1.12+.
-terraform = "1.11.0"
+# `terraform` matches what develop's CI implicitly used (its `latest` pin was
+# resolving to 1.15.x). Tried 1.11 first to align with the setup-terraform
+# action pin in ci-validation.yml's `terraform-plan` job, but 1.11 surfaced
+# two test-framework regressions vs 1.15:
+#   - prevent_destroy enforcement during mock_provider teardown of resources
+#     not under test (backend.tftest.hcl)
+#   - && short-circuit timing in `for` expressions called against jsondecoded
+#     IAM policies (oidc.tftest.hcl — also patched defensively via flatten()
+#     in PR #66's fix(ci) commit)
+# The setup-terraform pin in ci-validation.yml stays at 1.11.0 since that
+# job only runs `terraform plan`, never tests, so the cross-job mismatch is
+# cosmetic.
+terraform = "1.15.2"
 ansible = { version = "13.4.0", pipx_args = "--include-deps", uvx = "false" }
 infracost = "0.10.43"
 sops = "3.10.2"
