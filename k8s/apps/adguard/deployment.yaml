@@ -41,7 +41,7 @@ spec:
       containers:
         # AdGuard Home Application
         - name: adguardhome
-          image: adguard/adguardhome:v0.107.74  # Phase 1 bump 2026-05-02 (was v0.107.71); config schema v32 still supported
+          image: adguard/adguardhome:v0.107.74@sha256:f29c58a91f79387cbbbb042e140814f58e830d457d44af03d662c8df43db9dea  # Phase 1 bump 2026-05-02 (was v0.107.71); config schema v32 still supported
           imagePullPolicy: IfNotPresent
 
           securityContext:

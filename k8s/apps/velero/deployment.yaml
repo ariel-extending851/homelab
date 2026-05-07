@@ -34,7 +34,7 @@ spec:
       # Confirmed live in canary 2 (2026-05-04 ~00:36 UTC).
       initContainers:
         - name: velero-plugin-for-aws
-          image: velero/velero-plugin-for-aws:v1.10.1
+          image: velero/velero-plugin-for-aws:v1.10.1@sha256:fdf710a65c6ead48b1018cda19360943abe17ca8c3e9ef5ab7be73a63b99a6d3
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -43,7 +43,7 @@ spec:
               mountPath: /target
       containers:
         - name: velero
-          image: velero/velero:v1.14.1
+          image: velero/velero:v1.14.1@sha256:c14904c6f93d129f5ba1fad1a0bbbb20a71f5a003a3cc615313097c7f49eb3e0
           imagePullPolicy: IfNotPresent
 
           command:

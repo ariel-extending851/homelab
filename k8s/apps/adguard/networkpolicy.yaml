@@ -1,0 +1,73 @@
+# NetworkPolicy for adguard namespace.
+# Default-deny + minimal allow-list. Enforcement requires a NetworkPolicy-aware
+# CNI (Cilium when re-deployed, or k3s's bundled kube-router controller).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: adguard
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-adguardhome
+  namespace: adguard
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: adguardhome
+spec:
+  podSelector:
+    matchLabels:
+      app: adguardhome
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # DNS clients (Tailscale CGNAT + RFC1918 LAN). hostNetwork is set on the
+    # pod, so this rule is best-effort: kube-router/Cilium may not enforce
+    # ingress on host-network pods. Documents intent regardless.
+    - from:
+        - ipBlock:
+            cidr: 100.64.0.0/10
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+        - { protocol: TCP, port: 3000 }
+  egress:
+    # In-cluster DNS for any internal hostnames AdGuard itself resolves.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Upstream DNS (1.1.1.1 / 8.8.8.8 etc) — anything outside cluster + LAN.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 192.168.0.0/16
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+        - { protocol: TCP, port: 443 }    # DoH
+        - { protocol: UDP, port: 443 }    # DoQ / DoH3

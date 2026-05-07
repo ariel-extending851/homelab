@@ -1,0 +1,96 @@
+# NetworkPolicy for unifi namespace.
+# Note: both deployments currently scale to 0 replicas; policies are documentary
+# until the controller is brought up. unifi pod uses hostNetwork for L2/STUN
+# discovery — host-net ingress NP is best-effort.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: unifi
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-unifi-network-application
+  namespace: unifi
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: unifi-network-application
+spec:
+  podSelector:
+    matchLabels:
+      app: unifi-network-application
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Tailscale CGNAT clients hitting the controller UI.
+    - from:
+        - ipBlock:
+            cidr: 100.64.0.0/10
+      ports:
+        - { protocol: TCP, port: 8443 }
+        - { protocol: TCP, port: 8080 }
+  egress:
+    # Internal MongoDB.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: unifi-db
+      ports:
+        - { protocol: TCP, port: 27017 }
+    # DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-unifi-db
+  namespace: unifi
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: unifi-db
+spec:
+  podSelector:
+    matchLabels:
+      app: unifi-db
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Mongo accessed only by the unifi controller pod.
+    - from:
+        - podSelector:
+            matchLabels:
+              app: unifi-network-application
+      ports:
+        - { protocol: TCP, port: 27017 }
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }

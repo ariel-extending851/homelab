@@ -79,3 +79,22 @@ updates:
     labels:
       - dependencies
       - python
+
+  # Container images referenced from k8s manifests (Kustomize) and any
+  # Dockerfiles. Targets `image:` lines so we get tag bumps that align
+  # with `docs/runbooks/image-upgrade-sprint-2026-q3.md`.
+  # Note: npm ecosystem deferred — no package.json in-tree to anchor against.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(images)
+    labels:
+      - dependencies
+      - docker
+      - images

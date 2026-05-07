@@ -26,7 +26,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: wait-for-mongo
-          image: busybox:1.36
+          image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
           command:
             - sh
             - -c
@@ -48,7 +48,7 @@ spec:
               memory: "32Mi"
       containers:
         - name: unifi
-          image: lscr.io/linuxserver/unifi-network-application:10.3.58
+          image: lscr.io/linuxserver/unifi-network-application:10.3.58@sha256:274311cdf64294f217f74004571d214f605ca85ea01002a84bde9eaf5130e43a
           imagePullPolicy: IfNotPresent
           # linuxserver/* images launch as root via s6-overlay then drop to PUID
           # via setuid syscalls. allowPrivilegeEscalation:false sets no_new_privs

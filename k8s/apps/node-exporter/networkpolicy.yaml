@@ -1,0 +1,52 @@
+# NetworkPolicy for node-exporter namespace (DaemonSet, hostNetwork).
+# hostNetwork means ingress NP is best-effort across CNIs; documents intent.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: node-exporter
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-node-exporter
+  namespace: node-exporter
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: node-exporter
+spec:
+  podSelector:
+    matchLabels:
+      app: node-exporter
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrapes node /metrics on 9100 (hostPort).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 9100 }
+  egress:
+    # DNS only — node-exporter is read-only on /proc + /sys.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }

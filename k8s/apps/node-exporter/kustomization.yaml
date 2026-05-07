@@ -8,3 +8,4 @@ resources:
 - daemonset.yaml
 - service.yaml
 - pdb.yaml
+- networkpolicy.yaml

@@ -11,3 +11,4 @@ resources:
 - service-mongo.yaml
 - deployment-mongo.yaml
 - deployment-unifi.yaml
+- networkpolicy.yaml

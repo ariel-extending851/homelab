@@ -198,7 +198,12 @@ def scan_all(
         print(f"🔍 Scanning {image}...")
         report = run_trivy(image, output_dir)
         summary = summarize_report(image, report)
-        summary["allowlisted"] = image in allowlist
+        # Allowlist may list either `repo:tag` or `repo:tag@sha256:…`. After
+        # image-digest pinning lands in manifests, scanned refs carry the
+        # digest; strip it before matching so allowlist entries by bare ref
+        # keep working without forcing every entry to track the digest too.
+        bare_ref = image.split("@", 1)[0]
+        summary["allowlisted"] = image in allowlist or bare_ref in allowlist
         summaries.append(summary)
         if summary["blocked"]:
             counts = summary["blocking"]

@@ -1,0 +1,66 @@
+# NetworkPolicy for golink namespace (Tailscale URL shortener).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: golink
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-golink
+  namespace: golink
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: golink
+spec:
+  podSelector:
+    matchLabels:
+      app: golink
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Tailscale ingress proxy (lives in tailscale namespace).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
+      ports:
+        - { protocol: TCP, port: 80 }
+    # Direct Tailscale CGNAT clients.
+    - from:
+        - ipBlock:
+            cidr: 100.64.0.0/10
+      ports:
+        - { protocol: TCP, port: 80 }
+  egress:
+    # In-cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Tailscale control plane / coordination (HTTPS to controlplane.tailscale.com).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 192.168.0.0/16
+      ports:
+        - { protocol: TCP, port: 443 }

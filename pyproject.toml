@@ -7,6 +7,23 @@ name = "homelab"
 version = "0.1.0"
 description = "Homelab infrastructure-as-code project"
 
+[project.optional-dependencies]
+# Pinned CI/test toolchain. Single source of truth for any workflow step
+# that needs python deps — install with `pip install -e '.[ci]'`.
+# Floors driven by 2024 advisories: jinja2 (CVE-2024-34064), urllib3
+# (CVE-2024-37891 — transitive via botocore, pinned explicitly), pyyaml
+# safe-loader patches.
+ci = [
+  "pytest==9.0.3",
+  "pytest-cov==6.0.0",
+  "pytest-benchmark==5.1.0",
+  "pyyaml==6.0.2",
+  "jinja2==3.1.6",
+  "boto3==1.36.0",
+  "urllib3>=2.5.0",
+  "moto[ec2,s3,iam]==5.1.0",
+]
+
 [project.scripts]
 homelab = "bin.homelab:main"
 

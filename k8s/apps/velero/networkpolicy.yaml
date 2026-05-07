@@ -1,0 +1,70 @@
+# NetworkPolicy for velero namespace.
+# Velero ClusterRole holds wildcard verbs (documented exception in
+# k8s/policies/rbac_safety.rego); NetworkPolicy is the network-layer
+# defense-in-depth around that broad RBAC.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: velero
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: velero
+spec:
+  podSelector:
+    matchLabels:
+      app: velero
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrapes Velero metrics on 8085.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 8085 }
+  egress:
+    # AWS S3 (HTTPS), STS, KMS — anything outside cluster + LAN.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - { protocol: TCP, port: 443 }
+    # kube-apiserver for backup discovery (cluster service network).
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+    # DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
