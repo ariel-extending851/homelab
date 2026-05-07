@@ -57,6 +57,14 @@ No critical RCE / IAM-bypass / secret-exposure issues. Bulk of the work is suppl
 
 Overall risk: **CRITICAL/HIGH → LOW** (4 residuals are policy/quarterly-review items, not code gaps).
 
+### Known follow-up CI behaviour (PR #66)
+
+| Symptom | Class | Why | Action |
+|---|---|---|---|
+| `claude-review` workflow fails on this PR with `App token exchange failed: 401 — Workflow validation failed` | expected | The `anthropics/claude-code-action` action refuses to issue a PR-scoped token when the workflow file on the PR diverges from `develop`. PR-A SHA-pinned the action, so divergence is by design. The action's own error message instructs to ignore on first-add. | Resolves automatically once the PR merges to `develop`; the action then runs identically against the new SHA. No code change. |
+| `Trivy strict` failed initial run on PR #66 | regression-from-this-pass | PR-H added `@sha256:…` digests to manifest `image:` refs; `bin/trivy_scan.py` did exact-string allowlist matching, so digest-suffixed refs missed entries. | Fixed in follow-up commit: `bin/trivy_scan.py` now also matches the bare `repo:tag` form. |
+| `QA: Offline Required Profile` failed on `oidc.tftest.hcl:110` with `contains() argument must be list` | regression-from-this-pass | PR-E pinned `terraform = "1.11.0"` (was `latest` ≈ 1.15.x). 1.11 evaluates `&&` arguments in `for` expressions more eagerly, so `contains(try(stmt.Action, []), …)` was called even on `Effect = "Allow"` statements; `homelab_principal_boundary`'s first statement has `Action = "*"` (string scalar), tripping the type check. | Fixed in follow-up commit: wrap `try(stmt.Action, [])` in `flatten([...])` at all 7 call-sites in `infra/aws-oidc/tests/oidc.tftest.hcl`. Type-tolerant for both string and list Actions. |
+
 ---
 
 ## 2026-01-31 — Hardening Pass
