@@ -86,10 +86,14 @@ echo "Rolled back to revision: $(kubectl get application $APP_NAME -n argocd -o 
 
 ## 7. Document Incident
 
-Update `.opencode/memory.md` with rollback details:
+Save rollback details as a runbook entry under `docs/runbooks/incidents/<YYYY-MM-DD>-<app-name>-rollback.md`:
 
 ```markdown
-### Rollback: <application-name> - <date>
+# Rollback: <application-name> — <date>
+
+> **Status:** Resolved
+> **Last reviewed:** YYYY-MM-DD
+> **Owner:** @ariel-extending851
 
 **Reason:** <user-provided reason>
 **From Revision:** <old-revision>
@@ -97,6 +101,8 @@ Update `.opencode/memory.md` with rollback details:
 **Outcome:** <success/failure>
 **Duration:** <time-taken>
 ```
+
+This places incidents alongside other runbooks (`docs/runbooks/`) where on-call recovery procedures already live, instead of an ad-hoc memory file.
 
 ---
 
@@ -110,4 +116,4 @@ Update `.opencode/memory.md` with rollback details:
 **Requirements:**
 - ArgoCD CLI (`argocd`) installed
 - kubectl access to argocd namespace
-- Write access to `.opencode/memory.md`
+- Write access to `docs/runbooks/incidents/`

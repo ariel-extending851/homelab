@@ -1,6 +1,6 @@
-# OpenCode Custom Commands
+# Claude Code Custom Commands
 
-This directory contains custom commands for OpenCode to streamline development workflows in the homelab project.
+This directory contains custom commands for Claude Code to streamline development workflows in the homelab project.
 
 ## Available Commands
 
@@ -30,15 +30,6 @@ Run appropriate tests and linters based on file types.
 
 ```bash
 /test
-```
-
----
-
-### `/plan` - Progress Tracking
-Review progress and update `.opencode/plan.md` automatically.
-
-```bash
-/plan
 ```
 
 ---
@@ -119,7 +110,6 @@ View comprehensive PR status with CI checks and review conversations.
 | `/review` | Pre-commit security & quality checks | Via `/commit` |
 | `/commit` | Generate conventional commit | Manual |
 | `/test` | Run linters and validators | Manual |
-| `/plan` | Update progress tracking | Manual |
 | `/learn` | Research topics | Manual |
 | `/bug` | TDD bug investigation | Manual |
 | `/rollback` | ArgoCD application rollback | Manual |
@@ -148,10 +138,10 @@ When creating new commands:
 
 ### Review Integration
 - `/commit` automatically invokes `/review` before generating commit message
-- Review results saved to `.opencode/last-review.md`
+- Review results saved to `.claude/cache/last-review.md`
 - Tech Lead agent evaluates against project conventions
 
 ---
 
-**Total Commands:** 10
-**Last Updated:** 2026-01-25
+**Total Commands:** 9 (review, commit, test, learn, bug, rollback, deploy-verify, pr-resolve, pr-review)
+**Last Updated:** 2026-05-07

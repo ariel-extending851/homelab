@@ -9,9 +9,10 @@ description: Update project memory with a new lesson or fact.
     * Example: "The restart command needs `sudo` on the RPi nodes."
 
 2. **Update Memory:**
-    * Read `.opencode/memory.md`.
-    * Append the new lesson as a bullet point under the relevant category.
-    * Keep it concise.
+    * Use Claude Code auto-memory at `/home/vscode/.claude/projects/-workspaces-homelab/memory/`.
+    * Choose the appropriate type (`user`, `feedback`, `project`, `reference`) per the auto-memory rules in CLAUDE.md.
+    * Write the memory to its own file (e.g. `feedback_<topic>.md`) and add a one-line pointer to `MEMORY.md`.
+    * Keep it concise; lead with the rule/fact, then add **Why:** and **How to apply:** lines for `feedback`/`project` types.
 
 3. **Confirm:**
     * Report back: "🧠 Memory updated: [Summary of lesson]"

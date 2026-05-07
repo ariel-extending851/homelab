@@ -80,7 +80,8 @@ fi
 Create formatted report with deployment status:
 
 ```bash
-REPORT_FILE=".opencode/last-deploy-verify.md"
+mkdir -p .claude/cache
+REPORT_FILE=".claude/cache/last-deploy-verify.md"
 
 cat > $REPORT_FILE <<EOF
 # Deployment Verification Report
@@ -144,7 +145,7 @@ Potential endpoints to check:
 **Requirements:**
 - kubectl access to argocd namespace
 - jq for JSON parsing
-- Write access to `.opencode/last-deploy-verify.md`
+- Write access to `.claude/cache/last-deploy-verify.md`
 
 **Integration Points:**
 - Can be run manually after deployments

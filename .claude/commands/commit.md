@@ -9,13 +9,13 @@ description: Analyze changes and generate a Verified (GPG) Conventional Commit w
 **CRITICAL:** Before generating a commit message, you MUST run the `/review` command to ensure code quality and security.
 
 1. **Invoke `/review` Command:**
-    * Execute all steps defined in `.opencode/commands/review.md`
+    * Execute all steps defined in `.claude/commands/review.md`
     * The tech-lead agent will review staged changes for:
       - Security issues (secrets, permissions, capabilities)
       - Raspberry Pi constraints (memory limits, I/O patterns)
       - Naming conventions (kebab-case, hl- prefix)
       - Architecture violations (ARM64, nodeSelector, etc.)
-    * Review results are saved to `.opencode/last-review.md`
+    * Review results are saved to `.claude/cache/last-review.md`
 
 2. **Process Review Results:**
     * If review recommendation is **BLOCK**: Exit immediately (do NOT proceed to commit)
