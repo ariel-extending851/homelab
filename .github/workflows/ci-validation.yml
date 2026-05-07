@@ -318,7 +318,7 @@ jobs:
 
       - name: Upload Coverage Report Artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-coverage-report
           path: htmlcov/
@@ -369,7 +369,7 @@ jobs:
 
       - name: Upload Molecule Artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: molecule-${{ matrix.safe_platform }}
           path: ansible/roles/*/.molecule/
@@ -479,7 +479,7 @@ jobs:
 
       - name: Upload LocalStack logs on failure
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: localstack-logs
           path: |
@@ -551,7 +551,7 @@ jobs:
 
       - name: Upload Trivy Reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: trivy-reports
           path: .qa/trivy/
@@ -704,7 +704,7 @@ jobs:
       # the test wrote to /tmp/k3d-failure-state/.
       - name: Upload Failure Artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: k3d-convergence-state-${{ github.run_id }}
           path: /tmp/k3d-failure-state/
@@ -805,7 +805,7 @@ jobs:
 
       - name: Upload QA Evidence Artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qa-audit-evidence
           path: |
@@ -894,7 +894,7 @@ jobs:
 
       - name: Upload Nightly E2E Evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: nightly-live-e2e-evidence
           path: .qa/evidence/
