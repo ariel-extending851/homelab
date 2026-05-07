@@ -67,6 +67,8 @@ All commands live in [`.claude/commands/`](../../.claude/commands/) — read the
 | Command | Purpose | When |
 |---|---|---|
 | `/review` | Pre-commit code review via the `tech-lead` subagent | Auto-invoked by `/commit`; or run manually before staging |
+| `/security` | Targeted security audit (IAM/RBAC/SOPS/NetworkPolicy/images) via the `security-reviewer` subagent | Manually before `/commit` on PRs touching `infra/aws-oidc/`, `k8s/**/secret.yaml`, `.trivyignore.yaml`, etc. |
+| `/incident` | Runbook-first incident response via the `sre` subagent (RO diagnostics → propose → confirmation gate → postmortem) | When something breaks in prod (control plane, Tailscale, ArgoCD app stuck) |
 | `/commit` | Generate signed Conventional Commit; runs `/review` first | After staging changes |
 | `/test` | Run linters for the touched stack (Python / TF / Ansible / k8s / Shell / Workflows) | After meaningful edits |
 | `/bug` | TDD bug investigation (Red → Green → Refactor) | Reproducing an issue |
@@ -112,6 +114,8 @@ Where to edit when you want to change agent behavior:
 |---|---|
 | What the agent reads first every session | [`CLAUDE.md`](../../CLAUDE.md) (root) |
 | Tech-lead persona / anti-rationalization rules | [`.claude/agents/tech-lead.md`](../../.claude/agents/tech-lead.md) |
+| Security audit checklist (IAM, RBAC, SOPS, supply chain) | [`.claude/agents/security-reviewer.md`](../../.claude/agents/security-reviewer.md) |
+| Incident response decision tree, runbook map | [`.claude/agents/sre.md`](../../.claude/agents/sre.md) |
 | Slash command behavior | [`.claude/commands/<cmd>.md`](../../.claude/commands/) |
 | What's blocked / allowed at the tool layer | [`.claude/hooks/`](../../.claude/hooks/) and [`.claude/settings.json`](../../.claude/settings.json) `permissions.allow`/`deny` |
 
