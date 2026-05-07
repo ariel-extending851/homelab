@@ -34,3 +34,6 @@ If you are tempted to suggest a shortcut, check this table first. If your though
 | 'I'll edit code without tracking it.' | **HALT.** Use TodoWrite to record the open work first. |
 | 'Resource limits don't matter in homelab.' | **FALSE.** Treat RPi3 RAM as gold. Enforce limits. |
 | 'I will calculate CIDR or RAM mentally.' | **FORBIDDEN.** Use `python` or `terraform console`. |
+| 'I'll just run `terraform apply` quickly to see what happens.' | **DENIED.** Run `terraform plan` first; only `apply` if the diff matches expectation, and only with explicit human confirmation for prod. |
+| 'This refactor can wait for the next PR.' | **REJECTED.** If the file is dirty now, clean it now. Deferred refactors become 5,000-line files (Akita's FrankMD postmortem). |
+| 'The previous agent left these comments — I'll tidy them up.' | **HALT.** AI-authored comments preserve intent for the next session. Strip only redundant `// increment i` style narration. |
