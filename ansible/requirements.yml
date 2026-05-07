@@ -3,18 +3,21 @@
 # Install with: ansible-galaxy collection install -r requirements.yml
 
 collections:
-  # Kubernetes core collection (for k8s module)
+  # Kubernetes core collection (for k8s module).
+  # Upper bound: prevent silent major-version pulls during ansible-galaxy
+  # collection install on the 1 GB RPi3 (no headroom for transitive-dep
+  # churn during converges — see CLAUDE.md "common hurdles").
   - name: kubernetes.core
-    version: ">=3.0.0"
+    version: ">=3.0.0,<4.0.0"
 
   # Community SOPS collection (for encrypted secrets)
   - name: community.sops
-    version: ">=1.6.0"
+    version: ">=1.6.0,<2.0.0"
 
   # Community general collection (utilities)
   - name: community.general
-    version: ">=8.0.0"
+    version: ">=8.0.0,<11.0.0"
 
   # POSIX system modules (sysctl, etc.)
   - name: ansible.posix
-    version: ">=1.5.0"
+    version: ">=1.5.0,<2.0.0"
