@@ -75,6 +75,7 @@ coverage.json
 .claude/settings.local.json
 .claude/worktrees/
 .claude/analise-projeto-devops.md
+.claude/cache/
 
 # Deploy resume state (runtime, per-machine — see bin/deploy_aws_homelab.py)
 .deploy-state.json
