@@ -1,12 +1,61 @@
 # Security Audit History
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-07
 > **Owner:** @ariel-extending851
 
 Chronological record of security audits, findings, and remediations. The current security posture lives in [`overview.md`](overview.md); open work lives in [`fixes-backlog.md`](fixes-backlog.md).
 
 This page is the historical record — entries here describe the state at the time of each audit, not necessarily today's reality.
+
+---
+
+## 2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)
+
+Source: branch `worktree-calm-oak-vk48`, plan file `/home/vscode/.claude/plans/role-you-are-a-vast-pascal.md`. Read-only audit across Python deps, GitHub Actions, Terraform providers, Ansible collections, k8s manifests, RBAC, security contexts, and SAST on Python/Terraform/Ansible.
+
+### Headline
+
+No critical RCE / IAM-bypass / secret-exposure issues. Bulk of the work is supply-chain hygiene — pinning, allowlist tracking, and segmentation — not bug-fixing.
+
+### Fixed in this pass (PRs A/B/C/D/E/F/G/H/I)
+
+| Risk | Item | Resolution | Files |
+|---|---|---|---|
+| 🔴 Critical | 52+ floating GitHub Action refs (`@v3/v4/v5/v7`) — supply-chain takeover | Pinned every `uses:` to a 40-char commit SHA across 10 workflows; tag retained as trailing comment so Dependabot can keep them current weekly. Pinned to latest patch within current major (no major bumps). 97 ref lines updated. | `.github/workflows/*.yml` (10 files) |
+| 🟠 High | CI pip installs unpinned (`pytest pytest-cov pyyaml jinja2 boto3`) | Added `[project.optional-dependencies] ci` with explicit floors (jinja2 ≥ 3.1.6 → CVE-2024-34064; urllib3 ≥ 2.5.0 → CVE-2024-37891 transitive) | `pyproject.toml`, `.github/workflows/ci-validation.yml` |
+| 🟠 High | Ansible collections with no upper bound (`>=3.0.0`) | Added `<major+1` upper bounds on `kubernetes.core`, `community.sops`, `community.general`, `ansible.posix` to protect 1 GB RPi3 from transitive-dep churn during converges | `ansible/requirements.yml` |
+| 🟠 High | Floating tool versions in `.mise.toml` (`terraform`, `kubectl`, `awscli`, `sops`, `jq`, `tflint`, `infracost`, `actionlint`, `pre-commit`, `zizmor`) | Pinned each to a known version. `kubectl 1.30.14` matches k3s server minor; `terraform 1.11.0` matches CI workflow pin. LocalStack pipx tools left at `latest` (continue-on-error job only). | `.mise.toml` |
+| 🟠 High | 10 namespaces missing NetworkPolicy (adguard, blackbox, falco, golink, kube-state-metrics, node-exporter, otel-collector, storage-latency, unifi, velero) | Added `default-deny` (Ingress + Egress) plus tight per-workload allow-list per namespace. 21 NetworkPolicy resources total; validated with kubeconform + kustomize build. hostNetwork pods get best-effort ingress under most CNIs (egress rules apply since they're pod-scoped). | `k8s/apps/<ns>/networkpolicy.yaml` (10 new) + each `kustomization.yaml` |
+| 🟡 Medium | Dependabot missing `docker` ecosystem | Added `package-ecosystem: docker` block (npm deferred — no `package.json` yet) | `.github/dependabot.yml` |
+| 🟡 Medium | Terraform state-lock table missing at-rest encryption + PITR (3× tfsec ignores acknowledged but not fixed) | Added `point_in_time_recovery { enabled = true }` and `server_side_encryption { enabled = true }`; left CMK ignore in place with rationale comment | `infra/aws-backend/main.tf` |
+| 🟡 Medium | 15 image refs missing `@sha256:` digest pin | Resolved manifest-list digests via `crane digest` and appended `@sha256:<digest>` to 17 image refs across 14 files. ARM64-safe: pinned manifest lists, not arch leaves, so K8s resolves per-arch digest at pull time. | `k8s/apps/**/*.yaml` (13 files) + `k8s/gitops/sops/argocd-repo-server-patch.yaml` |
+| 🟢 Low | `link-checker.yml` missing top-level `permissions:` | Added `permissions: { contents: read }` (bundled with PR-A SHA pins after zizmor flagged the gap on the SHA-pinned diff) | `.github/workflows/link-checker.yml` |
+
+### Residual risk register (action required by review-by date)
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 1 | `anthropics/claude-code-action@v1.0.115` (third-party, holds `id-token: write`) | action-takeover | @ariel-extending851 | 2026-08-01 | SHA-pinned in PR-A but the trust decision is residual; re-evaluate quarterly. Used in `claude-code-review.yml:35`, `claude.yml:43` |
+| 2 | `tailscale/tailscale ~> 0.13` Terraform provider | third-party-provider | @ariel-extending851 | 2026-08-01 | Re-verify maintenance status quarterly; consider patch-pinning |
+| 3 | `.trivy-image-allowlist.txt` — 13 known-CVE images allowlisted | image-cve | @ariel-extending851 | 2026-07-30 | Driven by `docs/runbooks/image-upgrade-sprint-2026-q3.md`; do not let dates silently expire |
+| 4 | Velero ClusterRole `verbs/apiGroups/resources = ["*"]` | rbac-overly-broad | @ariel-extending851 | 2026-08-01 | Documented exception in `k8s/policies/rbac_safety.rego`; quarterly RBAC review |
+
+### Posture delta
+
+| Before | After |
+|---|---|
+| CRITICAL: 52+ floating action refs (mid-week supply-chain takeover risk) | All workflows SHA-pinned + Dependabot keeps current |
+| HIGH: CI test toolchain auto-pulls latest (CVE exposure window) | Pinned in `pyproject.toml` `[ci]` extra |
+| HIGH: Ansible major-bump risk on RPi3 | Capped at current major across all 4 collections |
+| HIGH: Tool drift between local + CI (kubectl/k3s minor mismatch class of failure) | `.mise.toml` pinned to k3s-matched versions |
+| HIGH: 10 NS with no network segmentation | Default-deny + minimal allow per NS |
+| MEDIUM: Container-image bumps tracked manually via Trivy allowlist | Dependabot now opens weekly PRs |
+| MEDIUM: State-lock table unencrypted at rest | SSE + PITR enabled |
+| MEDIUM: 15 image refs mutable (registry-replay vulnerable) | Manifest-list digests pinned |
+| LOW: link-checker workflow ran with default permissions | Restricted to `contents: read` |
+
+Overall risk: **CRITICAL/HIGH → LOW** (4 residuals are policy/quarterly-review items, not code gaps).
 
 ---
 
