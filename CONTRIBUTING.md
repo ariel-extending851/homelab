@@ -80,6 +80,17 @@ Then follow the checklist in [`docs/contributing/role-template.md`](docs/contrib
 
 Use SOPS — see [`docs/operations/sops-setup.md`](docs/operations/sops-setup.md). Never commit unencrypted secrets; pre-commit and CI both reject them.
 
+## Working with AI
+
+This repo is set up to be used with [Claude Code](https://claude.com/claude-code) (or any LLM agent CLI). The agent reads [`CLAUDE.md`](CLAUDE.md) on every turn — that's the technical rules. The human-facing operations manual (setup, slash commands, hooks, the loop for documenting hurdles) is at [`docs/contributing/ai-workflow.md`](docs/contributing/ai-workflow.md).
+
+Quick orientation:
+
+- **Plan mode** for non-trivial work: spec before prompt.
+- **`/review` → `/commit`**: tech-lead subagent reviews staged changes; commit only proceeds on `APPROVE`.
+- **Hooks**: SOPS files, secret paths, and destructive shell are blocked at the tool layer — see [`.claude/hooks/`](.claude/hooks/).
+- **Discover a hurdle**: document it in `docs/runbooks/` (or auto-memory) **in the same PR that fixes it**.
+
 ## Reporting Issues
 
 Open a GitHub issue at <https://github.com/ariel-extending851/homelab/issues> with:
