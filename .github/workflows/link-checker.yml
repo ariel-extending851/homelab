@@ -18,6 +18,11 @@ on:
     paths:
       - '**.md'
 
+# Default least-privilege; checkout only needs to read the repo and the
+# Lychee step uses GITHUB_TOKEN to dodge github.com rate limits.
+permissions:
+  contents: read
+
 jobs:
   link-checker:
     name: "Run Lychee Link Checker"
@@ -25,10 +30,10 @@ jobs:
 
     steps:
       - name: "Check out repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: "Run Lychee Link Checker"
-        uses: lycheeverse/lychee-action@v2.0.2
+        uses: lycheeverse/lychee-action@7cd0af4c74a61395d455af97419279d86aafaede # v2.0.2
         with:
           # Arguments to pass to Lychee
           # --verbose: Show detailed output
