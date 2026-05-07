@@ -55,7 +55,7 @@ The four phases that matter:
 
 1. **Spec → plan** for anything non-trivial. Claude Code's plan mode enforces this by blocking edits until you approve.
 2. **Edit → hooks defend**. SOPS files, secret paths, and destructive shell are blocked at the tool layer (see [Hooks](#hooks-active) below).
-3. **`/review` → `/commit`**. The tech-lead agent reviews staged changes and `/commit` only proceeds if the verdict is `APPROVE` (or you explicitly override `WARN`).
+3. **`/review` → `/commit`**. The tech-lead agent reviews staged changes and `/commit` only proceeds if the verdict is `APPROVE` (or you explicitly override `WARN`). Commits are always explicitly triggered by a human; the agent never auto-commits.
 4. **CI as the definitive gate**. Local `make validate-*` is the first signal; the 13-job pipeline (`.github/workflows/ci-validation.yml`) is what blocks merge.
 
 ---
@@ -88,7 +88,7 @@ Wired in [`.claude/settings.json`](../../.claude/settings.json), implemented in 
 | `PreToolUse` Bash | `warn-destructive.sh` | Blocks `git push --force`, `terraform destroy`, `kubectl delete ns`, `rm -rf /`, etc. |
 | `PreToolUse` Bash/Read/Grep/Glob | `block-secret-read.sh` | Blocks reads of `~/.config/sops/**`, `~/.ssh/**`, `~/.aws/credentials` |
 | `PostToolUse` Edit/Write | `lint-on-edit.sh` | Runs the right linter for the edited file (informational, never blocks) |
-| `Stop` | `verify-tests.sh` | Runs `pytest` scoped to changed `.py` files (~5s, not the full suite) |
+| `Stop` | `verify-tests.sh` | Runs `pytest` scoped to `.py` files changed since last commit (fast, not full suite) |
 
 If a hook blocks a legitimate operation, the fix is to edit the hook script (small, well-commented), not to `--no-verify` your way around.
 
@@ -122,7 +122,7 @@ Every change ships as a normal PR — no special workflow.
 ## Troubleshooting
 
 - **`/review` doesn't invoke the agent.** Check the YAML frontmatter at the top of `.claude/agents/tech-lead.md` — `name`, `description`, `tools`, `model` are all required for subagent discovery.
-- **Stop hook hangs.** It runs `pytest` on changed `.py` files. If your edit removed the source script but the test still imports it, the hook surfaces the error — fix the test or the import. It does NOT auto-skip.
+- **Stop hook hangs.** It runs `pytest` on changed `.py` files. If your edit removed the source script but the test still imports it, the hook surfaces the error — restore or update the production code/imports. Do not edit tests to bypass the failure.
 - **Permission prompt spam.** Audit `.claude/settings.json` `permissions.allow` (current entries cover the 27 most-frequent read-only patterns). If you find yourself repeatedly approving the same command, add it to the list — but only if it's strictly read-only.
 - **"Does this command get blocked?"** Test with the hook directly: `echo '{"tool_input":{"command":"<cmd>"}}' | bash .claude/hooks/warn-destructive.sh; echo $?` — exit 2 means blocked.
 
@@ -133,5 +133,4 @@ Every change ships as a normal PR — no special workflow.
 - Technical rules read by the agent → [`CLAUDE.md`](../../CLAUDE.md)
 - Project architecture → [`docs/architecture/overview.md`](../architecture/overview.md)
 - Naming and code-style conventions → [`docs/CONVENTIONS.md`](../CONVENTIONS.md)
-- Auto-memory used across sessions → `~/.claude/projects/-workspaces-homelab/memory/`
-- The blog posts that shaped the rules → see the "Sources synthesized" section of the plan file in `~/.claude/plans/luminous-weaving-meerkat.md` (last sweep: 2026-05-07)
+- Auto-memory used across sessions → `~/.claude/projects/<workspace>/memory/` (workspace name comes from your local Claude Code project)
