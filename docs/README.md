@@ -73,6 +73,7 @@ See [Runbooks index](runbooks/README.md).
 | [Doc style guide](contributing/doc-style.md) | Templates for runbooks, services, stubs |
 | [Ansible roles](contributing/ansible-roles.md) | How to scaffold and test a new role |
 | [Role template checklist](contributing/role-template.md) | What to fill in after `make new-role` (Copier-based) |
+| [AI workflow](contributing/ai-workflow.md) | Working with Claude Code (or any LLM agent) on this repo |
 
 ## 📚 Reference
 
