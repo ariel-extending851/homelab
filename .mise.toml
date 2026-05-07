@@ -1,28 +1,35 @@
 [tools]
-# Core Infrastructure
-terraform = "latest"
+# Core Infrastructure.
+# `terraform` is pinned to match the CI workflow's setup-terraform pin
+# (ci-validation.yml `terraform_version: "1.11.0"`) — keeps local + CI on the
+# same minor and avoids the for_each-with-sensitive-values changes in 1.12+.
+terraform = "1.11.0"
 ansible = { version = "13.4.0", pipx_args = "--include-deps", uvx = "false" }
-infracost = "latest"
-sops = "latest"
+infracost = "0.10.43"
+sops = "3.10.2"
 
-# Cloud & Kubernetes Tools
-awscli = "latest"
-kubectl = "latest"
+# Cloud & Kubernetes Tools.
+# `kubectl` is pinned to the k3s server minor (1.30.x) — see
+# docs/runbooks/staging-deploy-2026-05-postmortem.md gotcha #1 for the
+# class of failures that env/version mismatches between local + CI cause.
+awscli = "2.34.45"
+kubectl = "1.30.14"
 kustomize = "5.8.1"
-jq = "latest"
-tflint = "latest"
+jq = "1.7.1"
+tflint = "0.60.0"
 kubeconform = "0.7.0"
 age = "1.2.1"
 conftest = "0.57.0"
 trivy = "0.70.0"
 
-# Local Testing (LocalStack)
+# Local Testing (LocalStack). The two pipx tools below only run in the
+# LocalStack integration job (continue-on-error: true) so floating is OK.
 localstack = "4.13.1"
 "pipx:terraform-local" = "latest"
 "pipx:awscli-local" = "latest"
 
 # Quality Assurance & Linting
-"pipx:pre-commit" = "latest"
+"pipx:pre-commit" = "4.6.0"
 "pipx:ansible-lint" = "26.1.1"
 "pipx:yamllint" = "1.38.0"
 "pipx:molecule" = "25.12.0"
@@ -37,8 +44,8 @@ localstack = "4.13.1"
 # via plain pipx instead — see `.github/workflows/docs.yml`.
 
 # GitHub Actions workflow linting
-actionlint = "latest"
-"pipx:zizmor" = "latest"
+actionlint = "1.7.11"
+"pipx:zizmor" = "1.24.1"
 
 # Shell testing
 bats = "1.11.1"
