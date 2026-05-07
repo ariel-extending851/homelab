@@ -113,17 +113,53 @@ def apply_argocd() -> None:
     _run("kubectl", "-n", "argocd", "apply", "-f", ARGOCD_INSTALL_URL)
 
 
+def _workload_fully_ready(kind: str, name: str) -> bool:
+    """True when the named Deployment/StatefulSet has readyReplicas == replicas.
+
+    Treats absent or zero spec.replicas as not-yet-scheduled (False).
+    """
+    obj = _kubectl_json("-n", "argocd", "get", kind, name)
+    if not obj:
+        return False
+    spec = obj.get("spec", {})
+    status = obj.get("status", {})
+    desired = spec.get("replicas")
+    return bool(desired) and status.get("readyReplicas") == desired
+
+
 def wait_for_argocd_server_ready(timeout: int) -> None:
-    """Block until argocd-server Deployment readyReplicas == replicas."""
+    """Block until ArgoCD's data-plane workloads are all Ready.
+
+    Waits for *every* component the comparison loop touches:
+      - argocd-server (UI/API)               — Deployment
+      - argocd-repo-server (manifest gen)    — Deployment
+      - argocd-application-controller        — StatefulSet
+
+    Earlier versions only waited for argocd-server, which let the test
+    proceed to apply the root app while the controller was still racing
+    against a not-yet-ready repo-server. The controller would record a
+    transient `ComparisonError: dial … :8081: connection refused`, and
+    `wait_for_root_app_evaluated` (which treats any ComparisonError as
+    fatal) would fail before the repo-server finished pulling its image.
+    """
     deadline = time.monotonic() + timeout
+    workloads = [
+        ("deployment", "argocd-server"),
+        ("deployment", "argocd-repo-server"),
+        ("statefulset", "argocd-application-controller"),
+    ]
     while time.monotonic() < deadline:
-        obj = _kubectl_json("-n", "argocd", "get", "deployment", "argocd-server")
-        spec = obj.get("spec", {})
-        status = obj.get("status", {})
-        if spec.get("replicas") and status.get("readyReplicas") == spec.get("replicas"):
+        if all(_workload_fully_ready(kind, name) for kind, name in workloads):
             return
         time.sleep(3.0)
-    raise AssertionError(f"argocd-server did not become Ready in {timeout}s")
+    not_ready = [
+        f"{kind}/{name}"
+        for kind, name in workloads
+        if not _workload_fully_ready(kind, name)
+    ]
+    raise AssertionError(
+        f"ArgoCD workloads not Ready in {timeout}s: {', '.join(not_ready)}"
+    )
 
 
 def apply_root_app(
