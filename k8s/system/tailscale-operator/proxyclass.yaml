@@ -5,8 +5,14 @@ metadata:
 spec:
   statefulSet:
     pod:
-      # No nodeSelector — let K8s scheduler distribute proxies across all nodes
-      # Tailscale mesh works over WireGuard regardless of node placement
-      # This prevents memory pressure on k3s-server-1 (2GB node)
+      # Pin proxies to rasp-pi-04 to co-locate with the primary Pi-resident backends.
+      # Cross-Pi pod traffic (rasp-pi-03 → rasp-pi-04) currently times out on Service
+      # ClusterIP DNAT — proxy logs show `dial tcp <svc-ip>: connect: connection
+      # timed out` while same-node and Pi→EC2 paths work fine. Co-locating proxy +
+      # backend keeps traffic on-node and works around the cross-Pi VXLAN issue.
+      # Memory load: ~11 userspace proxies × ~50MB on a Pi 4 (8GB) is comfortable.
+      # Avoids k3s-server-1 (2GB) memory pressure as before.
+      # Revert to broad scheduling once the underlying cross-Pi networking is fixed.
       nodeSelector:
         kubernetes.io/os: linux
+        kubernetes.io/hostname: rasp-pi-04
