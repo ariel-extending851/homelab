@@ -72,6 +72,10 @@ rpi3_power:
 # uses once systemd-resolved is gone — keeps apt/k3s working independently of
 # AdGuard's pod state.
 adguard_dns_host: false
+# 100.100.100.100 is Tailscale's MagicDNS IP — required for the host to
+# resolve *.ts.net names (e.g. peer hostnames). It must come FIRST so
+# tailnet lookups don't fall through to public resolvers.
 host_dns_servers:
+  - 100.100.100.100
   - 1.1.1.1
   - 8.8.8.8
