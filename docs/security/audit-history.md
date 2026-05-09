@@ -1,12 +1,46 @@
 # Security Audit History
 
 > **Status:** Active
-> **Last reviewed:** 2026-05-07
+> **Last reviewed:** 2026-05-09
 > **Owner:** @ariel-extending851
 
 Chronological record of security audits, findings, and remediations. The current security posture lives in [`overview.md`](overview.md); open work lives in [`fixes-backlog.md`](fixes-backlog.md).
 
 This page is the historical record — entries here describe the state at the time of each audit, not necessarily today's reality.
+
+---
+
+## 2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)
+
+Triggered by an incident (`/incident`) on the production cluster: `adguard/adguardhome-*` in CrashLoopBackOff with **141 restarts over 23h**, exit code 1 inside the same wall-clock second. Logs showed AdGuard's first-launch permcheck rejecting the non-root container with `you must run it as administrator`.
+
+### Decision
+
+Pod-level `securityContext` changed from `runAsUser: 65534 / runAsGroup: 65534 / fsGroup: 65534` to `runAsUser: 0 / runAsGroup: 0` (drop `fsGroup`). Container caps add `NET_RAW` alongside `NET_BIND_SERVICE`.
+
+### Why root is acceptable here
+
+AdGuard Home v0.107.50+ permcheck inspects the **binary's file capabilities** (`cap.GetFile`), not the **process** caps injected by the Pod. The upstream image ships without `setcap` on the binary, so non-root + Pod-level `NET_BIND_SERVICE` still fails the check. Upstream's official k8s example also runs as root.
+
+The pod already requires `hostNetwork: true` to bind UDP/TCP 53 on the node — that alone makes the runtime co-tenant with the host's network namespace. Dropping `runAsUser: 65534` does not change the pod's blast radius materially in this configuration.
+
+### Mitigations retained
+
+- `privileged: false`
+- `allowPrivilegeEscalation: false` (`no_new_privs` on the process)
+- `capabilities.drop: [ALL]` then explicit add of `NET_BIND_SERVICE`, `NET_RAW`, `SETUID`, `SETGID`
+- NetworkPolicy `default-deny` + `allow-adguardhome` egress allowlist (added 2026-05-07 in PR-E)
+- Single-namespace, single-pod scope; no service account binding outside its namespace
+- Read-only mount for the docs ConfigMap
+
+### Hardening deferred
+
+- Init-container `setcap` workaround to allow non-root, once upstream stabilizes
+- `nodeSelector: role=dns-server` for IP-stability of the DNS endpoint
+
+Linked runbook: [`docs/runbooks/adguard-firstlaunch-permcheck.md`](../runbooks/adguard-firstlaunch-permcheck.md).
+
+Same-PR cleanup: deleted `k8s/apps/adguard/pv.yaml` (storageClassName mismatched the PVC; pinned to a node that has not existed in the cluster since the 2026-05-04 re-deploy). Dynamic `local-path` provisioning has covered this PVC since first deploy.
 
 ---
 

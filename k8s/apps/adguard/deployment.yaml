@@ -31,12 +31,17 @@ spec:
       #   3. Pod rescheduling changes the DNS IP; for stability, add a nodeSelector with
       #      a custom label (e.g. role=dns-server) on the chosen node.
 
-      # Security context: Run as nobody user (UID 65534) to match image ownership
-      # fsGroup ensures mounted volumes are accessible by the container user
+      # AdGuard Home v0.107.50+ permcheck reads the binary's *file* capabilities
+      # (cap.GetFile on /opt/adguardhome/AdGuardHome), not the Pod-level caps
+      # injected by Kubernetes. The upstream image ships without setcap, so any
+      # non-root UID fails the first-launch admin check with
+      # "this is the first launch of adguard home; you must run it as administrator".
+      # hostNetwork + privileged port 53 makes root the upstream-recommended runtime
+      # for this app — see docs/runbooks/adguard-firstlaunch-permcheck.md.
+      # Mitigations retained: privileged=false, allowPrivilegeEscalation=false, capabilities drop ALL.
       securityContext:
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
+        runAsUser: 0
+        runAsGroup: 0
 
       containers:
         # AdGuard Home Application
@@ -45,16 +50,17 @@ spec:
           imagePullPolicy: IfNotPresent
 
           securityContext:
-            # With hostNetwork=true, container uses host's network namespace for port 53
-            # Minimal security: prevent privilege escalation, no privileged mode
+            # With hostNetwork=true, container uses host's network namespace for port 53.
             # Required capabilities:
             #   - NET_BIND_SERVICE: Bind to privileged port 53 (DNS)
-            #   - SETUID/SETGID: AdGuard may need to switch users during initialization
+            #   - NET_RAW: also consulted by AdGuard's permcheck on first launch
+            #   - SETUID/SETGID: AdGuard may switch users during initialization
             privileged: false
             allowPrivilegeEscalation: false
             capabilities:
               add:
                 - NET_BIND_SERVICE
+                - NET_RAW
                 - SETUID
                 - SETGID
               drop:

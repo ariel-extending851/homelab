@@ -19,6 +19,7 @@ Reactive on-call references. Each runbook is severity-tagged and tested.
 | [Staging deploy postmortem 2026-05](staging-deploy-2026-05-postmortem.md) | 🟡 Setup | 2026-05-03 |
 | [Prod deploy postmortem 2026-05-04](prod-deploy-2026-05-04-postmortem.md) | 🟡 Setup | 2026-05-04 |
 | [Prod deploy postmortem 2026-05-05 (Day 2 + teardown)](prod-deploy-2026-05-05-postmortem.md) | 🟡 Setup | 2026-05-05 |
+| [AdGuard Home first-launch permcheck CrashLoop](adguard-firstlaunch-permcheck.md) | 🟡 Warning | 2026-05-09 |
 
 Template for new runbooks: [`docs/contributing/doc-style.md`](../contributing/doc-style.md#runbook-template).
 
