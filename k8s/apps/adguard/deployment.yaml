@@ -24,12 +24,16 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
-      # No nodeAffinity — scheduler places this on any available node.
-      # IMPORTANT — hostNetwork constraints with DNS:
-      #   1. Only ONE AdGuard instance can run cluster-wide (port 53 is a singleton per host).
-      #   2. DNS binds to whichever node's IP the pod lands on — clients must use that IP.
-      #   3. Pod rescheduling changes the DNS IP; for stability, add a nodeSelector with
-      #      a custom label (e.g. role=dns-server) on the chosen node.
+      # Pin to rasp-pi-03 to keep AdGuard's LAN-facing DNS endpoint stable at
+      # 192.168.8.12 (the LAN IP of rasp-pi-03 per group_vars/router.sops.yml).
+      # The GL.iNet router's gatekeeper failover script (ansible/roles/gatekeeper)
+      # DNATs LAN :53 to `pi_adguard_ip` and only works when that IP matches the
+      # pod's actual host. rasp-pi-04 is loaded with the media stack (jellyfin +
+      # *arr + qbittorrent + 11 Tailscale ingress proxies); pi-03 is light.
+      # Prerequisite: ansible/roles/rpi_optimization disables systemd-resolved
+      # on rasp-pi-03 (gated by adguard_dns_host=true in host_vars).
+      nodeSelector:
+        kubernetes.io/hostname: rasp-pi-03
 
       # AdGuard Home v0.107.50+ permcheck reads the binary's *file* capabilities
       # (cap.GetFile on /opt/adguardhome/AdGuardHome), not the Pod-level caps

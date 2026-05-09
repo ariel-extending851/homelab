@@ -7,7 +7,11 @@ wifi_guest_ssid_5: GL-SFT1200-1b5-5G-Guest
 wifi_password: vaulted
 wifi_guest_password: vaulted_guest
 pi_tailscale_ip: 192.168.8.10
-pi_adguard_ip: 192.168.8.11
+# LAN IP of the node running AdGuard with hostNetwork=true. Must match the
+# nodeSelector in k8s/apps/adguard/deployment.yaml. Currently pinned to
+# rasp-pi-03 (192.168.8.12 per group_vars/router.sops.yml DHCP reservation)
+# because rasp-pi-04 is saturated with the media stack.
+pi_adguard_ip: 192.168.8.12
 # Real DHCP reservations live in group_vars/router.sops.yml (hardware MACs).
 # Empty list means no reservations are applied.
 pi_dhcp_reservations: []
