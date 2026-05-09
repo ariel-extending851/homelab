@@ -81,21 +81,25 @@ spec:
             - containerPort: 53
               name: dns-udp
               protocol: UDP
-            - containerPort: 3000
+            # AdGuard's first-launch wizard lives on :3000; once the admin password
+            # is set, the web UI binds to the configured `bind_port` (default 80)
+            # from /opt/adguardhome/conf/AdGuardHome.yaml. Probes and Service must
+            # match the post-wizard port, otherwise the pod CrashLoops.
+            - containerPort: 80
               name: admin-ui
               protocol: TCP
 
           livenessProbe:
             httpGet:
               path: /
-              port: 3000
+              port: 80
             initialDelaySeconds: 30
             periodSeconds: 10
 
           readinessProbe:
             httpGet:
               path: /
-              port: 3000
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 10
 
