@@ -274,9 +274,12 @@
       # Managed by ansible (rpi_optimization role, adguard_dns_host=true).
       # Host-only resolver — keeps apt/k3s working independently of the
       # AdGuard pod, which serves LAN clients on this same node:53.
+      # First nameserver is Tailscale MagicDNS (100.100.100.100) so the host
+      # itself can resolve *.{{ tailscale_network }} peers; rest are public.
       {% for srv in host_dns_servers %}
       nameserver {{ srv }}
       {% endfor %}
+      search {{ tailscale_network }}
     # Belt-and-braces: Ubuntu's symlink to /run/systemd/resolve/stub-resolv.conf
     # would survive `copy` if `force: false`; keep default force=true.
   when: adguard_dns_host | bool
