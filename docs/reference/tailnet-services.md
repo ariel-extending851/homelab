@@ -1,10 +1,10 @@
 # Tailnet Services
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-10
 > **Owner:** @ariel-extending851
 
-Every `*.tail57bf10.ts.net` hostname currently served by the cluster, and what it points at. All accessible only from devices on the tailnet.
+Every `*.tail57bf10.ts.net` hostname currently served by the cluster, and what it points at. Reachable from any device on the tailnet — and, via [the LAN ↔ tailnet bridge](../architecture/lan-tailnet-bridge.md), from LAN clients on `192.168.8.0/24` even without Tailscale installed locally.
 
 ---
 
@@ -55,6 +55,7 @@ If you add a new app with a Tailscale Ingress, the operator picks up the `host` 
 - Without MagicDNS, you must use the full `*.tail57bf10.ts.net` form (the tailnet ID `tail57bf10` is in [`ansible/group_vars/all.yml`](../../ansible/group_vars/all.yml))
 - TLS certs are managed automatically by Tailscale (Let's Encrypt under the hood)
 - ACLs in the Tailscale console can restrict which devices reach which hostnames (this repo doesn't manage Tailscale ACLs)
+- **LAN clients without Tailscale** still reach these hostnames — AdGuard does split DNS for the `tail57bf10.ts.net` zone and the GL.iNet has a static reverse route into `100.64.0.0/10`. End-to-end flow + failure modes in [`../architecture/lan-tailnet-bridge.md`](../architecture/lan-tailnet-bridge.md).
 
 ---
 

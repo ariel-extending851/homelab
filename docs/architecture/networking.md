@@ -1,10 +1,12 @@
 # Networking
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-10
 > **Owner:** @ariel-extending851
 
 Tailscale is the only ingress path. There are no public TCP ports anywhere in the homelab stack.
+
+> See also: [LAN ↔ tailnet bridge](lan-tailnet-bridge.md) — how LAN clients without Tailscale (smart TVs, IoT, guest devices) reach `*.tail57bf10.ts.net` services through AdGuard split DNS plus the GL.iNet's reverse route.
 
 ---
 
