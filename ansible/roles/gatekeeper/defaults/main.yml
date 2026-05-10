@@ -6,7 +6,18 @@ wifi_guest_ssid_5: GL-SFT1200-1b5-5G-Guest
 # Safe placeholders only. Override in group_vars/router.sops.yml.
 wifi_password: vaulted
 wifi_guest_password: vaulted_guest
-pi_tailscale_ip: 192.168.8.10
+# LAN IP of the Tailscale subnet router + exit node — the host that
+# advertises 192.168.8.0/24 to the tailnet. The GL.iNet uses this as the
+# gateway for its `tailscale_reverse_route` (100.64.0.0/10), letting
+# LAN clients without Tailscale reach tailnet IPs (e.g. *.ts.net proxy
+# pods). Subnet router pinned to rasp-pi-04 in
+# ansible/roles/tailscale/tasks/main.yml:60 (when: inventory_hostname ==
+# 'rasp-pi-04'); rasp-pi-04 is at .11 per group_vars/router.sops.yml DHCP
+# reservation. The previous default (.10) referenced no real host, so the
+# reverse route on the router was black-holed and *.ts.net was reachable
+# only from devices already on the tailnet — see
+# docs/architecture/lan-tailnet-bridge.md.
+pi_tailscale_ip: 192.168.8.11
 # LAN IP of the node running AdGuard with hostNetwork=true. Must match the
 # nodeSelector in k8s/apps/adguard/deployment.yaml. Currently pinned to
 # rasp-pi-03 (192.168.8.12 per group_vars/router.sops.yml DHCP reservation)
