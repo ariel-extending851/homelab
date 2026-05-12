@@ -120,10 +120,18 @@ Operator-side sanity checks. Reuse these in incident response.
 # 1. List signatures for a first-party image
 cosign tree ghcr.io/ariel-extending851/<image>:<tag>
 
-# 2. Verify the signature with the same constraints Kyverno applies
+# 2. Verify the signature with the same constraints Kyverno applies.
+#    The identity regexp matches the workflow's OIDC subject; the canonical
+#    value lives in k8s/system/kyverno/policies/verify-image-signatures.yaml
+#    (verify rule, attestor subject) — pull it from there to avoid drift.
+IDENTITY=$(yq -r '.spec.rules[0].verifyImages[0].attestors[0].entries[0].keyless.subject' \
+  k8s/system/kyverno/policies/verify-image-signatures.yaml)
+ISSUER=$(yq -r '.spec.rules[0].verifyImages[0].attestors[0].entries[0].keyless.issuer' \
+  k8s/system/kyverno/policies/verify-image-signatures.yaml)
+
 cosign verify \
-  --certificate-identity-regexp '^https://github.com/ariel-extending851/homelab/\.github/workflows/supply-chain\.yml@' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  --certificate-identity-regexp "^${IDENTITY%@*}@" \
+  --certificate-oidc-issuer "${ISSUER}" \
   ghcr.io/ariel-extending851/<image>@sha256:<digest>
 
 # 3. Inspect the attached SBOM
