@@ -7,6 +7,9 @@
 # GitHub settings pages (require authentication)
 https://github.com/ariel-extending851/homelab/settings
 
+# Tailscale admin console (auth-required — referenced from sops-key-rotation runbook)
+https://login.tailscale.com/admin/settings/keys
+
 # Stale versioned documentation URLs
 https://longhorn.io/docs/1.6.0/
 https://grafana.com/docs/loki/latest/logql/performance/
