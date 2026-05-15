@@ -5,8 +5,13 @@
 # deploy would leave ArgoCD installed but without any Applications to reconcile.
 
 - name: Render root Application manifest
+  # Resolve via the project-root file (k8s/gitops/apps-root*.yaml). The var
+  # `apps_root_manifest_path` (defaults/main.yml) is now actually used —
+  # previously the literal `src: apps-root.yaml` short-circuited to a stale
+  # copy under roles/argocd/files/. Pi-only mode overrides this var in
+  # inventory/pi-only.yml so the deploy points at the lighter overlay.
   ansible.builtin.copy:
-    src: apps-root.yaml
+    src: "{{ role_path }}/../../../{{ apps_root_manifest_path }}"
     dest: /tmp/apps-root.yaml
     mode: '0644'
   when:
