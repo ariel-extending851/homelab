@@ -17,10 +17,24 @@ metadata:
 spec:
   template:
     spec:
-      # Pin to x86_64 nodes — SOPS binary and ArgoCD images are multi-arch
-      # but keeping on AWS nodes avoids slow ARM image pulls on Pis
+      # Pin to rasp-pi-04. The init container detects $(uname -m) so the
+      # binary download is arch-correct; the constraint here is operational,
+      # not architectural:
+      #   - rasp-pi-03 is the AdGuard host. `rpi_optimization` replaces
+      #     /etc/resolv.conf with a static upstream so the kubelet stops
+      #     hijacking port 53. When argocd-repo-server lands there, CoreDNS
+      #     forwards external lookups through that constrained path and
+      #     `dial tcp: lookup github.com ... no such host` blocks every
+      #     Application sync. pi-03 also has only 1 GB RAM — repo-server
+      #     plus AdGuard would push it toward OOM.
+      #   - rasp-pi-04 has 8 GB and a normal resolv.conf.
+      # `$patch: replace` is required: strategic merge defaults to "merge"
+      # for map[string]string, so without the directive the legacy
+      # `kubernetes.io/arch: amd64` selector (from the hybrid era) would
+      # survive and re-block scheduling on every patch re-apply.
       nodeSelector:
-        kubernetes.io/arch: amd64
+        $patch: replace
+        kubernetes.io/hostname: rasp-pi-04
       # Init container: install SOPS binary (architecture-aware)
       initContainers:
         - name: install-sops
