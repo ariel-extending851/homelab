@@ -1,0 +1,69 @@
+---
+# Pi-only inventory overlay (used in addition to production.yml).
+#
+# Purpose: promote rasp-pi-04 to the k3s_server group and route Pi-to-Pi
+# traffic over LAN (eth0) instead of Tailscale. This file is mode-scoped —
+# the hybrid AWS+Pi path does NOT load it, so production.yml stays unchanged
+# and the AWS dynamic inventory continues to own the control plane there.
+#
+# Layered usage (Ansible merges multiple -i flags, later ones win):
+#   ansible-playbook -i ansible/inventory/production.yml \
+#                    -i ansible/inventory/pi-only.yml \
+#                    ansible/playbooks/site.yml
+#
+# Or simply: make pi-only-deploy
+#
+# Why node_ip is overridden to the LAN IP on rasp-pi-04:
+#   install_server.yml builds k3s_server_url from `node_ip`. Pi-to-Pi traffic
+#   over Tailscale times out on Service ClusterIP DNAT (see
+#   k8s/system/tailscale-operator/proxyclass.yaml), and the Tailscale ACL in
+#   infra/aws/acl.json lacks a tag:rpi ↔ tag:rpi rule. Routing the agent join
+#   over LAN eth0 avoids both issues. `tailscale_ip` is set explicitly so
+#   site.yml's kubeconfig refresh still emits the Tailscale URL for remote
+#   kubectl from a developer laptop.
+#
+# Why k3s_use_tailscale is false on rasp-pi-03:
+#   With this flag false, install_agent.yml skips Tailscale IP detection and
+#   does NOT pass `--flannel-iface tailscale0`. The agent registers with its
+#   default eth0 IP and joins the server over LAN. Tailscale itself keeps
+#   running for SSH / remote management — only the k3s overlay opts out.
+
+all:
+  children:
+    k3s_server:
+      hosts:
+        rasp-pi-04:
+          # LAN-routed control plane for Pi-only mode.
+          node_ip: 192.168.8.11           # LAN — used by install_server.yml for k3s_server_url
+          tailscale_ip: 100.84.176.35     # explicit — site.yml uses this for kubeconfig rewrite
+          k3s_control_node: true
+          # Pi-only mode: apps-root points at the trimmed overlay so the
+          # Cloud-only apps (grafana, hl-kyverno, velero, falco, golink,
+          # storage-latency, unifi) are not deployed on the Pis. The apps
+          # themselves stay in the repo for when the AWS side is back.
+          # Host-scoped (not in all.vars) because group_vars/k3s_server.yml
+          # also declares this var and would otherwise win on precedence.
+          apps_root_manifest_path: k8s/gitops/apps-root-pi-only.yaml
+          k3s_server_config:
+            write_kubeconfig_mode: "0644"
+            cluster_cidr: "10.42.0.0/16"
+            service_cidr: "10.43.0.0/16"
+            flannel_backend: vxlan
+            disable_cloud_controller: true
+            tls_san:
+              - 192.168.8.11        # LAN — agent on rasp-pi-03 connects via this
+              - 100.84.176.35       # Tailscale — kubectl from dev laptop
+              - rasp-pi-04
+            disable:
+              - traefik             # Tailscale ingress replaces it
+            kubelet_arg:
+              - "max-pods=80"
+              - "eviction-hard=memory.available<300Mi"
+              - "system-reserved=memory=512Mi"
+              - "kube-reserved=memory=512Mi"
+
+    k3s_agent:
+      hosts:
+        rasp-pi-03:
+          # Opt out of Tailscale-based flannel; join the server over LAN eth0.
+          k3s_use_tailscale: false
