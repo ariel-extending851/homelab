@@ -111,10 +111,14 @@
 
     - name: Resolve server Tailscale IP from inventory
       ansible.builtin.set_fact:
-        # tailscale_ip is injected by terraform_inventory_aws.py at runtime.
-        # Falls back to private_ip if Tailscale is temporarily unavailable.
+        # tailscale_ip is injected by terraform_inventory_aws.py at runtime
+        # (hybrid AWS+Pi). In Pi-only mode it is set explicitly in
+        # inventory/pi-only.yml because node_ip there is the LAN IP, not the
+        # Tailscale IP. Falls back to private_ip (AWS) and then node_ip so the
+        # kubeconfig URL is always populated.
         k3s_server_tailscale_ip: "{{ hostvars[inventory_hostname]['tailscale_ip']
-                                     | default(hostvars[inventory_hostname]['private_ip']) }}"
+                                     | default(hostvars[inventory_hostname]['private_ip'])
+                                     | default(hostvars[inventory_hostname]['node_ip']) }}"
       tags: ['always', 'kubeconfig']
 
     - name: Write refreshed kubeconfig to localhost
@@ -145,9 +149,12 @@
 
 # =============================================================================
 # PHASE 0: Pre-migration cleanup
-# Ensures any Raspberry Pi that was previously a k3s control plane is fully
-# wiped before it is configured as an agent.  This play is a no-op when the
-# node was never a server.
+# Ensures any Raspberry Pi that was previously a k3s control plane (legacy
+# layout) is fully wiped before it is configured as an agent. This play is
+# a no-op when the node was never a server OR when the node IS the current
+# server (Pi-only mode → rasp-pi-04 in k3s_server group). Without the
+# k3s_server membership check, every re-run of `make pi-only-deploy` would
+# wipe the Pi server, destroy ArgoCD state, and reinstall k3s from scratch.
 # =============================================================================
 
 - name: Phase 0 — Remove legacy k3s server role from Raspberry Pi nodes
@@ -159,6 +166,12 @@
   vars:
     k3s_rancher_data_dir: /var/lib/rancher/k3s
     k3s_config_dir: /etc/rancher/k3s
+    # True when this host has a k3s.service unit AND is not the current
+    # control plane. Pi-only mode places rasp-pi-04 in k3s_server, which
+    # makes this expression false on every re-run and preserves cluster state.
+    pi_needs_server_cleanup: >-
+      {{ pi_k3s_server_unit.stat.exists
+         and inventory_hostname not in (groups['k3s_server'] | default([])) }}
 
   tasks:
     - name: Detect legacy k3s server unit on Pi node
@@ -170,19 +183,22 @@
       ansible.builtin.debug:
         msg: |
           [{{ inventory_hostname }}] k3s server unit present: {{ pi_k3s_server_unit.stat.exists }}
-          Action: {{ 'Full server uninstall' if pi_k3s_server_unit.stat.exists else 'Nothing to do' }}
+          In k3s_server group: {{ inventory_hostname in (groups['k3s_server'] | default([])) }}
+          Action: {{ 'Full server uninstall (legacy host)'
+                     if (pi_needs_server_cleanup | bool)
+                     else 'Skip (this host is the current server or never had one)' }}
 
     - name: Stop legacy k3s server service
       ansible.builtin.systemd:
         name: k3s
         state: stopped
-      when: pi_k3s_server_unit.stat.exists
+      when: pi_needs_server_cleanup | bool
       failed_when: false
 
     - name: Run k3s server uninstall script on Pi
       ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
       when:
-        - pi_k3s_server_unit.stat.exists
+        - pi_needs_server_cleanup | bool
         - not ansible_check_mode
       changed_when: true
 
@@ -190,22 +206,22 @@
       ansible.builtin.file:
         path: "{{ k3s_rancher_data_dir }}"
         state: absent
-      when: pi_k3s_server_unit.stat.exists
+      when: pi_needs_server_cleanup | bool
 
     - name: Purge residual k3s config directory
       ansible.builtin.file:
         path: "{{ k3s_config_dir }}"
         state: absent
-      when: pi_k3s_server_unit.stat.exists
+      when: pi_needs_server_cleanup | bool
 
     - name: Reload systemd after Pi server uninstall
       ansible.builtin.systemd:
         daemon_reload: true
-      when: pi_k3s_server_unit.stat.exists
+      when: pi_needs_server_cleanup | bool
 
     - name: Confirm Pi node is clean
       ansible.builtin.debug:
-        msg: "✓ {{ inventory_hostname }} — server cleanup {{ 'completed' if pi_k3s_server_unit.stat.exists else 'skipped (not a server)' }}"
+        msg: "✓ {{ inventory_hostname }} — server cleanup {{ 'completed' if (pi_needs_server_cleanup | bool) else 'skipped' }}"
 
 # =============================================================================
 # PHASE 1: Infrastructure Deployment
