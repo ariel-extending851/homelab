@@ -21,7 +21,11 @@
 #     Despite still being allowlisted, **CVE counts dropped ~50%** vs the
 #     prior pins — net security win. Review-by 2026-08-01 to re-check
 #     whether upstream has rebuilt by then.
+#
+# 2026-05-15: AdGuard v0.107.74 re-appeared with HIGH=5 (new CVEs added to
+#   Trivy DB since Phase 1). Re-added temporarily; bump to v0.107.75+ to resolve.
 
+adguard/adguardhome:v0.107.74                        # review-by: 2026-06-14  (HIGH=5 re-appeared post Phase 1 from new Trivy DB entries; bump to v0.107.75+)
 ghcr.io/tailscale/golink:main@sha256:011e6a242d525df54faec21defed5e3c164d89cb02192fbd950266dfde889d7d  # review-by: 2026-08-01  (4 HIGH from Go stdlib in static binary; awaiting Tailscale rebuild)
 grafana/grafana:10.2.3                               # review-by: 2026-07-30  (Grafana 11 LTS upgrade — Phase 6 of upgrade sprint)
 grafana/loki:2.9.2                                   # review-by: 2026-07-30  (Loki 3.x — schema migration required — Phase 5)
