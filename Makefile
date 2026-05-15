@@ -31,7 +31,8 @@
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
 		terraform-staging-destroy terraform-prod-select \
 		cilium-flip-status cilium-flip-node cilium-flip-rollback \
-		unifi-up unifi-down unifi-status
+		unifi-up unifi-down unifi-status \
+		pi-only-deploy pi-only-ansible pi-only-kubeconfig
 
 # Default target
 .DEFAULT_GOAL := help
@@ -391,6 +392,21 @@ ansible-emergency: ## Run emergency recovery playbook
 ansible-optimize-rpi: ## Optimize Raspberry Pi nodes (swap, sysctl, logrotate, RPi 3 boot config)
 	@echo "🍓 Optimizing Raspberry Pi nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml
+
+##@ Pi-only Deployment (no AWS)
+
+pi-only-deploy: ## Deploy the homelab on Raspberry Pis only (rasp-pi-04 = server, rasp-pi-03 = agent)
+	@echo "🍓 Deploying Pi-only homelab (no AWS)..."
+	@python3 bin/deploy_pi_homelab.py
+
+pi-only-ansible: ## Re-run only the Ansible phase against the Pis (skips preflight + kubeconfig)
+	@echo "🍓 Pi-only Ansible run..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml playbooks/site.yml
+
+pi-only-kubeconfig: ## Refresh local kubeconfig from rasp-pi-04 via SSH (no SSM)
+	@echo "🍓 Refreshing kubeconfig from rasp-pi-04..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
+		playbooks/site.yml --tags kubeconfig --limit k3s_server
 
 ##@ Kubernetes Management
 
