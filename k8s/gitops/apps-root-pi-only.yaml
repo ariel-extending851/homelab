@@ -1,0 +1,64 @@
+---
+# ArgoCD Application of Applications — Pi-only variant.
+# Identical to apps-root.yaml in every field EXCEPT spec.source.path, which
+# points at the Pi-only overlay (k8s/apps/envs/pi-only) instead of the full
+# app catalog at k8s/apps. The Pi-only inventory overlay
+# (ansible/inventory/pi-only.yml) sets apps_root_manifest_path to this file.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-apps-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: homelab-apps-root
+    app.kubernetes.io/part-of: homelab
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io # Cascading delete
+spec:
+  project: default
+
+  source:
+    repoURL: git@github.com:ariel-extending851/homelab.git
+    targetRevision: develop # Tracks develop branch (primary development branch)
+    path: k8s/apps/envs/pi-only
+    # Kustomize will detect kustomization.yaml under this overlay and resolve
+    # the listed apps via relative ../../<name> paths back into k8s/apps/.
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd # Default namespace for ArgoCD operations
+
+  syncPolicy:
+    automated:
+      prune: true # Delete resources removed from Git
+      selfHeal: true # Auto-sync on drift detection
+      allowEmpty: false # Prevent accidental deletion of all resources
+
+    syncOptions:
+      - CreateNamespace=true # Auto-create namespaces if missing
+      - PrunePropagationPolicy=foreground # Ensure proper cleanup order
+      - PruneLast=true # Prune after sync (safer)
+      - ApplyOutOfSyncOnly=true # Apply only resources that are actually out of sync
+      - ServerSideApply=true # Precise conflict detection; prevents overwriting controller-managed fields
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas # Ignore HPA-managed replicas
+
+    # All Secrets are managed exclusively via SOPS + ArgoCD CMP (no external-secrets,
+    # cert-manager or other operators). ArgoCD decrypts at sync time, so /data in the
+    # cluster will differ from the encrypted Git representation — ignoring drift here
+    # is intentional and safe.
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
