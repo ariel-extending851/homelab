@@ -1,24 +1,26 @@
 # Pi-only environment overlay.
 #
-# Lists only the apps that fit and belong on the Raspberry Pi cluster
-# (rasp-pi-04 server + rasp-pi-03 agent dedicated to AdGuard). The "Cloud"
-# apps (grafana, kyverno, velero, falco, golink, storage-latency, unifi)
-# stay in the repo at k8s/apps/<name>/ — they are intentionally left out of
-# this overlay because they target AWS resources (or are too heavy for the
-# Pis). They will return via a separate overlay (k8s/apps/envs/cloud) when
-# the AWS side is back online.
+# Lists only the apps that BELONG on the Raspberry Pis — the apps that
+# either physically must run there (adguard for LAN DNS via hostNetwork)
+# or are Pi-specific (storage-latency measures the SD card). The bulk of
+# the homelab moved to k8s/apps/envs/cloud/ when the hybrid AWS+Pi
+# architecture landed; observability/security/backup all live AWS-side.
 #
-# Selected by the Pi-only deploy via inventory/pi-only.yml overriding
-# `apps_root_manifest_path: k8s/gitops/apps-root-pi-only.yaml`, whose
-# Application points at this path.
+# rasp-pi-04 ALSO hosts the homelab-media stack (jellyfin, sonarr,
+# radarr, prowlarr, qbittorrent, flaresolverr) — but those manifests
+# come from the private `ariel-extending851/homelab-media` repo and are
+# applied by ArgoCD's `homelab-media-root` Application (configured via
+# argocd_extra_* SOPS vars in ansible/group_vars/k3s_server.sops.yml).
+# They are NOT in this overlay.
+#
+# Used by two ArgoCD entry points:
+#   - apps-root-pi-only.yaml      (Pi-only deploy: no AWS at all)
+#   - apps-root-hybrid.yaml       (Hybrid: this overlay + envs/cloud)
+# Both reference `k8s/apps/envs/pi-only`.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../adguard
-  - ../../prometheus
-  - ../../loki
-  - ../../blackbox
-  - ../../kube-state-metrics
-  - ../../node-exporter
-  - ../../otel-collector
+  - ../../adguard               # hostNetwork :53 on rasp-pi-03 (nodeSelector pinned)
+  - ../../storage-latency       # CronJob on rasp-pi-04 (nodeSelector pinned)
+  - ../../node-exporter         # DaemonSet — runs on every Linux node

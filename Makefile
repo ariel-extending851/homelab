@@ -408,6 +408,24 @@ pi-only-kubeconfig: ## Refresh local kubeconfig from rasp-pi-04 via SSH (no SSM)
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
 		playbooks/site.yml --tags kubeconfig --limit k3s_server
 
+##@ Hybrid Deployment (AWS server + Pis as agents)
+
+hybrid-deploy: ## Deploy hybrid homelab — AWS k3s_server + AWS worker (tier=cloud) + both Pis as agents
+	@echo "☁️🍓 Deploying hybrid homelab (AWS + Pis)..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook \
+		-i inventory/production.yml \
+		-i inventory/terraform_inventory_aws.py \
+		-i inventory/hybrid.yml \
+		playbooks/site.yml
+
+hybrid-ansible: ## Re-run only the Ansible phase against the hybrid cluster (skips terraform)
+	@echo "☁️🍓 Hybrid Ansible run..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook \
+		-i inventory/production.yml \
+		-i inventory/terraform_inventory_aws.py \
+		-i inventory/hybrid.yml \
+		playbooks/site.yml
+
 ##@ Kubernetes Management
 
 k8s-nodes: ## Show Kubernetes nodes
