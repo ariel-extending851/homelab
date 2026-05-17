@@ -12,7 +12,8 @@
 # Active sprint: docs/runbooks/image-upgrade-sprint-2026-q3.md
 #
 # Phase 1 outcome (2026-05-02):
-#   - AdGuard: bumped v0.107.71 → v0.107.74 — now CLEAN, removed from list.
+#   - AdGuard: bumped v0.107.71 → v0.107.74 and temporarily re-allowlisted
+#     after Trivy DB refresh reported new HIGH findings.
 #   - Blackbox / Node-exporter / KSM / Golink: bumped to latest upstream
 #     stable. All four still trip the gate exclusively on Go-stdlib +
 #     transitive Go library CVEs (CVE-2025-68121, CVE-2026-32280-83, gRPC,
