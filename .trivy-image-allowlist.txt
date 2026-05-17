@@ -24,8 +24,13 @@
 #
 # 2026-05-15: AdGuard v0.107.74 re-appeared with HIGH=5 (new CVEs added to
 #   Trivy DB since Phase 1). Re-added temporarily; bump to v0.107.75+ to resolve.
+#
+# 2026-05-17: debian:bookworm-slim pinned digest tripped HIGH=5 after a Trivy
+#   DB refresh; fix available upstream. Bump the digest pinned in
+#   k8s/apps/storage-latency/cronjob.yaml to drop this entry.
 
 adguard/adguardhome:v0.107.74                        # review-by: 2026-06-14  (HIGH=5 re-appeared post Phase 1 from new Trivy DB entries; bump to v0.107.75+)
+debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252  # review-by: 2026-06-16  (HIGH=5 from new Trivy DB entries 2026-05-17; bump pinned digest in k8s/apps/storage-latency/cronjob.yaml)
 ghcr.io/tailscale/golink:main@sha256:011e6a242d525df54faec21defed5e3c164d89cb02192fbd950266dfde889d7d  # review-by: 2026-08-01  (4 HIGH from Go stdlib in static binary; awaiting Tailscale rebuild)
 grafana/grafana:10.2.3                               # review-by: 2026-07-30  (Grafana 11 LTS upgrade — Phase 6 of upgrade sprint)
 grafana/loki:2.9.2                                   # review-by: 2026-07-30  (Loki 3.x — schema migration required — Phase 5)
