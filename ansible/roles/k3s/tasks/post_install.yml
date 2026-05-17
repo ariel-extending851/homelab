@@ -32,6 +32,28 @@
       notify: Restart k3s
       when: k3s_control_node | bool
 
+- name: Apply inventory node_labels to k3s node
+  # The inventory (production.yml, host_vars) declares a `node_labels` dict
+  # per host. Without this task those labels never reach the cluster — only
+  # the generic instance-type label above does. Workloads relying on labels
+  # like `storage: media` for nodeSelectors would stay Pending forever.
+  ansible.builtin.command: >
+    kubectl --kubeconfig={{ k3s_kubeconfig_path }}
+    label node {{ k3s_node_name }}
+    {{ item.key }}={{ item.value }} --overwrite
+  loop: "{{ node_labels | default({}) | dict2items }}"
+  delegate_to: "{{ (groups['k3s_server'] | default(['localhost']))[0] }}"
+  when:
+    - node_labels is defined
+    - node_labels | length > 0
+    - groups['k3s_server'] | default([]) | length > 0
+    - not ansible_check_mode
+  register: inventory_label_result
+  until: inventory_label_result.rc == 0
+  retries: 5
+  delay: 5
+  changed_when: "'labeled' in inventory_label_result.stdout"
+
 - name: Label Oracle Cloud nodes
   ansible.builtin.command: >
     kubectl --kubeconfig={{ k3s_kubeconfig_path }}
