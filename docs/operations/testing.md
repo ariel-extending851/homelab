@@ -1,87 +1,115 @@
-# Testing
+# Testing Strategy
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-12
 > **Owner:** @ariel-extending851
 
-The repo runs five layers of automated tests. Pick the layer that matches what you're changing.
+This repo's tests are organized as a **testing pyramid**: many fast checks at the bottom, fewer slow checks at the top. Every PR runs the entire pyramid up to "Integration." The "End-to-end" tier runs post-deploy on `main`. The shape is intentional — defect density vs. cost-per-test is the trade-off that drives it.
 
-| Layer | When to run | Speed | Money cost |
-|---|---|---|---|
-| Lint (yamllint, shellcheck, tflint, ansible-lint) | Every save | <30 s | $0 |
-| Unit tests (pytest, tftest) | Per-module changes | ~30 s | $0 |
-| Molecule (Ansible role tests in Docker) | Role changes | 2–5 min | $0 |
-| LocalStack (Terraform plan against fake AWS) | Infra changes | 5–10 min | $0 |
-| Real AWS (smoke + E2E post-deploy) | Pre-merge or after `terraform apply` | 10–20 min | ~$0.10 |
+```mermaid
+flowchart TB
+    subgraph PYRAMID["Testing pyramid"]
+        E2E["<b>End-to-end</b><br/>BATS · smoke · post-deploy obs gate<br/>~10–20 min · ~$0.10/run"]
+        INT["<b>Integration</b><br/>k3d convergence · LocalStack · ArgoCD App-of-Apps<br/>~5–10 min · $0"]
+        COMP["<b>Component</b><br/>Molecule (Ansible roles) · ARM64 QEMU matrix<br/>~2–5 min/role · $0"]
+        UNIT["<b>Unit</b><br/>pytest · tftest · Conftest .rego unit tests<br/>~30 s · $0"]
+        LINT["<b>Lint + format</b><br/>pre-commit · yamllint · ansible-lint · tflint · markdownlint · actionlint<br/>~30 s · $0"]
+    end
 
-CI runs all layers except the last (which fires on `main` push only — see [`.github/workflows/ci-deployment.yml`](../../.github/workflows/ci-deployment.yml)).
+    E2E   --> INT
+    INT   --> COMP
+    COMP  --> UNIT
+    UNIT  --> LINT
 
----
-
-## Where tests live
-
-| Test kind | Location |
-|---|---|
-| Python unit / contract tests for any script in the repo | [`bin/tests/`](../../bin/tests/) (pytest + Bats) — single home, regardless of which top-level dir the script under test lives in |
-| Shared pytest config and `conftest.py` | [`bin/tests/conftest.py`](../../bin/tests/conftest.py) |
-| Terraform native tests (`*.tftest.hcl`) | [`infra/aws/tests/`](../../infra/aws/tests/), [`infra/aws-oidc/tests/`](../../infra/aws-oidc/tests/) — kept next to the module they test |
-| Ansible role tests (Molecule) | `ansible/roles/<role>/molecule/default/` — co-located with the role by Molecule's design |
-| Lambda package tests | [`infra/aws/modules/scheduler/lambda_src/tests/`](../../infra/aws/modules/scheduler/lambda_src/tests/) — **exception** to the `bin/tests/` rule because the Lambda is a self-contained Python package zipped and deployed as a unit |
-
-Discovery is configured via `testpaths` in [`pyproject.toml`](../../pyproject.toml). Adding a new test file under `bin/tests/test_*.py` picks it up automatically.
-
----
-
-## Prerequisites
-
-All tools are pinned in [`.mise.toml`](../../.mise.toml). Install them once:
-
-```bash
-mise install
-make setup-ci-deps-all     # verifies + installs anything missing (pytest-cov, boto3, etc.)
+    classDef l1 fill:#fff5e6,stroke:#e0a060
+    classDef l2 fill:#fff8eb,stroke:#e0a060
+    classDef l3 fill:#fffbf0,stroke:#e0a060
+    classDef l4 fill:#fdfdfd,stroke:#bbbbbb
+    classDef l5 fill:#f7f7f7,stroke:#bbbbbb
+    class E2E l1
+    class INT l2
+    class COMP l3
+    class UNIT l4
+    class LINT l5
 ```
 
-| Tool | Purpose |
-|---|---|
-| `terraform`, `tflint`, `sops`, `age`, `kubectl`, `kustomize`, `kubeconform` | Infra & K8s validation |
-| `ansible-core`, `ansible-lint`, `molecule`, `community.aws`, `community.sops` | Ansible tests |
-| `pytest`, `pytest-cov`, `pytest-benchmark` | Python unit + benchmark tests |
-| `bats` | Bash test framework (smoke tests) |
-| `localstack`, `terraform-local`, `awscli-local` | Offline AWS testing |
-| `conftest` | OPA policy enforcement on K8s manifests |
-| `actionlint`, `zizmor` | GitHub Actions linting / security |
+The Makefile is the authoritative entry point for every layer; `.github/workflows/ci-validation.yml` and `ci-deployment.yml` invoke the same targets a developer runs locally. Local runs equal CI runs — that is the contract.
 
 ---
 
-## Lint Layer
+## 1. Tier-by-Tier
+
+| Tier | Scope | Tools | Make target | Speed | Money |
+|---|---|---|---|---|---|
+| **Lint + format** | Style, syntax, structure | yamllint, ansible-lint, tflint, terraform fmt, shellcheck, black, ruff, markdownlint, actionlint, zizmor | `make validate-yaml-lint`, `make validate-terraform-all`, `make lint-workflows` | <30 s | $0 |
+| **Unit** | One function / one resource / one rule | pytest (`bin/tests/`), tftest (`*.tftest.hcl`), Conftest rule fixtures | `make test-python`, `make test-terraform`, `make validate-k8s-policies` | ~30 s | $0 |
+| **Component** | One role end-to-end in isolation | Molecule (Docker + QEMU/ARM64), idempotency check | `make test-molecule`, `make test-molecule-<role>`, `make test-molecule-arm64` | 2–5 min/role | $0 |
+| **Integration** | Cross-module composition without real cloud | k3d ArgoCD convergence, LocalStack Terraform plan | [`bin/k3d_convergence.py`](../../bin/k3d_convergence.py), `python3 infra/aws/scripts/validate_localstack.py` | 5–10 min | $0 |
+| **End-to-end** | Real cluster, post-deploy contract | BATS, smoke, observability gate, Velero restore drill, Ansible idempotency | `make smoke-test`, `make test-e2e-post-deploy`, `make test-velero-restore`, `make test-ansible-idempotency` | 10–20 min | ~$0.10 |
+
+CI runs every tier except the final end-to-end on every PR. The end-to-end tier fires on `main` push only via [`ci-deployment.yml`](../../.github/workflows/ci-deployment.yml).
+
+---
+
+## 2. TDD as Operational Discipline
+
+The repo enforces **reproduction-first** TDD on bug fixes:
+
+1. A bug is filed.
+2. A failing test is committed that reproduces the bug at the *right layer of the pyramid* (a missing readiness probe is a Conftest unit test, not an E2E BATS test).
+3. The fix lands in the same PR. CI proves the previously-failing test now passes.
+
+This discipline is encoded in the `/bug` skill and is the reason this repo has tests covering historical failure modes that are otherwise hard to reproduce — e.g., the stale `--node-ip` after Tailscale rejoin (auto-memory `project_prod_deploy_2026_05.md`), and the SSM-bucket-override gotcha ([`staging-deploy-2026-05-postmortem.md`](../runbooks/staging-deploy-2026-05-postmortem.md)).
+
+!!! abstract "Decision: idempotency is a test, not a convention"
+    `make test-ansible-idempotency` and the matching `*.tftest.hcl` invariants treat *"running this twice produces the same state"* as a property to verify, not a goal to aspire to. Every Molecule scenario re-runs the role and asserts zero `changed` tasks on the second pass. A role that is not idempotent does not merge.
+
+---
+
+## 3. Test Code Placement
+
+| Test kind | Location | Why here |
+|---|---|---|
+| Python unit / contract tests for any script | [`bin/tests/`](../../bin/tests/) (pytest + Bats) | Single pytest config in [`pyproject.toml`](../../pyproject.toml); one `conftest.py`; one coverage gate. Source location (`bin/`, `ansible/scripts/`, `infra/aws/scripts/`) is irrelevant. |
+| Shared pytest config | [`bin/tests/conftest.py`](../../bin/tests/conftest.py) | Discoverable by `pytest` from repo root |
+| Terraform native tests (`*.tftest.hcl`) | `infra/aws/tests/`, `infra/<module>/tests/` | Co-located with the module they test; `terraform test` finds them automatically |
+| Ansible Molecule | `ansible/roles/<role>/molecule/default/` | Molecule's design; CI's `enforce-molecule-tests` job fails on a role without it |
+| Lambda package tests | [`infra/aws/modules/scheduler/lambda_src/tests/`](../../infra/aws/modules/scheduler/lambda_src/tests/) | **Exception:** the Lambda is zipped as a unit; tests travel with the package |
+
+Adding a new test file under `bin/tests/test_*.py` is picked up automatically by pytest discovery configured in `testpaths`.
+
+---
+
+## 4. Tier Details
+
+### 4.1 Lint + format (Tier 1)
 
 ```bash
-make validate-yaml-lint            # yamllint + ansible-lint
-make validate-shellcheck           # shell scripts
-make validate-terraform-all        # terraform fmt -check, validate, tflint
-make validate-k8s-all              # kustomize build + kubeconform on every overlay
-make validate-k8s-policies         # Conftest against all policies in k8s/policies/
-make validate-sops-workflow        # confirms encrypted files where required
+make validate-yaml-lint        # yamllint + ansible-lint
+make validate-shellcheck       # shell scripts (this repo prefers Python)
+make validate-terraform-all    # terraform fmt -check, validate, tflint across infra/
+make validate-k8s-all          # kustomize build + kubeconform on every overlay
+make validate-k8s-policies     # Conftest against k8s/policies/*.rego (also Tier 2 — see below)
+make validate-sops-workflow    # asserts every encrypted file matches .sops.yaml rules
+make lint-workflows            # actionlint + zizmor on .github/workflows/
 ```
 
-`make lint-workflows` runs `actionlint` + `zizmor` on all GitHub Actions YAML.
+The pre-commit hooks ([`.pre-commit-config.yaml`](../../.pre-commit-config.yaml)) run a subset on every commit; CI re-runs the full set against the PR diff. See [`../security/static-analysis.md`](../security/static-analysis.md) for the security-relevant lints (TruffleHog, Checkov, Trivy).
 
----
+### 4.2 Unit (Tier 2)
 
-## Unit / Module Tests
-
-### Python (Lambda scheduler, Terraform inventory)
+#### Python
 
 ```bash
-make test-python                   # all pytest, with coverage
-make test-python-coverage          # HTML report at htmlcov/index.html
+make test-python               # pytest with coverage
+make test-python-coverage      # HTML report at htmlcov/index.html
 ```
 
 CI fails the build if total coverage drops below **70%**. Current coverage: scheduler Lambda 100%, Terraform inventory ~70%.
 
-### Terraform unit tests (`.tftest.hcl`)
+#### Terraform (`.tftest.hcl`)
 
-Lives in `infra/aws/tests/` and `infra/aws-oidc/tests/`. Native `terraform test` framework — no LocalStack needed for variable validation.
+Native `terraform test` framework — no LocalStack needed for module-logic assertions.
 
 ```bash
 make test-terraform
@@ -89,171 +117,101 @@ make test-terraform
 cd infra/aws && terraform test
 ```
 
-### Performance benchmarks
+#### Conftest unit tests
+
+`.rego` rules in [`k8s/policies/`](../../k8s/policies/) have matching test fixtures. `make validate-k8s-policies` runs both schema validation and the rule fixtures.
+
+#### Performance benchmarks
 
 ```bash
-make test-performance              # runs benchmarks, fails if >10% regression vs baseline
-make performance-baseline          # save current as new baseline (after intentional optimization)
+make test-performance          # fails if >10% regression vs. baseline
+make performance-baseline      # save current as new baseline (intentional optimization)
 ```
 
 Baseline lives in `.benchmarks/baseline.json` (git-tracked).
 
----
-
-## Molecule (Ansible Role Tests)
+### 4.3 Component (Tier 3) — Molecule
 
 Each role under [`ansible/roles/`](../../ansible/roles/) has a `molecule/default/` scenario that:
 
-1. Spins up a Docker container playing the target OS
-2. Runs the role
-3. Verifies expected state (idempotency check on second run, custom verifiers in `verify.yml`)
+1. Spins up a container playing the target OS.
+2. Runs the role.
+3. Verifies expected state via `verify.yml`.
+4. Re-runs the role and asserts idempotency.
 
-CI gate: every role must have `molecule/default/` (enforced by `enforce-molecule-tests` job in `ci-validation.yml`).
-
-### Run all roles
-
-```bash
-make test-molecule
-```
-
-### Run one role
+CI gate: every role must have `molecule/default/` (`enforce-molecule-tests` job).
 
 ```bash
-make test-molecule-k3s
-make test-molecule-argocd
-make test-molecule-rpi
+make test-molecule                  # all roles
+make test-molecule-k3s              # single role (default + health + install + agent)
+make test-molecule-rpi              # rpi_optimization (default + sysctl + rpi3)
 make test-molecule-tailscale
+make test-molecule-argocd           # default + sops
 make test-molecule-gatekeeper
 make test-molecule-emergency-recovery
+make test-molecule-arm64            # ARM64 matrix via QEMU (~45 min, RPi regressions)
+make test-molecule-lint             # ansible-lint + yamllint across all roles
 ```
 
-### Run all roles on ARM64 (QEMU emulation)
+Idempotency is enforced *inside* each Molecule scenario; [`bin/check_molecule_idempotence.py`](../../bin/check_molecule_idempotence.py) also runs as a standalone gate.
+
+### 4.4 Integration (Tier 4)
+
+#### k3d convergence
+
+[`bin/k3d_convergence.py`](../../bin/k3d_convergence.py) brings up a local k3d cluster, applies the App-of-Apps root, and asserts every Application reaches `Synced + Healthy` within a deadline. This catches ArgoCD ordering bugs and CMP-SOPS integration regressions without spending AWS dollars.
+
+#### LocalStack — Terraform without AWS
+
+LocalStack mocks AWS APIs sufficiently to validate Terraform module structure, variable behavior, and the resource graph. The wrapper:
 
 ```bash
-make test-molecule-arm64
-```
-
-This uses `docker/setup-qemu-action`-equivalent locally. Slow (45 min in CI), but catches Pi-only regressions.
-
-### Validate Ansible structure
-
-```bash
-make validate-ansible-structure    # confirms every role has molecule/default/
-make new-role ROLE=myrole          # scaffold from templates/ansible-role/ (Copier)
-```
-
----
-
-## LocalStack (Terraform without AWS)
-
-LocalStack mocks AWS APIs. Use it to validate Terraform module structure, variable behavior, and resource graphs **without spending money or needing AWS credentials**.
-
-### What LocalStack covers
-
-| Component | Coverage |
-|---|---|
-| Terraform syntax + module structure | ✅ Full |
-| Variable validation | ✅ Full |
-| Resource dependency graph | ✅ Full |
-| SOPS provider integration (with mock secrets) | ✅ Full |
-| Output formatting | ✅ Full |
-| Provider configuration | ✅ Full |
-
-### What LocalStack does NOT cover
-
-| Component | Why | Alternative |
-|---|---|---|
-| EC2 spot instance behavior | Not supported | AWS Free Tier or real apply |
-| User-data execution (k3s install) | LocalStack doesn't run user data | SSH to a real instance |
-| IAM permission enforcement | Limited IAM | Real apply + integration tests |
-| Network reachability (SG rules) | SGs not enforced | Real apply |
-
-### Quick start
-
-```bash
-# Use the version pinned in .mise.toml (single source of truth)
 LOCALSTACK_VERSION=$(awk -F'"' '/^localstack/ {print $2; exit}' .mise.toml)
 docker run -d --name localstack -p 4566:4566 -e SERVICES=ec2,iam,ssm \
   localstack/localstack:"${LOCALSTACK_VERSION}"
 sleep 15
-cd infra/aws
-python3 scripts/validate_localstack.py
+cd infra/aws && python3 scripts/validate_localstack.py
 ```
 
-The wrapper:
-1. Copies `provider.localstack.tf.example` → `provider_override.tf`
-2. Runs `terraform init -reconfigure`
-3. Runs `terraform validate` and `terraform plan -var-file=terraform.tfvars.localstack`
-4. Counts resources in plan, asserts module composition
+| Component | LocalStack covers? | Alternative |
+|---|---|---|
+| Terraform syntax + module structure | ✅ | — |
+| Variable validation | ✅ | — |
+| Resource dependency graph | ✅ | — |
+| Provider configuration | ✅ | — |
+| EC2 spot instance behavior | ❌ | Real apply |
+| User-data execution (k3s install) | ❌ | SSH to a real instance after deploy |
+| IAM permission enforcement | partial | Real apply + post-deploy contract test |
+| Security-group rule enforcement | ❌ | Real apply |
 
-Expected results: 6/7 tests pass, 13 resources in plan, 2 modules loaded (`compute`, `network`).
+### 4.5 End-to-end (Tier 5)
 
-### Manual workflow
+Run only against a real cluster, after `make deploy` succeeds. CI runs these on every `main` push.
 
 ```bash
-cp infra/aws/testing/provider.localstack.tf.example infra/aws/provider_override.tf
-cd infra/aws
-terraform init -reconfigure
-terraform validate
-terraform plan -var-file=testing/terraform.tfvars.localstack
-
-# cleanup
-rm provider_override.tf
-docker stop localstack
+make smoke-test                 # HTTP checks across every app
+make test-e2e-post-deploy       # BATS contract tests
+make test-velero-restore        # backup → delete → restore → integrity
+make test-ansible-idempotency   # site.yml twice; assert zero changed
 ```
 
----
+#### Observability gate
 
-## Real AWS — Smoke & E2E
-
-After `terraform apply` + `make ansible-deploy`, run the post-deployment checks.
-
-### Smoke test (~2 min)
-
-```bash
-make smoke-test
-```
-
-### E2E post-deploy (~10 min)
-
-```bash
-make test-e2e-post-deploy
-```
-
-### Observability gate (~3 min)
-
-ArgoCD `Synced + Healthy` is necessary but not sufficient — a pod can flap into CrashLoopBackOff seconds after sync, or a Deployment can satisfy `availableReplicas` while a sidecar is OOMing. The observability gate runs *after* `validate-argocd-synced` and queries Prometheus directly for the silent-failure signals:
+`Synced + Healthy` is necessary but not sufficient — a pod can flap into `CrashLoopBackOff` seconds after sync, or a Deployment can satisfy `availableReplicas` while a sidecar is OOMing. The observability gate runs *after* `validate-argocd-synced` and queries Prometheus directly:
 
 - `kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}`
 - `kube_deployment_status_replicas_unavailable`
 - `kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}`
 
 ```bash
-# CI port-forwards Prometheus first; locally do the same:
 kubectl port-forward -n prometheus svc/prometheus 9090:9090 &
 PROMETHEUS_URL=http://localhost:9090 OBSERVATION_WINDOW=300 \
   python3 bin/post_deploy_observability_gate.py
 ```
 
-Source: [`bin/post_deploy_observability_gate.py`](../../bin/post_deploy_observability_gate.py). Exit non-zero blocks the deploy in `ci-deployment.yml`.
+Source: [`bin/post_deploy_observability_gate.py`](../../bin/post_deploy_observability_gate.py). Exit non-zero blocks deploy in `ci-deployment.yml`.
 
-### Velero restore drill (~5 min)
-
-```bash
-make test-velero-restore   # backup → delete → restore → integrity check
-```
-
-Full procedure: [`backup-and-restore.md`](backup-and-restore.md).
-
-### Ansible idempotency (~3–6 min)
-
-```bash
-make test-ansible-idempotency
-```
-
-Runs `site.yml` twice and asserts the second run is fully idempotent (zero `changed` tasks). Backed by [`bin/check_molecule_idempotence.py`](../../bin/check_molecule_idempotence.py); also runs at the end of every Molecule scenario.
-
-### Other verification targets
+#### Other E2E targets
 
 ```bash
 make test-rpi                      # RPi-specific node validation
@@ -265,38 +223,29 @@ make test-contracts                # AWS CLI contract tests in bin/tests/contrac
 make test-dr-execution             # disaster recovery scenario
 ```
 
-### ArgoCD sync wait
-
-```bash
-make validate-argocd-synced        # blocks until apps-root is Synced + Healthy
-```
-
-Used by CI deployment to gate post-deploy tests.
-
 ---
 
-## CI Integration
+## 5. CI Integration
 
-### `.github/workflows/ci-validation.yml` (every PR)
+### 5.1 `ci-validation.yml` (every PR)
 
-Runs in 13 parallel jobs, each with its own mise cache:
+13 parallel jobs (one mise cache per job, keyed on `.mise.toml`):
 
-- terraform validate + tests
-- yamllint + kubeconform
-- shellcheck
-- ansible-lint
-- molecule (per role)
-- molecule-arm64 (QEMU matrix)
-- python unit tests + coverage gate
-- python benchmarks (regression check)
-- conftest policies
-- workflow linting (actionlint, zizmor)
+- `terraform-validate` + `terraform-test`
+- `yamllint`, `kubeconform`, `ansible-lint`, `actionlint`/`zizmor`
+- `molecule` (per-role matrix)
+- `molecule-arm64` (QEMU)
+- `python-unit` + coverage gate
+- `python-benchmarks` (regression check)
+- `conftest-policies`
+- `trufflehog`, `trivy-image-scan`, `trivy-config-scan`
+- `checkov`
+- `pipeline-gate` (aggregator — the only job branch protection requires)
 
-Cache key per-job: `mise-<job>-${{ hashFiles('.mise.toml') }}` with fallbacks. First run ~5 min; cached runs ~10–15 s for setup.
+### 5.2 `ci-deployment.yml` (push to `main`)
 
-### `.github/workflows/ci-deployment.yml` (push to `main`)
+Sequential, all Make targets:
 
-Calls Makefile targets (no inline shell):
 1. `terraform-apply`
 2. `ansible-deploy`
 3. `validate-argocd-synced`
@@ -304,36 +253,60 @@ Calls Makefile targets (no inline shell):
 5. `test-e2e-post-deploy`
 6. Rollback playbook on failure (`rollback-tf-refresh`, `rollback-argocd-status`)
 
-This means **`make terraform-apply` locally is identical to CI** — Makefile is the single source of truth.
+The Makefile is the single source of truth — running these locally is identical to CI.
 
 ---
 
-## QA Scorecard
+## 6. Tooling Prerequisites
+
+All tools pinned in [`.mise.toml`](../../.mise.toml). One-time install:
 
 ```bash
-make qa-scorecard                  # produces qa-scorecard.md with coverage, lint pass rates, security findings
-make qa-audit                      # detailed test execution audit (which tests skipped, durations)
+mise install
+make setup-ci-deps-all     # verifies + supplements (pytest-cov, boto3, ...)
+```
+
+| Tool | Purpose |
+|---|---|
+| `terraform`, `tflint`, `sops`, `age`, `kubectl`, `kustomize`, `kubeconform` | Infra + K8s validation |
+| `ansible-core`, `ansible-lint`, `molecule`, `community.aws`, `community.sops` | Ansible component tests |
+| `pytest`, `pytest-cov`, `pytest-benchmark` | Python unit + benchmark |
+| `bats` | BATS smoke + contract tests |
+| `localstack`, `terraform-local`, `awscli-local` | Integration without AWS |
+| `conftest` | OPA policy unit + integration |
+| `actionlint`, `zizmor` | GitHub Actions linting + security |
+| `trivy`, `checkov`, `trufflehog`, `cosign`, `syft` | Security (see [`../security/static-analysis.md`](../security/static-analysis.md)) |
+
+---
+
+## 7. QA Scorecard
+
+```bash
+make qa-scorecard                  # qa-scorecard.md with coverage, lint pass rates, security findings
+make qa-audit                      # which tests skipped, durations
 make qa-verify-required-no-skips   # fails if a required test was skipped without justification
 ```
 
 ---
 
-## Checklist Before Merging Infrastructure Changes
+## 8. Checklist Before Merging Infrastructure Changes
 
 - [ ] `make validate-terraform-all` passes
 - [ ] `make test-terraform` passes
-- [ ] `make test-molecule` passes for any role you touched
+- [ ] `make test-molecule-<role>` passes for any role touched
 - [ ] LocalStack plan succeeds (`python3 infra/aws/scripts/validate_localstack.py`)
-- [ ] If touching a Lambda or scheduler: `make test-python` ≥ 70% coverage, no benchmark regression
+- [ ] If touching Lambda/scheduler: `make test-python` ≥ 70 % coverage, no benchmark regression
 - [ ] If touching K8s manifests: `make validate-k8s-all` + `make validate-k8s-policies-critical`
 - [ ] If touching SOPS rules: `make test-sops` and `make validate-sops-workflow`
 - [ ] After deploy: `make smoke-test` returns 0
 
 ---
 
-## Related
+## 9. Related
 
 - **Terraform operations:** [`terraform.md`](terraform.md)
 - **Ansible operations:** [`ansible.md`](ansible.md)
 - **SOPS workflow:** [`sops-setup.md`](sops-setup.md)
-- **Per-app health checks:** the relevant doc under [`../services/`](../services/)
+- **Static analysis (security):** [`../security/static-analysis.md`](../security/static-analysis.md)
+- **Runtime enforcement:** [`../security/runtime-enforcement.md`](../security/runtime-enforcement.md)
+- **Per-app health checks:** the relevant page under [`../services/`](../services/)
