@@ -21,8 +21,15 @@ spec:
     repoURL: git@github.com:ariel-extending851/homelab.git
     targetRevision: develop # Tracks develop branch (primary development branch)
     path: k8s/apps/envs/pi-only
-    # Kustomize will detect kustomization.yaml under this overlay and resolve
-    # the listed apps via relative ../../<name> paths back into k8s/apps/.
+    # Explicit CMP plugin invocation: the overlay references encrypted Secrets
+    # via `resources: ../../<app>/secret.yaml`. The built-in kustomize handler
+    # ignores SOPS envelopes, so Secrets reach the API server encrypted and
+    # ServerSideApply rejects with `.sops: field not declared in schema`.
+    # `sops-kustomize` (see k8s/gitops/sops/sops-plugin-cm.yaml) walks up to
+    # the repo root and decrypts every YAML with a top-level `sops:` envelope
+    # before kustomize build.
+    plugin:
+      name: sops-kustomize
 
   destination:
     server: https://kubernetes.default.svc

@@ -127,8 +127,13 @@
                      | replace('127.0.0.1', k3s_server_tailscale_ip) }}"
         dest: "{{ kubeconfig_local_path }}"
         mode: '0600'
+        # Explicit owner/group — `become: false` at task level is ignored when
+        # the play sets `become: true` + `delegate_to: localhost` (observed on
+        # ansible-core 2.20). Without this, the file lands as root:root and
+        # downstream local helm/kubectl invocations fail with "permission denied".
+        owner: "{{ lookup('env', 'USER') }}"
+        group: "{{ lookup('env', 'USER') }}"
       delegate_to: localhost
-      become: false
       when: k3s_kubeconfig_stat.stat.exists
       tags: ['always', 'kubeconfig']
 
