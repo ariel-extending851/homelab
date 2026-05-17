@@ -75,9 +75,11 @@ jobs:
         with:
           script: |
             const labels = context.payload.pull_request.labels.map(l => l.name);
-            const skip = labels.includes('cost-approved');
+            const hasInfracostApiKey = !!process.env.INFRACOST_API_KEY;
+            const skip = labels.includes('cost-approved') || !hasInfracostApiKey;
             core.setOutput('skip', skip ? 'true' : 'false');
-            if (skip) core.notice('cost-approved label set — Infracost gate skipped');
+            if (labels.includes('cost-approved')) core.notice('cost-approved label set — Infracost gate skipped');
+            if (!hasInfracostApiKey) core.notice('INFRACOST_API_KEY is not set — Infracost gate skipped');
 
       - name: Checkout PR ref
         if: steps.label-check.outputs.skip != 'true'
