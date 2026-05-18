@@ -33,6 +33,9 @@ resources:
   - ../../blackbox
   - ../../kube-state-metrics
   - ../../node-exporter         # DaemonSet — runs on AWS nodes too
-  - ../../velero
+  # velero MOVED to envs/pi-only/ — the AWS Lite slice keeps backups always-on
+  # by running Velero on pi-04 against the homelab-velero-backups bucket owned
+  # by infra/aws-velero/. Keeping Velero off this cloud overlay means the
+  # backups survive `terraform destroy` of the hybrid AWS stack.
   - ../../golink
   - ../../falco                 # experimental on AL2023; drop if CrashLoop persists

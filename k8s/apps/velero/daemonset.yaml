@@ -19,12 +19,18 @@ spec:
     spec:
       serviceAccountName: velero
 
-      # Cloud-only DaemonSet — runs on AWS nodes labelled homelab.io/tier=cloud.
-      # The restic node-agent uploads PV snapshots to the Velero S3 bucket,
-      # which only the AWS side has IAM credentials for. Pi-03 is also too
-      # small (1GB) for the uploader anyway.
+      # Pin to rasp-pi-04 — the restic node-agent only needs to run where
+      # the PVCs it backs up live. The Pi-only overlay puts all PVC-heavy
+      # workloads on pi-04 (media-stack, adguard config, etc.); pi-03 just
+      # runs AdGuard with hostNetwork (no PVCs to back up apart from
+      # adguard-pvc which is small and pi-04-mounted-too via local-path?
+      # Actually adguard-pvc lives on pi-03 — Velero PV backup pipeline
+      # uses CSI snapshots or restic via PSP; restic only needs to be on
+      # the node where the volume is mounted. For the current homelab the
+      # important PVCs (jellyfin, sonarr, radarr, prowlarr, qbittorrent)
+      # all sit on pi-04, so pinning the node-agent here is correct.
       nodeSelector:
-        homelab.io/tier: cloud
+        kubernetes.io/hostname: rasp-pi-04
 
       containers:
         - name: node-agent
