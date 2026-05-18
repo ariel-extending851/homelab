@@ -19,16 +19,12 @@ spec:
     spec:
       serviceAccountName: velero
 
-      # Skip rasp-pi-03 (1GB Pi3 — too tight for the restic uploader).
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:
-                      - rasp-pi-03
+      # Cloud-only DaemonSet — runs on AWS nodes labelled homelab.io/tier=cloud.
+      # The restic node-agent uploads PV snapshots to the Velero S3 bucket,
+      # which only the AWS side has IAM credentials for. Pi-03 is also too
+      # small (1GB) for the uploader anyway.
+      nodeSelector:
+        homelab.io/tier: cloud
 
       containers:
         - name: node-agent

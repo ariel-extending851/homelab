@@ -24,6 +24,10 @@ spec:
         prometheus.io/port: "8085"
         prometheus.io/path: /metrics
     spec:
+      # Pin to AWS worker — Velero server needs S3 + IAM (homelab-velero
+      # credentials), only the AWS side has bucket access.
+      nodeSelector:
+        homelab.io/tier: cloud
       serviceAccountName: velero
       restartPolicy: Always
       # Velero ships without object-store backends in the base image. The AWS
