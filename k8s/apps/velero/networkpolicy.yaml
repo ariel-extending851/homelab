@@ -52,20 +52,28 @@ spec:
       ports:
         - { protocol: TCP, port: 443 }
     # kube-apiserver for backup discovery (resource enumeration, CRD reads,
-    # GVK preferred-version probes during plugin registration). The Service
-    # ClusterIP is the right destination here: in k3s the apiserver runs in
-    # hostNetwork (no pod IP), so `namespaceSelector: {}` doesn't match it,
-    # and kube-router (k3s' default NetworkPolicy engine) evaluates egress
-    # rules against the pre-DNAT destination — i.e. the ClusterIP, not the
-    # post-DNAT node IP. Without this rule Velero server crashloops on:
-    #   `Get "https://10.43.0.1:443/...": dial tcp 10.43.0.1:443: connection refused`
-    # 10.43.0.1 is the default kubernetes Service ClusterIP in k3s
-    # (`--service-cidr=10.43.0.0/16` first address).
+    # GVK preferred-version probes during plugin registration).
+    #
+    # The correct destination is the LAN where the k3s control plane
+    # advertises the apiserver on :6443 — NOT the Service ClusterIP, which
+    # is rewritten before the NP egress rule fires. Why:
+    # kube-router (k3s' default NetworkPolicy engine) inserts its NP rules
+    # in the FORWARD chain, which is evaluated AFTER kube-proxy's PREROUTING
+    # DNAT. By the time the egress NP runs, the destination has already
+    # been rewritten from 10.43.0.1:443 to <node-ip>:6443. The connection
+    # then matched the first egress rule above ("S3 only — 0.0.0.0/0
+    # except 10.0.0.0/8 + 192.168.0.0/16 + 100.64.0.0/10") and got
+    # dropped because the node IP is inside 192.168.0.0/16. Symptom:
+    #   `Get "https://10.43.0.1:443/...": dial tcp 10.43.0.1:443:
+    #    connect: connection refused`
+    # We carve out the LAN /24 on :6443 specifically — narrower than
+    # un-excluding all of 192.168.0.0/16 — so this rule only opens the
+    # apiserver path, not the whole home network.
     - to:
         - ipBlock:
-            cidr: 10.43.0.1/32
+            cidr: 192.168.8.0/24
       ports:
-        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
     # Backwards-compatible reach to apiserver pods in other distros (kubeadm,
     # EKS, etc.) where the apiserver IS a pod. No-op on k3s but harmless.
     - to:
