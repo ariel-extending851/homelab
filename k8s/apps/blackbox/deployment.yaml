@@ -15,8 +15,10 @@ spec:
       labels:
         app: blackbox-exporter
     spec:
-      # No nodeAffinity — let the scheduler place this on any available node.
-      # Blackbox exporter is stateless and has no hardware dependencies.
+      # Pin to AWS worker — probes external from the AWS side reach the same
+      # internet targets as from the Pis, but keep one less workload on pi-04.
+      nodeSelector:
+        homelab.io/tier: cloud
       containers:
         - name: blackbox-exporter
           image: quay.io/prometheus/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc

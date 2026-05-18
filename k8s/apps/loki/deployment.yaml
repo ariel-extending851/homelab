@@ -21,8 +21,11 @@ spec:
       labels:
         app: loki
     spec:
+      # Pin to AWS worker — 10Gi PVC and log ingestion throughput are too
+      # heavy for the Pis.
+      nodeSelector:
+        homelab.io/tier: cloud
       serviceAccountName: loki
-      # No nodeAffinity — let the scheduler place this on any available node.
       containers:
         # Loki Application
         - name: loki

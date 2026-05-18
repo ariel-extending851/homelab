@@ -17,6 +17,9 @@ spec:
       labels:
         app: golink
     spec:
+      # Pin to AWS worker — SQLite-backed URL shortener; keeps Pis lean.
+      nodeSelector:
+        homelab.io/tier: cloud
       serviceAccountName: golink
       containers:
         - name: golink

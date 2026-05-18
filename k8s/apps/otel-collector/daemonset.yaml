@@ -18,17 +18,12 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
-      # Skip rasp-pi-03 (1GB RAM Pi3 — too tight for the log agent).
-      # Pi3 logs are available via direct kubectl/loki queries from peers.
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:
-                      - rasp-pi-03
+      # Cloud-only DaemonSet — runs on AWS nodes labelled homelab.io/tier=cloud.
+      # Pis are excluded by node-label match (was previously a "NotIn pi-03"
+      # affinity for the pi-only era). Pi-side logs are still available via
+      # direct kubectl/loki queries from the AWS-side Loki.
+      nodeSelector:
+        homelab.io/tier: cloud
 
       containers:
         - name: otel-collector

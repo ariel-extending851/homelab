@@ -1,0 +1,41 @@
+# Cloud (AWS) environment overlay.
+#
+# Lists the apps that run on the AWS-side of the hybrid cluster — the
+# observability stack (Grafana, Loki, Prometheus, OTel), the lighter
+# system apps (Blackbox, kube-state-metrics, Golink), backup (Velero —
+# needs S3), and the runtime security agent (Falco — experimental on
+# Amazon Linux 2023; if it crashloops persistently here too, drop the
+# resource line and follow up).
+#
+# Excluded by design:
+#   - adguard         → pi-03 only (hostNetwork :53 for LAN DNS)
+#   - storage-latency → pi-04 only (measures SD card I/O — RPi-specific)
+#   - unifi           → replicas: 0 (controller currently disabled)
+#   - hl-kyverno      → managed by a separate ArgoCD Application
+#                       (apps-root-cloud will install the chart via the
+#                       sibling k8s/system/kyverno path; see Phase 1 plan)
+#
+# Selected by the hybrid deploy via inventory/hybrid.yml overriding
+# `apps_root_manifest_path: k8s/gitops/apps-root-hybrid.yaml`. That manifest
+# spawns two ArgoCD Applications — one pointing here, one at envs/pi-only.
+# Each app inside `k8s/apps/<name>/` carries its own nodeSelector
+# (`homelab.io/tier: cloud` for cloud apps, `kubernetes.io/hostname: ...`
+# for the Pi-pinned apps) so the scheduler routes pods to the right node
+# regardless of which overlay they came from.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../prometheus
+  - ../../loki
+  - ../../grafana
+  - ../../otel-collector
+  - ../../blackbox
+  - ../../kube-state-metrics
+  - ../../node-exporter         # DaemonSet — runs on AWS nodes too
+  # velero MOVED to envs/pi-only/ — the AWS Lite slice keeps backups always-on
+  # by running Velero on pi-04 against the homelab-velero-backups bucket owned
+  # by infra/aws-velero/. Keeping Velero off this cloud overlay means the
+  # backups survive `terraform destroy` of the hybrid AWS stack.
+  - ../../golink
+  - ../../falco                 # experimental on AL2023; drop if CrashLoop persists
