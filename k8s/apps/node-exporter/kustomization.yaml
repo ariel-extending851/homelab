@@ -7,5 +7,12 @@ resources:
 - namespace.yaml
 - daemonset.yaml
 - service.yaml
-- pdb.yaml
+# pdb.yaml dropped — PodDisruptionBudgets do not work against DaemonSets
+# (kube-controller-manager: "Failed to calculate the number of expected
+# pods: daemonsets.apps does not implement the scale subresource"). The PDB
+# stays stuck at allowedDisruptions=0 forever, which surfaces as
+# Application Health=Degraded on the parent Application. DaemonSets have
+# their own rolling-update strategy (spec.updateStrategy.rollingUpdate.
+# maxUnavailable) which is the correct knob; the kept pdb.yaml file is
+# left in the tree as documentation of the historical attempt.
 - networkpolicy.yaml
