@@ -51,7 +51,23 @@ spec:
               - 100.64.0.0/10
       ports:
         - { protocol: TCP, port: 443 }
-    # kube-apiserver for backup discovery (cluster service network).
+    # kube-apiserver for backup discovery (resource enumeration, CRD reads,
+    # GVK preferred-version probes during plugin registration). The Service
+    # ClusterIP is the right destination here: in k3s the apiserver runs in
+    # hostNetwork (no pod IP), so `namespaceSelector: {}` doesn't match it,
+    # and kube-router (k3s' default NetworkPolicy engine) evaluates egress
+    # rules against the pre-DNAT destination — i.e. the ClusterIP, not the
+    # post-DNAT node IP. Without this rule Velero server crashloops on:
+    #   `Get "https://10.43.0.1:443/...": dial tcp 10.43.0.1:443: connection refused`
+    # 10.43.0.1 is the default kubernetes Service ClusterIP in k3s
+    # (`--service-cidr=10.43.0.0/16` first address).
+    - to:
+        - ipBlock:
+            cidr: 10.43.0.1/32
+      ports:
+        - { protocol: TCP, port: 443 }
+    # Backwards-compatible reach to apiserver pods in other distros (kubeadm,
+    # EKS, etc.) where the apiserver IS a pod. No-op on k3s but harmless.
     - to:
         - namespaceSelector: {}
       ports:
