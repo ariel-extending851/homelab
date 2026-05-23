@@ -1,0 +1,74 @@
+---
+# Defaults for the Grafana Alloy native-systemd role.
+# Override per-environment via host_vars / group_vars; sensitive values
+# (Grafana Cloud token, S3 bucket) live in ansible/group_vars/alloy.sops.yaml.
+
+# ── Binary install ───────────────────────────────────────────────────────────
+
+alloy_version: "1.5.1"
+alloy_download_url_base: "https://github.com/grafana/alloy/releases/download"
+
+# Map Linux architecture (ansible_architecture) → Grafana release suffix.
+# Beyla does not ship armv7l builds; the preflight gate rejects 32-bit hosts.
+alloy_arch_map:
+  aarch64: arm64
+  x86_64: amd64
+
+alloy_user: alloy
+alloy_http_port: 12345
+
+# ── Preflight gates ──────────────────────────────────────────────────────────
+
+alloy_min_kernel: "5.4"          # Beyla CO-RE minimum
+alloy_min_free_mem_mb: 128       # RPi 3 OOM guard
+
+# ── Component toggles (override per group) ──────────────────────────────────
+# Compliance taxonomy — labels MUST come from container annotation
+# `homelab.io/class`, NEVER from container or image names. The allowed
+# values are exactly these three; the in-template relabel rule drops series
+# whose `service` / `container_name` matches the forbidden product names.
+
+alloy_enable_beyla: true         # set false on RPi 3 if RAM is tight
+alloy_enable_cadvisor: false     # heavy on cardinality; default off
+alloy_enable_journal: true
+alloy_enable_docker_logs: true
+alloy_enable_s3_export: false    # true only on EC2 (has IAM Instance Profile)
+alloy_kubernetes_mode: false     # true only on cluster-mode DaemonSet
+alloy_forward_to_cloud: false    # if true on Pi, forward to cluster Alloy
+
+# ── Telemetry labels (cross-environment dimensions) ─────────────────────────
+
+alloy_cluster_label: homelab
+alloy_tier_label: "{{ 'cloud' if 'k3s_agent' in group_names and ansible_architecture == 'x86_64'
+                       else ('pi-04' if inventory_hostname == 'rasp-pi-04'
+                             else ('pi-03' if inventory_hostname == 'rasp-pi-03'
+                                   else 'unknown')) }}"
+
+# ── Sink endpoints (placeholders — encrypt the real values in alloy.sops.yaml) ─
+
+alloy_grafana_cloud_prom_url: "https://prometheus-prod-13-prod-us-east-0.grafana.net/api/prom/push"
+alloy_grafana_cloud_loki_url: "https://logs-prod-006.grafana.net/loki/api/v1/push"
+alloy_grafana_cloud_user: ""
+alloy_grafana_cloud_token: ""
+
+# ── S3 cold-storage exporter ────────────────────────────────────────────────
+# Bucket name is read from `terraform output -raw observability_bucket_id`
+# and dropped into ansible/group_vars/k3s_server.yml after `terraform apply`.
+
+alloy_s3_bucket: ""
+alloy_s3_region: us-east-1
+
+# ── Systemd unit knobs ──────────────────────────────────────────────────────
+
+alloy_memory_max: "{{ '300M' if inventory_hostname == 'rasp-pi-03' else '1G' }}"
+alloy_restart_sec: 10
+alloy_log_level: info
+alloy_log_format: logfmt
+
+# ── Forbidden workload name patterns (defensive label-leak guard) ───────────
+# These names MUST NEVER appear in published metric labels. The relabel rule
+# in config.alloy.j2 drops any series whose `service`, `job`, or
+# `container_name` label matches this regex. Updated whenever the workload
+# inventory on the Pis changes — see docs/architecture/observability-alloy-ebpf.md.
+
+alloy_forbidden_label_regex: '(?i)^(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr|.*arr)$'

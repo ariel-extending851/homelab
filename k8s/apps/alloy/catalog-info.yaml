@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: alloy
+  description: >-
+    Grafana Alloy unified observability agent — eBPF (Beyla) + node metrics +
+    logs, with multi-cast fan-out to Grafana Cloud and AWS S3 cold-storage.
+  annotations:
+    homelab.io/runbook: docs/runbooks/alloy-troubleshooting.md
+    homelab.io/doc: docs/architecture/observability-alloy-ebpf.md
+spec:
+  type: agent
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []

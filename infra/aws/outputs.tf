@@ -98,6 +98,17 @@ output "schedule_summary" {
 #   cd infra/aws-velero && terraform output -raw velero_aws_access_key_id
 #   cd infra/aws-velero && terraform output -raw velero_aws_secret_access_key
 
+# Observability Outputs (Alloy cold-storage S3 bucket)
+output "observability_bucket_id" {
+  description = "Name of the cold-storage S3 bucket consumed by the Alloy DaemonSet (otelcol.exporter.awss3). Empty under LocalStack."
+  value       = var.localstack_test == "no" ? module.observability[0].bucket_id : ""
+}
+
+output "observability_bucket_arn" {
+  description = "ARN of the cold-storage S3 bucket — wired into the k3s_node IAM role policy. Empty under LocalStack."
+  value       = var.localstack_test == "no" ? module.observability[0].bucket_arn : ""
+}
+
 # Audit Outputs (CloudTrail + GuardDuty)
 output "audit_trail_name" {
   description = "Name of the CloudTrail audit trail (empty under LocalStack)."

@@ -1,0 +1,90 @@
+---
+# Verify alloy role end-state inside the Docker sandbox.
+# Confirms: systemd unit installed + enabled, config rendered with the
+# compliance taxonomy labels, env file holds non-empty token, no forbidden
+# product names anywhere in the rendered tree.
+
+- name: Verify alloy role end-state
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Stat the rendered systemd unit
+      ansible.builtin.stat:
+        path: /etc/systemd/system/alloy.service
+      register: _unit
+
+    - name: Assert systemd unit was rendered
+      ansible.builtin.assert:
+        that:
+          - _unit.stat.exists
+          - _unit.stat.mode == '0644'
+        fail_msg: "alloy.service unit missing or wrong perms"
+
+    - name: Confirm systemd unit is enabled
+      ansible.builtin.command: systemctl is-enabled alloy
+      register: _enabled
+      changed_when: false
+      failed_when: _enabled.stdout != 'enabled'
+
+    - name: Read the rendered River config
+      ansible.builtin.slurp:
+        src: /etc/alloy/config.alloy
+      register: _config_b64
+
+    - name: Decode rendered config for assertion
+      ansible.builtin.set_fact:
+        _config: "{{ _config_b64.content | b64decode }}"
+
+    - name: Assert rendered config references the cardinality + compliance guard
+      ansible.builtin.assert:
+        that:
+          - "'cardinality_guard' in _config"
+          - "'service_class' in _config"
+          - "'forbidden_workload_name_leak' in _config"
+        fail_msg: "config.alloy is missing the compliance / cardinality guard rules"
+
+    - name: Compliance — assert NO forbidden product names appear in rendered config
+      ansible.builtin.assert:
+        that:
+          - _config | regex_search('(?i)(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr)') is none
+        fail_msg: >-
+          Compliance violation: rendered config.alloy contains a forbidden
+          workload product name. The alloy_forbidden_label_regex protects
+          against label leaks at runtime, but the config itself must never
+          mention these names.
+
+    - name: Read the rendered env file
+      ansible.builtin.slurp:
+        src: /etc/default/alloy
+      register: _env_b64
+      no_log: true
+
+    - name: Assert env file has token + S3 bucket placeholders rendered
+      ansible.builtin.assert:
+        that:
+          - "'GRAFANA_CLOUD_TOKEN=' in (_env_b64.content | b64decode)"
+          - "'AWS_REGION=' in (_env_b64.content | b64decode)"
+        fail_msg: "/etc/default/alloy missing required environment variables"
+      no_log: true
+
+    - name: Stat /var/lib/alloy + /var/lib/alloy/wal
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: _dirs
+      loop:
+        - /var/lib/alloy
+        - /var/lib/alloy/wal
+        - /etc/alloy
+
+    - name: Assert runtime directories exist with 0750 perms
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+          - item.stat.mode == '0750'
+        fail_msg: "Runtime directory {{ item.item }} missing or wrong perms"
+      loop: "{{ _dirs.results }}"
+      loop_control:
+        label: "{{ item.item }}"

@@ -11,6 +11,7 @@ resources:
 - ./prometheus
 - ./grafana
 - ./loki
+- ./alloy
 - ./blackbox
 - ./kube-state-metrics
 - ./node-exporter

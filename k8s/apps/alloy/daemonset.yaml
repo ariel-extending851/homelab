@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy
+  namespace: alloy
+  labels:
+    app: alloy
+    app.kubernetes.io/part-of: observability
+spec:
+  selector:
+    matchLabels:
+      app: alloy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: alloy
+      annotations:
+        # Compliance — workloads classify themselves by class only.
+        homelab.io/class: high_throughput_local_service
+    spec:
+      serviceAccountName: alloy
+
+      # Cloud-only DaemonSet — RPi nodes run the native systemd unit
+      # provisioned by ansible/roles/alloy/. Keeping the cluster-mode pod
+      # off the 2 GB k3s server stops it from competing with etcd / apiserver
+      # for memory; the homelab.io/tier=cloud label lands it on the EC2
+      # worker only.
+      nodeSelector:
+        homelab.io/tier: cloud
+
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+
+      # Beyla attaches uprobes / tracepoints and reads /proc/<pid>/maps
+      # across PID namespaces. hostPID is required; the privileged
+      # securityContext below is justified in docs/security/audit-history.md
+      # and granted a Kyverno PolicyException scoped to namespace `alloy`.
+      hostPID: true
+      hostNetwork: false
+      dnsPolicy: ClusterFirstWithHostNet
+
+      priorityClassName: system-node-critical
+
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.5.1@sha256:1ec5e09b9203cdce4c52ef6fac4f54d8ed47f5e09b3e62bab1aafc4dbd62a9cd
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --storage.path=/var/lib/alloy
+            - /etc/alloy/config.alloy
+
+          securityContext:
+            # Privileged required for Beyla CO-RE probe load + perf_event_open.
+            # The capability-only path is tracked as follow-up in
+            # docs/security/audit-history.md once Beyla 1.9+ documents the
+            # minimum effective set.
+            privileged: true
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - BPF
+                - PERFMON
+                - SYS_PTRACE
+                - DAC_READ_SEARCH
+                - NET_ADMIN
+                - NET_RAW
+
+          env:
+            # Non-sensitive runtime context — kept inline so the secret stays
+            # narrowly scoped to actual credentials.
+            - name: ALLOY_NODE
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ALLOY_CLUSTER
+              value: homelab
+            - name: AWS_REGION
+              value: us-east-1
+
+          envFrom:
+            # Secret holds: GRAFANA_CLOUD_PROM_URL, GRAFANA_CLOUD_LOKI_URL,
+            # GRAFANA_CLOUD_USER, GRAFANA_CLOUD_TOKEN, ALLOY_S3_BUCKET.
+            # Encrypted with SOPS — see k8s/apps/alloy/secret.yaml.example.
+            - secretRef:
+                name: alloy-grafana-cloud
+
+          ports:
+            - name: http-metrics
+              containerPort: 12345
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http-metrics
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http-metrics
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+              readOnly: true
+            - name: wal
+              mountPath: /var/lib/alloy
+            - name: sys-kernel-debug
+              mountPath: /sys/kernel/debug
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: var-log
+              mountPath: /var/log
+              readOnly: true
+            - name: var-lib-docker-containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: run-log-journal
+              mountPath: /run/log/journal
+              readOnly: true
+
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
+            defaultMode: 0o644
+        # Per-node WAL — survives Grafana Cloud outages without losing
+        # 5+ minutes of scrapes. emptyDir is correct here: WAL contents are
+        # disposable and the pod is per-node by definition.
+        - name: wal
+          emptyDir:
+            sizeLimit: 4Gi
+        # eBPF / Beyla mounts. All host paths except WAL are readOnly.
+        - name: sys-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: var-log
+          hostPath:
+            path: /var/log
+        - name: var-lib-docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: run-log-journal
+          hostPath:
+            path: /run/log/journal

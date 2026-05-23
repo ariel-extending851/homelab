@@ -103,6 +103,18 @@ all:
       hosts:
         rasp-pi-03:
 
+    # ── Grafana Alloy native-systemd targets ─────────────────────────────
+    # Edge nodes run Alloy as a host-level systemd unit (saves the RAM that
+    # a k8s DaemonSet would add). Cloud nodes run the in-cluster DaemonSet
+    # at k8s/apps/alloy/ instead. See:
+    #   - ansible/roles/alloy/
+    #   - ansible/playbooks/deploy-alloy.yml
+    #   - docs/architecture/observability-alloy-ebpf.md
+    alloy_native:
+      hosts:
+        rasp-pi-03:
+        rasp-pi-04:
+
     # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
     router:
       hosts:

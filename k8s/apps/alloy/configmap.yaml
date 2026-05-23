@@ -1,0 +1,301 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: alloy
+data:
+  config.alloy: |
+    // Grafana Alloy unified observability configuration (River language).
+    //
+    // Cluster-mode DaemonSet — runs only on EC2 nodes (homelab.io/tier: cloud).
+    // The edge tier (Raspberry Pi) runs Alloy natively via the Ansible role
+    // at ansible/roles/alloy/ to avoid the per-pod RAM overhead. Both modes
+    // render the same component graph from the same template; the only
+    // difference is k8s discovery + IAM-Instance-Profile S3 export here.
+    //
+    // Compliance: workload labels derive ONLY from container annotation
+    // `homelab.io/class` (taxonomy: containerized_microservice |
+    // media_streaming_daemon | high_throughput_local_service). Defensive
+    // drop rule at the bottom of the cardinality_guard catches any leak of
+    // forbidden product names. A CI contract test enforces this at the
+    // repo level (bin/tests/contracts/test_no_forbidden_workload_names.py).
+
+    logging {
+      level  = "info"
+      format = "logfmt"
+    }
+
+    livedebugging {
+      enabled = true
+    }
+
+    // ========================================================================
+    // KUBERNETES DISCOVERY — pods, services, nodes
+    // ========================================================================
+
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    discovery.kubernetes "services" {
+      role = "service"
+    }
+
+    discovery.kubernetes "nodes" {
+      role = "node"
+    }
+
+    // Promote the `homelab.io/class` annotation to a `service_class` label
+    // and drop pod / container names so they cannot leak into Grafana Cloud.
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_homelab_io_class"]
+        target_label  = "service_class"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label  = "node"
+      }
+      // Compliance: drop the pod and container name labels.
+      rule {
+        action = "labeldrop"
+        regex  = "__meta_kubernetes_pod_name|__meta_kubernetes_pod_container_name|pod|container"
+      }
+    }
+
+    // ========================================================================
+    // HOST + APP METRICS
+    // ========================================================================
+
+    prometheus.exporter.unix "host" {
+      set_collectors = [
+        "cpu", "diskstats", "filesystem", "loadavg", "meminfo", "netdev",
+        "netstat", "stat", "time", "uname", "vmstat", "filefd", "pressure",
+      ]
+    }
+
+    // eBPF zero-instrumentation: HTTP/HTTPS/gRPC/TCP RED metrics.
+    // Selects by namespace + port range only — names forbidden by compliance.
+    beyla.ebpf "red" {
+      output {
+        metrics = [prometheus.relabel.cardinality_guard.receiver]
+      }
+
+      attributes {
+        select {
+          attr   = "url.path"
+          action = "exclude"
+          values = ["/-/healthy", "/-/ready", "/metrics", "/healthz", "/livez"]
+        }
+      }
+
+      discovery {
+        services {
+          kubernetes {
+            namespace = ".*"
+          }
+        }
+      }
+    }
+
+    prometheus.scrape "self" {
+      targets = [{
+        __address__ = "127.0.0.1:12345",
+        job         = "alloy",
+      }]
+      forward_to      = [prometheus.relabel.cardinality_guard.receiver]
+      scrape_interval = "30s"
+    }
+
+    prometheus.scrape "host" {
+      targets         = prometheus.exporter.unix.host.targets
+      forward_to      = [prometheus.relabel.cardinality_guard.receiver]
+      scrape_interval = "30s"
+    }
+
+    // ========================================================================
+    // CARDINALITY + COMPLIANCE GUARD
+    // ========================================================================
+
+    prometheus.relabel "cardinality_guard" {
+      forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+
+      rule {
+        action = "labeldrop"
+        regex  = "id|name|container_label_io_kubernetes_.*|annotation_.*"
+      }
+
+      // Defensive belt-and-braces guard: drop any series whose label
+      // accidentally surfaces a forbidden product name. Same regex used by
+      // the contract test in bin/tests/contracts/.
+      rule {
+        source_labels = ["service"]
+        regex         = "(?i)^(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr|.*arr)$"
+        action        = "drop"
+      }
+      rule {
+        source_labels = ["job"]
+        regex         = "(?i)^(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr|.*arr)$"
+        action        = "drop"
+      }
+      rule {
+        source_labels = ["container_name"]
+        regex         = "(?i)^(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr|.*arr)$"
+        action        = "drop"
+      }
+    }
+
+    prometheus.remote_write "grafana_cloud" {
+      endpoint {
+        url = sys.env("GRAFANA_CLOUD_PROM_URL")
+        basic_auth {
+          username = sys.env("GRAFANA_CLOUD_USER")
+          password = sys.env("GRAFANA_CLOUD_TOKEN")
+        }
+        queue_config {
+          capacity             = 10000
+          max_shards           = 10
+          max_samples_per_send = 2000
+          batch_send_deadline  = "5s"
+        }
+      }
+
+      external_labels = {
+        cluster = sys.env("ALLOY_CLUSTER"),
+        tier    = "cloud",
+        node    = sys.env("ALLOY_NODE"),
+      }
+
+      wal {
+        truncate_frequency = "2h"
+        min_keepalive_time = "5m"
+        max_keepalive_time = "8h"
+      }
+    }
+
+    // ========================================================================
+    // LOGS — k8s pod discovery + journal + fan-out to Loki + S3
+    // ========================================================================
+
+    loki.source.kubernetes "pods" {
+      targets    = discovery.relabel.pods.output
+      forward_to = [loki.process.normalize.receiver]
+    }
+
+    loki.source.journal "system" {
+      forward_to = [loki.process.normalize.receiver]
+      matches    = "_SYSTEMD_UNIT=k3s.service|_SYSTEMD_UNIT=k3s-agent.service|_SYSTEMD_UNIT=docker.service"
+    }
+
+    loki.process "normalize" {
+      forward_to = [
+        loki.write.grafana_cloud_loki.receiver,
+        otelcol.receiver.loki.cold_archive.receiver,
+      ]
+
+      stage.static_labels {
+        values = {
+          cluster = "homelab",
+          tier    = "cloud",
+        }
+      }
+
+      stage.json {
+        expressions = {
+          level    = "level",
+          trace_id = "trace_id",
+        }
+      }
+      stage.labels {
+        values = {
+          level = "",
+        }
+      }
+
+      // Compliance drop — mirror of the metrics guard.
+      stage.match {
+        selector = `{service_class=~".+"}`
+        stage.drop {
+          source              = "service"
+          expression          = "(?i)^(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr|.*arr)$"
+          drop_counter_reason = "forbidden_workload_name_leak"
+        }
+      }
+    }
+
+    loki.write "grafana_cloud_loki" {
+      endpoint {
+        url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+        basic_auth {
+          username = sys.env("GRAFANA_CLOUD_USER")
+          password = sys.env("GRAFANA_CLOUD_TOKEN")
+        }
+      }
+      external_labels = {
+        cluster = sys.env("ALLOY_CLUSTER"),
+        tier    = "cloud",
+      }
+    }
+
+    // ========================================================================
+    // S3 COLD-STORAGE SUB-PIPELINE — IAM Instance Profile (IMDSv2)
+    // ========================================================================
+
+    otelcol.receiver.loki "cold_archive" {
+      output {
+        logs = [otelcol.processor.batch.cold_archive.input]
+      }
+    }
+
+    otelcol.processor.batch "cold_archive" {
+      timeout         = "5m"
+      send_batch_size = 8192
+      output {
+        logs = [otelcol.processor.attributes.cold_archive.input]
+      }
+    }
+
+    otelcol.processor.attributes "cold_archive" {
+      action {
+        key    = "cluster"
+        action = "insert"
+        value  = sys.env("ALLOY_CLUSTER")
+      }
+      action {
+        key    = "tier"
+        action = "insert"
+        value  = "cloud"
+      }
+      output {
+        logs = [otelcol.exporter.awss3.cold_archive.input]
+      }
+    }
+
+    otelcol.exporter.awss3 "cold_archive" {
+      s3_uploader {
+        region       = sys.env("AWS_REGION")
+        s3_bucket    = sys.env("ALLOY_S3_BUCKET")
+        s3_prefix    = "alloy"
+        s3_partition = "minute"
+        file_prefix  = "logs-"
+        compression  = "gzip"
+        // Authentication is implicit via the EC2 IAM Instance Profile
+        // (IMDSv2 hop_limit = 2). No access keys anywhere in this manifest.
+      }
+
+      marshaler {
+        type = "otlp_proto"
+      }
+
+      sending_queue {
+        enabled       = true
+        num_consumers = 2
+        queue_size    = 5000
+      }
+    }

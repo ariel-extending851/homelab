@@ -7,6 +7,7 @@
 	validate verify-all test-homolog test-e2e test-rpi test-shell test-terraform test-security test-security-supply-chain test-k8s-policy-coverage test-dr-execution test-python test-python-ci \
         test-molecule test-molecule-rpi test-molecule-argocd \
         test-molecule-lint test-molecule-k3s test-molecule-tailscale \
+        test-molecule-alloy \
         test-molecule-gatekeeper hybrid-dry-run hybrid-dry-run-prereqs \
         hybrid-dry-run-localstack hybrid-dry-run-ansible clean-local-tf \
         clean-pi-server pi-migrate-to-agent clean docs show-costs \
@@ -875,6 +876,7 @@ test-molecule: ## Run all Molecule role test suites
 	@make test-molecule-argocd
 	@make test-molecule-k3s
 	@make test-molecule-tailscale
+	@make test-molecule-alloy
 	@make test-molecule-gatekeeper
 	@make test-molecule-emergency-recovery
 	@echo "✅ All Molecule tests passed!"
@@ -922,6 +924,11 @@ test-molecule-tailscale: ## Run Molecule tests for tailscale role
 	@echo "🧪 Testing tailscale role with Molecule..."
 	@cd $(ANSIBLE_DIR)/roles/tailscale && $(MISE_EXEC) molecule test
 	@echo "  ✓ tailscale role tests passed."
+
+test-molecule-alloy: ## Run Molecule tests for alloy role (preflight + render + verify)
+	@echo "🧪 Testing alloy role with Molecule..."
+	@cd $(ANSIBLE_DIR)/roles/alloy && $(MISE_EXEC) molecule test
+	@echo "  ✓ alloy role tests passed."
 
 test-molecule-gatekeeper: ## Run Molecule tests for gatekeeper role
 	@echo "🧪 Testing gatekeeper role with Molecule..."

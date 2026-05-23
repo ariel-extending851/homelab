@@ -13,6 +13,7 @@ Every `*.tail57bf10.ts.net` hostname currently served by the cluster, and what i
 | Hostname | Service | Doc |
 |---|---|---|
 | <https://adguard.tail57bf10.ts.net> | AdGuard Home (DNS UI) | [adguard.md](../services/adguard.md) |
+| <https://alloy.tail57bf10.ts.net> | Grafana Alloy (livedebugging UI, cluster DaemonSet) | [observability-alloy-ebpf.md](../architecture/observability-alloy-ebpf.md) |
 | <https://golink.tail57bf10.ts.net> | GoLink (short-link redirector) | [golink.md](../services/golink.md) |
 | <https://grafana.tail57bf10.ts.net> | Grafana (high-bandwidth ProxyClass) | [grafana.md](../services/grafana.md) |
 | <https://loki.tail57bf10.ts.net> | Loki (`/ready` health endpoint) | [loki.md](../services/loki.md) |

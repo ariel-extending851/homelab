@@ -121,7 +121,23 @@ module "k3s_cluster" {
 
   ssm_s3_bucket = var.ssm_s3_bucket
 
+  # Wire the cold-storage bucket ARN so the k3s_node IAM role can PutObject.
+  # Empty under LocalStack — the compute module gates the policy on this.
+  observability_bucket_arn = var.localstack_test == "no" ? module.observability[0].bucket_arn : ""
+
   principal_boundary_arn = local.principal_boundary_arn
+}
+
+# ==============================================================================
+# Observability Module — Alloy Cold-Storage S3 Bucket
+# ==============================================================================
+# Receives gzipped OTLP batches from the Alloy DaemonSet (otelcol.exporter.awss3)
+# for long-term retention beyond the 14-day Grafana Cloud Loki hot window.
+# Companion to k8s/apps/alloy/ and ansible/roles/alloy/.
+# Skipped under LocalStack (provider does not support all S3 lifecycle features).
+module "observability" {
+  source = "./modules/observability"
+  count  = var.localstack_test == "no" ? 1 : 0
 }
 
 # ==============================================================================

@@ -1,0 +1,39 @@
+---
+# Drop the systemd unit, reload, enable, start, and wait for /-/ready.
+# Async/poll on the wait because the SSM connection plugin has a shorter
+# idle ceiling than Alloy's first-start (Beyla probe load + WAL replay).
+
+- name: Install Alloy systemd unit
+  ansible.builtin.template:
+    src: alloy.service.j2
+    dest: /etc/systemd/system/alloy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart alloy
+
+- name: Flush handlers so reload + restart happen before the readiness probe
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable + start alloy service
+  ansible.builtin.systemd:
+    name: alloy
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for Alloy /-/ready endpoint (async to survive SSM idle limits)
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ alloy_http_port }}/-/ready"
+    status_code: 200
+    timeout: 5
+  register: _alloy_ready
+  retries: 24
+  delay: 5
+  until: _alloy_ready.status == 200
+  async: 180
+  poll: 10
+  changed_when: false
+  when: not (alloy_skip_download | default(false))

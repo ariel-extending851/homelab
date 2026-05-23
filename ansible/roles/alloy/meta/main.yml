@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  role_name: alloy
+  author: ariel-extending851
+  description: >-
+    Grafana Alloy unified observability agent (native systemd). Collects host
+    metrics (Node Exporter equivalent), eBPF RED metrics via Beyla, Docker /
+    journal logs, and fans out to Grafana Cloud (metrics + logs) and AWS S3
+    (cold-storage logs via OTLP-proto + gzip).
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Amazon
+      versions:
+        - "2023"
+  galaxy_tags:
+    - observability
+    - monitoring
+    - grafana
+    - alloy
+    - ebpf
+    - beyla
+
+dependencies: []

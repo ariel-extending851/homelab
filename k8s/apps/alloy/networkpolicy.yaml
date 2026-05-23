@@ -1,0 +1,81 @@
+# NetworkPolicy for the alloy namespace.
+# Default-deny + explicit allowlist:
+#   Ingress: Prometheus (scrape) + Tailscale operator (Ingress proxy).
+#   Egress:  DNS, kube-apiserver, Grafana Cloud (443), S3 (443).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: alloy
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alloy
+  namespace: alloy
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: alloy
+spec:
+  podSelector:
+    matchLabels:
+      app: alloy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrape of Alloy's /metrics exposition.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 12345 }
+    # Tailscale operator (ingress proxy) reaches the Alloy service for the
+    # livedebugging UI exposed via the Ingress.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
+      ports:
+        - { protocol: TCP, port: 12345 }
+  egress:
+    # DNS resolution.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # kube-apiserver — needed for discovery.kubernetes.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+    # IMDSv2 (169.254.169.254) — required for the IAM Instance Profile token
+    # used by the awss3 exporter.
+    - to:
+        - ipBlock:
+            cidr: 169.254.169.254/32
+      ports:
+        - { protocol: TCP, port: 80 }
