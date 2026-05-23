@@ -99,7 +99,9 @@ def _iter_files() -> list[pathlib.Path]:
     return files
 
 
-@pytest.mark.parametrize("path", _iter_files(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+@pytest.mark.parametrize(
+    "path", _iter_files(), ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
 def test_no_forbidden_workload_name(path: pathlib.Path) -> None:
     """Each scanned file must contain no forbidden product names outside the
     explicit drop-regex declarations."""

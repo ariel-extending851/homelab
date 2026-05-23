@@ -38,7 +38,7 @@ The pipeline must operate inside two very different envelopes:
 
 ## 2. Architecture (component graph)
 
-```
+```text
    Edge tier (k3s-agent, native systemd)        Cloud tier (k3s-agent, k8s DaemonSet)
    ─────────────────────────────────────        ────────────────────────────────────
    ansible/roles/alloy/                          k8s/apps/alloy/
