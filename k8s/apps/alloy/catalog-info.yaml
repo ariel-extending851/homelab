@@ -9,7 +9,7 @@ metadata:
     homelab.io/runbook: docs/runbooks/alloy-troubleshooting.md
     homelab.io/doc: docs/architecture/observability-alloy-ebpf.md
 spec:
-  type: agent
+  type: service
   lifecycle: production
   owner: "@ariel-extending851"
   tier: any
