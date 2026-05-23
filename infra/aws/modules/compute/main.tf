@@ -96,6 +96,41 @@ resource "aws_iam_role_policy" "k3s_node_ssm_s3" {
   })
 }
 
+# Inline S3 policy — allows the Alloy DaemonSet to archive logs to the
+# cold-storage bucket via the EC2 instance profile (IMDSv2). Write-only by
+# design: no GetObject, no DeleteObject. Multipart actions are required
+# because Alloy's awss3 exporter uses multipart for batches > 5 MiB.
+#
+# Gated on observability_bucket_arn being non-empty so the module is still
+# applyable under LocalStack (where the observability module is skipped).
+# count = 0 in that case; count = 1 in production.
+resource "aws_iam_role_policy" "k3s_node_observability_s3" {
+  count = var.observability_bucket_arn == "" ? 0 : 1
+
+  name_prefix = "hl-alloy-s3-export-"
+  role        = aws_iam_role.k3s_node.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AlloyColdStorageWrite"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+          "s3:AbortMultipartUpload",
+          "s3:ListBucketMultipartUploads",
+        ]
+        Resource = [
+          var.observability_bucket_arn,
+          "${var.observability_bucket_arn}/*",
+        ]
+      }
+    ]
+  })
+}
+
 # Instance profile
 resource "aws_iam_instance_profile" "k3s_node" {
   name_prefix = "hl-k3s-node-"
@@ -141,9 +176,13 @@ resource "aws_launch_template" "k3s_server" {
   }
 
   metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required" # IMDSv2 only
-    http_put_response_hop_limit = 1
+    http_endpoint = "enabled"
+    http_tokens   = "required" # IMDSv2 only
+    # hop_limit = 2 lets the Alloy DaemonSet pod reach IMDSv2 from inside the
+    # pod network namespace (one extra hop for the CNI bridge). Stays at the
+    # AWS-recommended ceiling for IMDS exposure — caps the blast radius if a
+    # workload ever runs at the host level with hostNetwork: false.
+    http_put_response_hop_limit = 2
   }
 
   tag_specifications {
@@ -202,9 +241,11 @@ resource "aws_launch_template" "k3s_agent" {
   }
 
   metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required" # IMDSv2 only
-    http_put_response_hop_limit = 1
+    http_endpoint = "enabled"
+    http_tokens   = "required" # IMDSv2 only
+    # See server launch template above: hop_limit = 2 is the minimum for the
+    # Alloy DaemonSet to reach IMDSv2 from the pod network namespace.
+    http_put_response_hop_limit = 2
   }
 
   tag_specifications {

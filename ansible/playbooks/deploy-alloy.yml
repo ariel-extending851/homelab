@@ -1,0 +1,26 @@
+---
+# Deploy Grafana Alloy as a native systemd service on edge nodes.
+# Targets:
+#   - alloy_native: Raspberry Pi k3s-agents (RAM-constrained, no DaemonSet)
+#
+# Run:
+#   mise exec -- ansible-playbook -i ansible/inventory/production.yml \
+#       ansible/playbooks/deploy-alloy.yml \
+#       --tags alloy --diff
+#
+# Companion to k8s/apps/alloy/ (DaemonSet on EC2 cloud tier).
+
+- name: Deploy Grafana Alloy (native systemd, edge nodes)
+  hosts: alloy_native
+  become: true
+  gather_facts: true
+  tags:
+    - alloy
+    - observability
+
+  # group_vars/alloy_native.sops.yaml is auto-loaded for hosts in the
+  # alloy_native group. See docs/runbooks/alloy-troubleshooting.md
+  # ("Grafana Cloud auth fails") for the token rotation procedure.
+
+  roles:
+    - role: alloy

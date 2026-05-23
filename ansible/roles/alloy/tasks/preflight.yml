@@ -1,0 +1,67 @@
+---
+# Hard gates before any disk writes. Refuses to install on a host where
+# Beyla / eBPF would either fail to attach or push the node over its memory
+# envelope. Cheaper to fail here than to debug a CrashLooping daemon.
+#
+# Why each gate exists:
+#   - Kernel >= 5.4 — Beyla CO-RE probe minimum.
+#   - Arch in {aarch64, x86_64} — Beyla does not ship ARMv7 builds; if a Pi
+#     is still on 32-bit Raspberry Pi OS this fails with a remediation path.
+#   - Free RAM >= alloy_min_free_mem_mb — RPi 3 with 1 GB is the tight node.
+#   - BTF presence at /sys/kernel/btf/vmlinux — warn only; Beyla falls back
+#     to kprobes when missing, but RED metrics may degrade.
+
+- name: Assert host kernel meets Beyla CO-RE minimum
+  ansible.builtin.assert:
+    that:
+      - ansible_kernel is version(alloy_min_kernel, '>=')
+    fail_msg: >-
+      Kernel {{ ansible_kernel }} is below Beyla minimum {{ alloy_min_kernel }}.
+      Upgrade Raspberry Pi OS to bookworm (kernel 6.x) or set
+      `alloy_enable_beyla: false` to skip the eBPF surface on this host.
+      See docs/runbooks/alloy-troubleshooting.md.
+    success_msg: "Kernel {{ ansible_kernel }} >= {{ alloy_min_kernel }} ✓"
+  when: not (alloy_skip_preflight | default(false))
+
+- name: Assert architecture is 64-bit (aarch64 or x86_64)
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in ['aarch64', 'x86_64']
+    fail_msg: >-
+      Architecture {{ ansible_architecture }} is not supported by Alloy / Beyla.
+      Reflash this Raspberry Pi with the 64-bit Raspberry Pi OS image
+      (Bookworm arm64) — the 32-bit (armv7l) image cannot run Beyla.
+      See docs/runbooks/alloy-troubleshooting.md.
+  when: not (alloy_skip_preflight | default(false))
+
+- name: Read free memory facts on memory-constrained hosts
+  ansible.builtin.set_fact:
+    alloy_memfree_mb: "{{ ansible_memfree_mb | default(ansible_memtotal_mb // 4) | int }}"
+  when: "'raspberry_pi' in group_names"
+
+- name: Assert minimum free memory on Raspberry Pi hosts
+  ansible.builtin.assert:
+    that:
+      - alloy_memfree_mb | int >= alloy_min_free_mem_mb | int
+    fail_msg: >-
+      Only {{ alloy_memfree_mb }} MiB free on {{ inventory_hostname }};
+      Alloy preflight requires >= {{ alloy_min_free_mem_mb }} MiB to stay
+      below the documented RPi 3 OOM threshold. Free memory first or set
+      `alloy_enable_beyla: false` in host_vars to skip the heaviest component.
+      See docs/runbooks/rpi-oom-mitigation.md.
+  when:
+    - "'raspberry_pi' in group_names"
+    - not (alloy_skip_preflight | default(false))
+
+- name: Probe for BTF (CO-RE) support — warn if missing, Beyla degrades to kprobes
+  ansible.builtin.stat:
+    path: /sys/kernel/btf/vmlinux
+  register: alloy_btf_probe
+
+- name: Surface BTF probe result
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'BTF present at /sys/kernel/btf/vmlinux ✓ (Beyla CO-RE enabled)'
+         if alloy_btf_probe.stat.exists
+         else 'WARNING: BTF missing — Beyla will fall back to kprobes. Install '
+              'linux-headers-' + ansible_kernel + ' to restore CO-RE.' }}

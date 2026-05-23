@@ -66,6 +66,14 @@ Every policy lives in [`k8s/system/kyverno/policies/`](../../k8s/system/kyverno/
 !!! note "Mode: Audit (transition state)"
     All policies are currently in `validationFailureAction: Audit`. Each policy's file header documents its flip criteria — typically: one clean reporting cycle on `make validate-argocd-synced` plus zero unexpected `PolicyReport` entries against in-tree workloads. Promotions to `Enforce` are recorded in [`audit-history.md`](audit-history.md).
 
+### 2.2 Scoped exceptions
+
+When a workload legitimately needs a configuration that one of the policies above would deny, a `PolicyException` is committed alongside the workload manifest — never a global policy relaxation. Exceptions are scoped to the smallest possible namespace + label-selector pair and audited in [`audit-history.md`](audit-history.md).
+
+| PolicyException | Namespace | Selector | Policies exempted | Justification |
+|---|---|---|---|---|
+| `alloy-ebpf-privileged` | `alloy` | `app: alloy` | `disallow-host-namespaces`, `disallow-capabilities` | Grafana Beyla needs `hostPID: true` + `CAP_BPF` / `CAP_PERFMON` / `CAP_SYS_ADMIN` to load CO-RE eBPF probes and read `/proc/<pid>/maps` across PID namespaces. Runs `privileged: false` + `allowPrivilegeEscalation: false` + `capabilities.drop: [ALL]` + explicit adds — same shape as the Falco DaemonSet (`k8s/apps/falco/daemonset.yaml:51`). NetworkPolicy + write-only IAM scope blast radius. See [`audit-history.md`](audit-history.md) (2026-05-23) and [`../architecture/observability-alloy-ebpf.md`](../architecture/observability-alloy-ebpf.md). Manifest: [`../../k8s/apps/alloy/policy-exception.yaml`](../../k8s/apps/alloy/policy-exception.yaml). |
+
 ### 2.1 Mode promotion procedure
 
 1. **Observe.** `kubectl get clusterpolicyreport -A -o wide` should be empty (or contain only known, allow-listed entries) across two consecutive sync cycles.

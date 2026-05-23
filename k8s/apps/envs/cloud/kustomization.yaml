@@ -29,6 +29,7 @@ resources:
   - ../../prometheus
   - ../../loki
   - ../../grafana
+  - ../../alloy                 # unified observability agent (DaemonSet, eBPF via Beyla)
   - ../../otel-collector
   - ../../blackbox
   - ../../kube-state-metrics
