@@ -34,6 +34,13 @@ provisioner:
   inventory:
     host_vars:
       rasp-pi-04:
+        # Skip kernel / arch / memory / BTF preflight gates. The CI ARM64
+        # matrix runs this scenario under QEMU emulation on both linux/arm64
+        # and linux/arm/v7. The v7 leg reports `ansible_architecture: armv7l`,
+        # which the production preflight correctly rejects (Beyla needs
+        # 64-bit). Skip in test mode so the role's idempotency / template
+        # rendering can still be exercised on both legs.
+        alloy_skip_preflight: true
         # Bypass real binary download — converge.yml lays down a stub
         # before the role runs.
         alloy_skip_download: true

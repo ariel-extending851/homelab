@@ -21,6 +21,7 @@
       `alloy_enable_beyla: false` to skip the eBPF surface on this host.
       See docs/runbooks/alloy-troubleshooting.md.
     success_msg: "Kernel {{ ansible_kernel }} >= {{ alloy_min_kernel }} ✓"
+  when: not (alloy_skip_preflight | default(false))
 
 - name: Assert architecture is 64-bit (aarch64 or x86_64)
   ansible.builtin.assert:
@@ -31,6 +32,7 @@
       Reflash this Raspberry Pi with the 64-bit Raspberry Pi OS image
       (Bookworm arm64) — the 32-bit (armv7l) image cannot run Beyla.
       See docs/runbooks/alloy-troubleshooting.md.
+  when: not (alloy_skip_preflight | default(false))
 
 - name: Read free memory facts on memory-constrained hosts
   ansible.builtin.set_fact:
@@ -47,7 +49,9 @@
       below the documented RPi 3 OOM threshold. Free memory first or set
       `alloy_enable_beyla: false` in host_vars to skip the heaviest component.
       See docs/runbooks/rpi-oom-mitigation.md.
-  when: "'raspberry_pi' in group_names"
+  when:
+    - "'raspberry_pi' in group_names"
+    - not (alloy_skip_preflight | default(false))
 
 - name: Probe for BTF (CO-RE) support — warn if missing, Beyla degrades to kprobes
   ansible.builtin.stat:
