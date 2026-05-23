@@ -35,6 +35,8 @@ theme:
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.superfences:
@@ -88,18 +90,23 @@ nav:
   - Runbooks:
       - Index: runbooks/README.md
       - Control plane recovery: runbooks/control-plane-recovery.md
+      - Disaster recovery (Velero): runbooks/disaster-recovery-velero.md
+      - RPi OOM mitigation: runbooks/rpi-oom-mitigation.md
+      - SOPS key rotation: runbooks/sops-key-rotation.md
+      - Tailscale logged out: runbooks/tailscale-logged-out.md
       - GitHub environments: runbooks/github-environments.md
       - Grafana dashboards: runbooks/grafana-dashboards.md
       - Observability availability: runbooks/observability-availability.md
       - On-call: runbooks/on-call.md
-      - SOPS key rotation: runbooks/sops-key-rotation.md
-      - Tailscale logged out: runbooks/tailscale-logged-out.md
       - Trivy exceptions: runbooks/trivy-exceptions.md
   - Security:
       - Overview: security/overview.md
+      - Supply chain: security/supply-chain.md
+      - Runtime enforcement: security/runtime-enforcement.md
+      - Static analysis: security/static-analysis.md
+      - Network policies: security/network-policies.md
       - Audit history: security/audit-history.md
       - Fixes backlog: security/fixes-backlog.md
-      - Network policies: security/network-policies.md
   - Reference:
       - Glossary: reference/glossary.md
       - Homelab CLI: reference/homelab-cli.md

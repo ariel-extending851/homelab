@@ -25,7 +25,11 @@
 
   vars:
     argocd_namespace: argocd
-    apps_root_manifest: k8s/gitops/apps-root.yaml
+    # Use the shared var so inventory overrides (e.g. Pi-only mode pointing
+    # at k8s/gitops/apps-root-pi-only.yaml) win. Without this default-chain,
+    # this Phase 2.2 play would overwrite the role-level apply (Phase 2.1)
+    # and reset the Application back to the full k8s/apps catalog.
+    apps_root_manifest: "{{ apps_root_manifest_path | default('k8s/gitops/apps-root.yaml') }}"
     apps_root_name: homelab-apps-root
     sync_timeout: 600  # 10 minutes
 

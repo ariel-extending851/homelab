@@ -45,7 +45,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3  # v5.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.12"
           cache: pip
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         if: always() && hashFiles('.qa/checkov/results_sarif.sarif') != ''
-        uses: github/codeql-action/upload-sarif@0daab03d71ff584ef619d027a3fd9146679c5d84  # v3.35.3
+        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba  # v4.35.5
         with:
           sarif_file: .qa/checkov/results_sarif.sarif
           category: checkov

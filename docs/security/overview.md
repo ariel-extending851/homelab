@@ -1,10 +1,43 @@
 # Security Overview
 
 > **Status:** Active
-> **Last reviewed:** 2026-04-23
+> **Last reviewed:** 2026-05-12
 > **Owner:** @ariel-extending851
 
-Current security posture for the homelab. This page describes **today's** controls. The historical record (audits, fix plans, finding remediation) lives in [`audit-history.md`](audit-history.md).
+Current security posture for the homelab. This page is the index — controls are described here at a single level of detail; depth is in the linked sub-pages. The chronological record (audits, fix plans, finding remediation) is in [`audit-history.md`](audit-history.md).
+
+---
+
+## Defense in Depth
+
+The security stack is organized along the request lifecycle. Every invariant is enforced at the earliest point where it can be enforced, then re-enforced at later points so a bypass at one layer is caught by the next.
+
+```mermaid
+flowchart LR
+    LAPTOP["Operator laptop<br/>pre-commit"]
+    PR["Pull request<br/>CI gates"]
+    REG["Registry<br/>image signed at digest"]
+    ADM["Cluster admission<br/>Kyverno"]
+    RUN["Runtime<br/>Falco eBPF"]
+
+    LAPTOP --> PR --> REG --> ADM --> RUN
+
+    LAPTOP -.->|TruffleHog · terraform fmt · shellcheck · black · ruff| PR
+    PR -.->|Trivy · Checkov · Conftest · kubeconform · ansible-lint| REG
+    REG -.->|Syft SBOM · Cosign keyless sign| ADM
+    ADM -.->|ClusterPolicy verify · resource limits · seccomp| RUN
+    RUN -.->|syscall-derived findings → otel-collector → Loki| RUN
+
+    classDef gate fill:#fff5e6,stroke:#e0a060
+    class LAPTOP,PR,REG,ADM,RUN gate
+```
+
+| Layer | Sub-page | What it answers |
+|---|---|---|
+| Shift-left static analysis | [`static-analysis.md`](static-analysis.md) | "Is this change safe to merge?" |
+| Supply-chain provenance | [`supply-chain.md`](supply-chain.md) | "Did *we* build the image that is about to run?" |
+| Runtime enforcement + detection | [`runtime-enforcement.md`](runtime-enforcement.md) | "Should this Pod exist, and is it behaving?" |
+| Network segmentation | [`network-policies.md`](network-policies.md) | "Can A reach B?" |
 
 ---
 
@@ -101,7 +134,11 @@ See [`fixes-backlog.md`](fixes-backlog.md) for the full list. Highlights:
 
 ## Related
 
+- **Supply-chain signing chain (Syft + Cosign + Kyverno verify):** [`supply-chain.md`](supply-chain.md)
+- **Admission and runtime enforcement (Kyverno + Falco):** [`runtime-enforcement.md`](runtime-enforcement.md)
+- **Pre-merge static analysis (Trivy, Checkov, TruffleHog, Conftest):** [`static-analysis.md`](static-analysis.md)
+- **NetworkPolicy detail:** [`network-policies.md`](network-policies.md)
 - **Audit history (chronological record):** [`audit-history.md`](audit-history.md)
 - **Open security work:** [`fixes-backlog.md`](fixes-backlog.md)
-- **NetworkPolicy detail:** [`network-policies.md`](network-policies.md)
 - **Secrets architecture:** [`../architecture/secrets-management.md`](../architecture/secrets-management.md)
+- **SOPS key rotation procedure:** [`../runbooks/sops-key-rotation.md`](../runbooks/sops-key-rotation.md)

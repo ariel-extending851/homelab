@@ -6,38 +6,60 @@ A hybrid k3s cluster spanning AWS EC2 spot instances and Raspberry Pi nodes, rea
 
 ## Architecture
 
+A hybrid k3s cluster whose control plane lives on AWS spot instances and whose storage/media tier lives on Raspberry Pi hardware at home. The two halves are peers on a Tailscale (WireGuard) mesh; there is no public ingress. Provisioning is declarative: Terraform shapes the cloud, Ansible configures every node, ArgoCD reconciles the workload layer, and Kyverno + Falco enforce policy at admission and runtime.
+
 ```mermaid
-graph TD
-    A[Operator] -- make deploy --> B(bin/deploy_aws_homelab.py)
-
-    subgraph Infrastructure
-        B -- Terraform --> D[infra/aws/]
-        D --> E[2× EC2 Spot + Lambda Scheduler]
+graph TB
+    subgraph AWS["AWS us-east-1 · single AZ"]
+        SERVER["k3s server<br/>t3.small spot · 2 GB"]
+        AGENT["k3s agent<br/>t3.medium spot · 4 GB"]
+        LAMBDA["Scheduler λ"]
+        S3[("S3 · tf-state + velero")]
     end
 
-    subgraph Configuration
-        B -- Ansible --> J[ansible/]
-        J -- installs --> K[k3s + Tailscale + ArgoCD]
+    subgraph LAN["Home LAN · 192.168.8.0/24"]
+        PI4["RPi 4 · 8 GB<br/>storage · media · obs"]
+        PI3["RPi 3 · 1 GB<br/>edge (DNS, exporters)"]
     end
 
-    subgraph Applications
-        K -- ArgoCD syncs --> M[k8s/apps/ in git]
+    subgraph TS["Tailnet · WireGuard mesh"]
+        MESH(("MagicDNS + ACL"))
     end
 
-    style A fill:#e6ffed
-    style B fill:#e6ffed
-    style M fill:#f0f0f0
-    style E fill:#fff5e6
+    SERVER -.-> MESH
+    AGENT  -.-> MESH
+    PI4    -.-> MESH
+    PI3    -.-> MESH
+    MESH ==>|ingressClassName: tailscale<br/>ts.net managed TLS| APPS["app.tail57bf10.ts.net"]
+    LAMBDA --> SERVER
+    LAMBDA --> AGENT
+
+    classDef cloud fill:#fff5e6,stroke:#e0a060
+    classDef edge fill:#e6f0ff,stroke:#6080c0
+    classDef mesh fill:#e6ffed,stroke:#60a070
+    class SERVER,AGENT,LAMBDA,S3 cloud
+    class PI3,PI4 edge
+    class MESH,APPS mesh
 ```
+
+**Resource-allocation rationale:** the AWS pair runs the control plane (uptime independent of the residential uplink); the RPi 4 8 GB carries storage / media / observability (LAN bandwidth + local NVMe latency); the RPi 3 1 GB carries only light edge agents (Tailscale, DNS, node-exporter) — see [`docs/architecture/overview.md`](docs/architecture/overview.md) for the full justification and [`docs/architecture/networking.md`](docs/architecture/networking.md) for the mesh.
 
 | Layer | Tooling |
 |---|---|
-| Infrastructure | Terraform (`infra/aws/`) |
-| Configuration | Ansible (`ansible/`, 6 roles) |
-| Platform | k3s `v1.34.3+k3s1`, ArgoCD `v2.13.2` |
-| Apps | Kustomize manifests synced by ArgoCD App-of-Apps (`k8s/`) |
+| Infrastructure | Terraform / OpenTofu (`infra/aws/`) |
+| Configuration | Ansible (`ansible/`, 7 roles) |
+| Platform | k3s `v1.34.3+k3s1`, ArgoCD `v2.13.2`, Cilium-deferred (Falco eBPF live) |
+| Workloads | Kustomize manifests synced by ArgoCD App-of-Apps (`k8s/`) |
 | Ingress | Tailscale operator (no public ports anywhere) |
-| Secrets | SOPS + age encryption |
+| Admission control | Kyverno ClusterPolicies + Conftest/OPA (CI mirror) |
+| Backup | Velero · daily S3 · 14 d retention |
+| Secrets | SOPS + age, decrypted by ArgoCD CMP at sync time |
+
+### Security posture
+
+- **Shift-left static analysis** — TruffleHog, Trivy, Checkov, Conftest, kubeconform, ansible-lint enforced on every PR. See [`docs/security/static-analysis.md`](docs/security/static-analysis.md).
+- **Supply-chain provenance** — Syft SBOM + Cosign keyless OIDC signing on first-party images; Kyverno verifies signatures at admission. See [`docs/security/supply-chain.md`](docs/security/supply-chain.md).
+- **Runtime enforcement** — Kyverno ClusterPolicies (mirroring Conftest) + Falco eBPF runtime detection. See [`docs/security/runtime-enforcement.md`](docs/security/runtime-enforcement.md).
 
 ## Quick Start
 

@@ -1,0 +1,17 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart alloy
+  ansible.builtin.systemd:
+    name: alloy
+    state: restarted
+  # Gated by the same flag the molecule scenario uses to skip the
+  # initial systemd start (k8s/apps/alloy/ DaemonSet and production
+  # deploys leave this at the default `false`). The handler is still
+  # *notified* on a template change, but the actual restart is a no-op
+  # in test mode — the unit's hardening (MemoryMax, ProtectSystem,
+  # LimitMEMLOCK, ProtectKernelTunables) doesn't survive the Docker-
+  # driven Molecule sandbox even with cgroupns_mode: host.
+  when: not (alloy_skip_service_start | default(false))

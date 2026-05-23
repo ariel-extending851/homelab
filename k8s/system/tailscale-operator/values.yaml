@@ -8,3 +8,10 @@ operatorConfig:
 
 proxyConfig:
   defaultTags: "tag:k8s-operator"
+  # Apply the `default` ProxyClass to any Ingress/Service that does NOT have
+  # the `tailscale.com/proxy-class` annotation. Without this, unannotated
+  # ingresses get the operator's built-in defaults (no nodeSelector) and
+  # bypass our placement rules. The `default` ProxyClass pins proxies to
+  # rasp-pi-04 to co-locate with Pi-resident backends — see
+  # k8s/system/tailscale-operator/proxyclass.yaml for the rationale.
+  defaultProxyClass: "default"

@@ -1,0 +1,27 @@
+# Example structure for ansible/group_vars/alloy_native.sops.yaml
+#
+# The file name matches the inventory group `alloy_native` so Ansible
+# auto-loads it for hosts in that group — no explicit `vars_files:` needed
+# in the deploy playbook.
+#
+# Workflow:
+#   1. Copy this file:    cp alloy_native.sops.yaml.example /tmp/alloy.yaml
+#   2. Replace the placeholder values with real Grafana Cloud credentials.
+#   3. Encrypt + place:   sops -e /tmp/alloy.yaml > ansible/group_vars/alloy_native.sops.yaml
+#   4. Verify:            sops -d ansible/group_vars/alloy_native.sops.yaml | head
+#   5. Securely wipe:     shred -u /tmp/alloy.yaml
+#
+# The block-sops pre-commit hook will reject the file unless it is encrypted.
+# Key fingerprint (must match .sops.yaml age recipient):
+#   age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+#
+# See docs/runbooks/alloy-troubleshooting.md ("Grafana Cloud auth fails")
+# for token rotation procedure.
+
+# ── Grafana Cloud authentication ────────────────────────────────────────────
+grafana_cloud_user: "REPLACE_WITH_GRAFANA_CLOUD_INSTANCE_ID"
+grafana_cloud_token: "REPLACE_WITH_glc_eyJ..."
+
+# ── Endpoint URLs (sensitive — leak tenant region) ──────────────────────────
+grafana_cloud_prom_url: "https://prometheus-prod-XX-prod-REGION-X.grafana.net/api/prom/push"
+grafana_cloud_loki_url: "https://logs-prod-XXX.grafana.net/loki/api/v1/push"

@@ -7,6 +7,7 @@
 	validate verify-all test-homolog test-e2e test-rpi test-shell test-terraform test-security test-security-supply-chain test-k8s-policy-coverage test-dr-execution test-python test-python-ci \
         test-molecule test-molecule-rpi test-molecule-argocd \
         test-molecule-lint test-molecule-k3s test-molecule-tailscale \
+        test-molecule-alloy \
         test-molecule-gatekeeper hybrid-dry-run hybrid-dry-run-prereqs \
         hybrid-dry-run-localstack hybrid-dry-run-ansible clean-local-tf \
         clean-pi-server pi-migrate-to-agent clean docs show-costs \
@@ -31,7 +32,8 @@
 		terraform-staging-init terraform-staging-plan terraform-staging-apply \
 		terraform-staging-destroy terraform-prod-select \
 		cilium-flip-status cilium-flip-node cilium-flip-rollback \
-		unifi-up unifi-down unifi-status
+		unifi-up unifi-down unifi-status \
+		pi-only-deploy pi-only-ansible pi-only-kubeconfig
 
 # Default target
 .DEFAULT_GOAL := help
@@ -391,6 +393,61 @@ ansible-emergency: ## Run emergency recovery playbook
 ansible-optimize-rpi: ## Optimize Raspberry Pi nodes (swap, sysctl, logrotate, RPi 3 boot config)
 	@echo "🍓 Optimizing Raspberry Pi nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/maintenance/optimize_rpi.yml
+
+##@ Pi-only Deployment (no AWS)
+
+pi-only-deploy: ## Deploy the homelab on Raspberry Pis only (rasp-pi-04 = server, rasp-pi-03 = agent)
+	@echo "🍓 Deploying Pi-only homelab (no AWS)..."
+	@python3 bin/deploy_pi_homelab.py
+
+pi-only-ansible: ## Re-run only the Ansible phase against the Pis (skips preflight + kubeconfig)
+	@echo "🍓 Pi-only Ansible run..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml playbooks/site.yml
+
+pi-only-kubeconfig: ## Refresh local kubeconfig from rasp-pi-04 via SSH (no SSM)
+	@echo "🍓 Refreshing kubeconfig from rasp-pi-04..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
+		playbooks/site.yml --tags kubeconfig --limit k3s_server
+
+##@ AWS Lite — always-on Velero backup slice (~$1-2/mo)
+
+aws-velero-deploy: ## Bootstrap or update infra/aws-velero (S3 + IAM for Velero). Idempotent.
+	@echo "☁️ Applying aws-velero (S3 bucket + IAM user, no EC2)..."
+	@cd infra/aws-velero && mise exec -- terraform init -input=false && mise exec -- terraform apply -auto-approve
+
+aws-velero-destroy: ## Destroy infra/aws-velero — REMOVES ALL VELERO BACKUPS from S3. Confirm typed.
+	@echo "⚠️  This will DELETE the homelab-velero-backups-kkuhocyv S3 bucket and all backups."
+	@echo "    Bucket has versioning + lifecycle (Standard→IA→Glacier→expire 365d) — anything"
+	@echo "    older than 365 days is already gone; everything else will be unrecoverable."
+	@read -p "Type 'destroy-velero' to confirm: " confirm && [ "$$confirm" = "destroy-velero" ] || (echo "Aborted." && exit 1)
+	@cd infra/aws-velero && mise exec -- terraform destroy
+
+aws-velero-creds: ## Print Velero IAM access key id (for SOPS re-encryption after key rotation)
+	@cd infra/aws-velero && mise exec -- terraform output -raw velero_aws_access_key_id
+
+##@ AWS Full — on-demand hybrid AWS+Pi cluster (~$24.59/mo with scheduler ON)
+
+hybrid-deploy: ## Deploy hybrid homelab — AWS k3s_server + AWS worker (tier=cloud) + both Pis as agents
+	@echo "☁️🍓 Deploying hybrid homelab (AWS + Pis)..."
+	@cd $(ANSIBLE_DIR) && mise exec -- ansible-playbook \
+		-i inventory/production.yml \
+		-i inventory/terraform_inventory_aws.py \
+		-i inventory/hybrid.yml \
+		playbooks/site.yml
+
+hybrid-ansible: ## Re-run only the Ansible phase against the hybrid cluster (skips terraform)
+	@echo "☁️🍓 Hybrid Ansible run..."
+	@cd $(ANSIBLE_DIR) && mise exec -- ansible-playbook \
+		-i inventory/production.yml \
+		-i inventory/terraform_inventory_aws.py \
+		-i inventory/hybrid.yml \
+		playbooks/site.yml
+
+aws-full-destroy: ## Destroy the AWS Full slice (EC2 fleets + Lambda + audit). Keeps aws-velero alive.
+	@echo "☁️💥 Destroying AWS Full (EC2, Lambda scheduler, CloudTrail, GuardDuty)..."
+	@echo "    aws-velero (S3 + IAM) is NOT touched — backups stay alive."
+	@read -p "Type 'destroy-full' to confirm: " confirm && [ "$$confirm" = "destroy-full" ] || (echo "Aborted." && exit 1)
+	@cd infra/aws && mise exec -- terraform destroy -var-file=<(mise exec -- sops -d terraform.tfvars.sops.yaml)
 
 ##@ Kubernetes Management
 
@@ -819,6 +876,7 @@ test-molecule: ## Run all Molecule role test suites
 	@make test-molecule-argocd
 	@make test-molecule-k3s
 	@make test-molecule-tailscale
+	@make test-molecule-alloy
 	@make test-molecule-gatekeeper
 	@make test-molecule-emergency-recovery
 	@echo "✅ All Molecule tests passed!"
@@ -866,6 +924,11 @@ test-molecule-tailscale: ## Run Molecule tests for tailscale role
 	@echo "🧪 Testing tailscale role with Molecule..."
 	@cd $(ANSIBLE_DIR)/roles/tailscale && $(MISE_EXEC) molecule test
 	@echo "  ✓ tailscale role tests passed."
+
+test-molecule-alloy: ## Run Molecule tests for alloy role (preflight + render + verify)
+	@echo "🧪 Testing alloy role with Molecule..."
+	@cd $(ANSIBLE_DIR)/roles/alloy && $(MISE_EXEC) molecule test
+	@echo "  ✓ alloy role tests passed."
 
 test-molecule-gatekeeper: ## Run Molecule tests for gatekeeper role
 	@echo "🧪 Testing gatekeeper role with Molecule..."

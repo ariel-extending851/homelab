@@ -1,7 +1,11 @@
 # Tests for the S3+DynamoDB remote state backend module.
 
 mock_provider "aws" {}
-mock_provider "random" {}
+# `random` provider mock dropped — the module no longer uses random_string;
+# the bucket suffix is hardcoded in `locals.bucket_suffix` (commit a52f6d9)
+# so re-bootstrapping after a teardown reproduces `homelab-terraform-state-
+# kkuhocyv` instead of generating a new name that breaks every downstream
+# config that hardcodes the bucket.
 
 # ── S3 bucket naming ──────────────────────────────────────────────────────────
 

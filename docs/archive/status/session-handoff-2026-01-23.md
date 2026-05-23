@@ -2,7 +2,7 @@
 
 **Session Date**: Jan 23, 2026
 **Branch**: `fix/grafana-dashboard-provisioning`
-**Pull Request**: #27 (https://github.com/ariel99gf/homelab/pull/27)
+**Pull Request**: #27 (https://github.com/ariel-extending851/homelab/pull/27)
 **Status**: ✅ READY FOR MERGE & VALIDATION
 
 ---
@@ -347,8 +347,8 @@ throttle_percent = (nr_throttled / nr_periods) * 100
 ## 🔗 Quick Links
 
 ### Repository:
-- **GitHub**: https://github.com/ariel99gf/homelab
-- **Pull Request #27**: https://github.com/ariel99gf/homelab/pull/27
+- **GitHub**: https://github.com/ariel-extending851/homelab
+- **Pull Request #27**: https://github.com/ariel-extending851/homelab/pull/27
 - **Branch**: `fix/grafana-dashboard-provisioning`
 
 ### Grafana Access:

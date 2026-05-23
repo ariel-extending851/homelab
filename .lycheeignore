@@ -7,8 +7,27 @@
 # GitHub settings pages (require authentication)
 https://github.com/ariel-extending851/homelab/settings
 
+# Tailscale admin console (auth-required — referenced from sops-key-rotation runbook)
+https://login.tailscale.com/admin/settings/keys
+
+# Sigstore documentation (occasionally rate-limits or blocks unauthenticated HEAD)
+# Referenced from docs/security/supply-chain.md
+^https?://docs\.sigstore\.dev(/.*)?$
+^https?://rekor\.sigstore\.dev(/.*)?$
+
+# GitHub OIDC issuer endpoint — only valid for workflow runtime, returns 401
+# unauthenticated. Referenced from docs/security/supply-chain.md.
+^https?://token\.actions\.githubusercontent\.com(/.*)?$
+
 # Stale versioned documentation URLs
 https://longhorn.io/docs/1.6.0/
 https://grafana.com/docs/loki/latest/logql/performance/
 https://www.terraform.io/docs/testing/
 https://molecule.readthedocs.io/en/latest/configuration/
+
+# Grafana docs canonical URLs — Lychee occasionally gets a non-200 from these
+# (likely Cloudflare's bot challenge), even though they resolve fine in a
+# browser. Referenced from docs/architecture/observability-alloy-ebpf.md and
+# docs/architecture/portfolio-observability-pipeline-README.md.
+^https?://grafana\.com/docs/(alloy|beyla)(/.*)?$
+^https?://grafana\.com/orgs/?$

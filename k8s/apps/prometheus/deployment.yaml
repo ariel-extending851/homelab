@@ -24,9 +24,10 @@ spec:
       labels:
         app: prometheus
     spec:
+      # Pin to AWS worker — TSDB write-heavy + 5Gi PVC don't fit on the Pis.
+      nodeSelector:
+        homelab.io/tier: cloud
       serviceAccountName: prometheus
-      # No nodeAffinity — let the scheduler place this on any available node.
-      # Prefer to avoid the control plane; use resource requests/limits instead.
       containers:
         # Prometheus Application
         - name: prometheus
