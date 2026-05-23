@@ -161,7 +161,7 @@ The bucket configuration is:
 | Trade-off                       | Cost                                                          | Mitigation                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | RPi 3 RAM budget                | Alloy uses ~40 MiB; Beyla adds ~80 MiB                        | `MemoryMax=300M`; Beyla optional per host; preflight refuses install below 128 MiB free                                   |
-| Privileged DaemonSet in cluster | Container runs as UID 0 with `CAP_SYS_ADMIN` + `CAP_BPF`      | Kyverno PolicyException scoped to ns `alloy` only; audited in `docs/security/audit-history.md`; NetworkPolicy denies all egress except DNS / kube-apiserver / Grafana Cloud / S3 / IMDSv2 |
+| `hostPID` + `CAP_SYS_ADMIN` on the cluster DaemonSet | UID 0 with the explicit Beyla cap set (NOT `privileged: true`) | Mirrors the Falco DaemonSet exactly — `privileged: false`, `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]` + explicit adds. Kyverno PolicyException scoped to ns `alloy` only; NetworkPolicy denies all egress except DNS / kube-apiserver / Grafana Cloud / S3 / IMDSv2 |
 | Grafana Cloud free-tier 10k cap | Cardinality drift causes ingest 429s                          | `prometheus.relabel.cardinality_guard` drops cAdvisor `id` / `name`; per-label drop rules in the runbook; alert at 9 k    |
 | S3 PUT API cost (~$0.005 / 1k)  | 12 puts / hour / node ≈ 8.6 k / month → ≈ $0.04 / month / node | Acceptable; 5-min batching is the throttle                                                                                |
 | IAM hop-limit raised 1 → 2      | Slightly larger SSRF surface                                  | 2 is AWS's recommended pod-IMDSv2 ceiling; tested to block from-host SSRF                                                  |
@@ -221,15 +221,12 @@ aws s3 ls "s3://$(mise exec -- terraform -chdir=infra/aws output -raw observabil
    `node-exporter`, `kube-state-metrics`) becomes redundant. Wait for 14
    days of stable Alloy operation (matches GC Loki retention), then
    delete in one focused PR.
-2. **Capability-only DaemonSet.** When Beyla 1.9+ documents the minimum
-   effective capability set, swap `privileged: true` for the explicit
-   capability list. Track in `docs/security/audit-history.md` follow-ups.
-3. **Independent Cilium flip.** Per `ansible/playbooks/cilium-flip.yml`.
+2. **Independent Cilium flip.** Per `ansible/playbooks/cilium-flip.yml`.
    Independent of this work.
-4. **Read-only S3 role for cold-read access.** A separate IAM principal
+3. **Read-only S3 role for cold-read access.** A separate IAM principal
    with `s3:GetObject` only, used by an out-of-band cold-tier query tool.
    Keeps the agent role write-only.
-5. **Profiling pipeline.** Pyroscope (also part of the Grafana stack)
+4. **Profiling pipeline.** Pyroscope (also part of the Grafana stack)
    on the same Alloy binary, gated on RPi 3 memory headroom.
 
 ---

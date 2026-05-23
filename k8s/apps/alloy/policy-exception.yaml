@@ -9,10 +9,8 @@ metadata:
   namespace: alloy
 spec:
   exceptions:
-    - policyName: disallow-privileged-containers
-      ruleNames:
-        - privileged-containers
-        - autogen-privileged-containers
+    # privileged: false on the container, so no disallow-privileged-containers
+    # exception is needed — Falco DaemonSet uses the same pattern.
     - policyName: disallow-host-namespaces
       ruleNames:
         - host-namespaces

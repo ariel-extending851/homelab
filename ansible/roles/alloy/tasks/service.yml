@@ -23,6 +23,14 @@
     state: started
     enabled: true
     daemon_reload: true
+  when: not (alloy_skip_service_start | default(false))
+
+- name: Enable alloy service (test-mode — without starting, for Docker-driven Molecule)
+  ansible.builtin.systemd:
+    name: alloy
+    enabled: true
+    daemon_reload: true
+  when: alloy_skip_service_start | default(false)
 
 - name: Wait for Alloy /-/ready endpoint (async to survive SSM idle limits)
   ansible.builtin.uri:

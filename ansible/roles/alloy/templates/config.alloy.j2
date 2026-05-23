@@ -18,7 +18,7 @@
 // media_streaming_daemon | high_throughput_local_service). Defensive drop
 // rule at the bottom of the cardinality_guard catches any leak of forbidden
 // product names. A CI contract test enforces this at the repo level
-// (bin/tests/contracts/test_no_forbidden_workload_names.py).
+// (bin/tests/test_no_forbidden_workload_names.py).
 
 logging {
   level  = "{{ alloy_log_level }}"

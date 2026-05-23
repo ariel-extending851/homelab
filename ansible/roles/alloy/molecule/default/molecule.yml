@@ -37,6 +37,10 @@ provisioner:
         # Bypass real binary download — converge.yml lays down a stub
         # before the role runs.
         alloy_skip_download: true
+        # Skip the systemd start step — the Docker-driven sandbox does not
+        # support the unit's CAP_BPF / MemoryMax / ProtectKernelTunables
+        # interactions. Enable-only confirms the unit drops correctly.
+        alloy_skip_service_start: true
         # Force the easier branch of the systemd unit (no Beyla on the
         # Docker-driven sandbox; the kernel inside the container does not
         # expose CAP_BPF properly).

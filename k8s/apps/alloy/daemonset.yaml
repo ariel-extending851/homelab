@@ -60,22 +60,26 @@ spec:
             - /etc/alloy/config.alloy
 
           securityContext:
-            # Privileged required for Beyla CO-RE probe load + perf_event_open.
-            # The capability-only path is tracked as follow-up in
-            # docs/security/audit-history.md once Beyla 1.9+ documents the
-            # minimum effective set.
-            privileged: true
+            # Beyla eBPF needs an explicit capability set, not full
+            # privileged mode. Mirrors the Falco DaemonSet pattern
+            # (k8s/apps/falco/daemonset.yaml:51) — k8s rejects privileged=true
+            # with allowPrivilegeEscalation=false, so we run unprivileged
+            # with the minimum effective cap set for CO-RE + uprobes +
+            # cross-PID /proc reads.
+            privileged: false
+            allowPrivilegeEscalation: false
             runAsUser: 0
-            allowPrivilegeEscalation: true
             capabilities:
+              drop:
+                - ALL
               add:
-                - SYS_ADMIN
-                - BPF
-                - PERFMON
-                - SYS_PTRACE
-                - DAC_READ_SEARCH
-                - NET_ADMIN
-                - NET_RAW
+                - SYS_ADMIN          # /sys/kernel/debug access for bpf()
+                - BPF                # program load
+                - PERFMON            # perf_event_open
+                - SYS_PTRACE         # cross-PID /proc/<pid>/maps
+                - DAC_READ_SEARCH    # read host /proc / /sys regardless of perms
+                - NET_ADMIN          # tc / socket filter attach
+                - NET_RAW            # raw socket capture for the network probes
 
           env:
             # Non-sensitive runtime context — kept inline so the secret stays

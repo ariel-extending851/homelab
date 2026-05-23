@@ -223,7 +223,7 @@ have changed).
   with the `sre` agent (`/incident`) and link this runbook in the ticket.
 - Suspected data leak (workload product name appeared in a label) →
   immediately revert the offending commit, then verify the contract test
-  at `bin/tests/contracts/test_no_forbidden_workload_names.py` did NOT
+  at `bin/tests/test_no_forbidden_workload_names.py` did NOT
   flag the change (if it didn't, the test allowlist needs tightening).
 - Token leak in plaintext logs → rotate (Symptom 3), then audit the
   affected log scrape range and consider purging the Grafana Cloud

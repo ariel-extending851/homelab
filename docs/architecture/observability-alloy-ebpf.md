@@ -129,7 +129,7 @@ pod annotation in the cluster) drives a `service_class` telemetry label.
    against `service`, `job`, `container_name`, and drop any series whose
    labels accidentally leak a forbidden product name.
 3. **At commit time** — the contract test at
-   [`../../bin/tests/contracts/test_no_forbidden_workload_names.py`](../../bin/tests/contracts/test_no_forbidden_workload_names.py)
+   [`../../bin/tests/test_no_forbidden_workload_names.py`](../../bin/tests/test_no_forbidden_workload_names.py)
    scans `k8s/apps/alloy/`, `ansible/roles/alloy/`, and this very
    documentation, and fails CI if any forbidden product name appears
    outside an explicit drop-regex declaration.
@@ -164,8 +164,12 @@ none of which is on its own load-bearing.
   access keys anywhere in the manifest. IAM policy is write-only:
   `s3:PutObject`, `s3:AbortMultipartUpload`. No `GetObject`, no
   `DeleteObject` — cold reads happen out-of-band with a separate role.
-- Privileged container required for Beyla CO-RE probe load; documented
-  + Kyverno-exempted in [`../security/runtime-enforcement.md`](../security/runtime-enforcement.md).
+- **Capabilities-only container**, not privileged. `privileged: false`,
+  `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]` plus the
+  explicit `CAP_SYS_ADMIN + CAP_BPF + CAP_PERFMON + CAP_SYS_PTRACE +
+  CAP_DAC_READ_SEARCH + CAP_NET_ADMIN + CAP_NET_RAW` add list. Same shape
+  as the Falco DaemonSet — see [`../security/runtime-enforcement.md`](../security/runtime-enforcement.md)
+  and `k8s/apps/falco/daemonset.yaml:51`.
 
 ---
 
@@ -197,7 +201,9 @@ Phase 2 = idempotency + retry + observability + decommission docs.
 - Edge nodes survive Grafana Cloud outages via the per-node WAL.
 
 **Costs / risks:**
-- One privileged DaemonSet (Kyverno exception is scoped, audited).
+- One DaemonSet with `hostPID: true` + `CAP_SYS_ADMIN` (Kyverno exception
+  is scoped to ns=alloy + app=alloy, audited). Strictly less privilege
+  than `privileged: true`; identical shape to the Falco DaemonSet.
 - Grafana Cloud 10 k active-series cap requires constant cardinality
   discipline — `prometheus.relabel.cardinality_guard` is the throttle.
 - IAM hop-limit bump from 1 to 2 (still the AWS-recommended ceiling for

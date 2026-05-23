@@ -12,7 +12,7 @@ This page is the historical record — entries here describe the state at the ti
 
 ## 2026-05-23 — Alloy + eBPF observability pipeline (planned change)
 
-Introduces a privileged DaemonSet, a write-only IAM policy on the existing `hl-k3s-node` role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.
+Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a write-only IAM policy on the existing `hl-k3s-node` role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.
 
 ### Scope
 
@@ -24,17 +24,17 @@ Introduces a privileged DaemonSet, a write-only IAM policy on the existing `hl-k
 
 ### Decisions
 
-- **Privileged DaemonSet accepted.** Beyla CO-RE probes require `CAP_SYS_ADMIN + CAP_BPF + CAP_PERFMON + CAP_SYS_PTRACE + CAP_DAC_READ_SEARCH` plus `hostPID: true`. Capability-only path tracked as follow-up once Beyla 1.9+ documents the minimum effective set. Kyverno `PolicyException` (at `k8s/apps/alloy/policy-exception.yaml`) is scoped narrowly: namespace `alloy` and label selector `app: alloy` only.
+- **Capabilities-only DaemonSet (NOT privileged).** Beyla CO-RE probes need `CAP_SYS_ADMIN + CAP_BPF + CAP_PERFMON + CAP_SYS_PTRACE + CAP_DAC_READ_SEARCH + CAP_NET_ADMIN + CAP_NET_RAW` plus `hostPID: true`. The DaemonSet sets `privileged: false` + `allowPrivilegeEscalation: false` + `capabilities.drop: [ALL]` + the explicit add list — strictly less than full privilege and identical in shape to the Falco DaemonSet (`k8s/apps/falco/daemonset.yaml:51`). Kyverno `PolicyException` (at `k8s/apps/alloy/policy-exception.yaml`) covers only `disallow-host-namespaces` (hostPID) and `disallow-capabilities` (the cap add list). No exemption needed for `disallow-privileged-containers`.
 - **Hop-limit 1 → 2 accepted** as the AWS-recommended ceiling for pod IMDSv2 access. The previous test asserting `== 1` (`infra/aws/modules/compute/tests/security.tftest.hcl`) has been updated to assert `== 2` exactly (must not exceed).
 - **S3 IAM is write-only.** Cold reads are out-of-scope for this PR; a separate read-only IAM principal will be added in a future PR for cold-tier query tooling.
-- **Workload-name compliance enforced in three layers** — source relabel removes pod and container name labels, sink relabel defensive guard catches any leak through, and the contract test at `bin/tests/contracts/test_no_forbidden_workload_names.py` fails the build at commit time. Belt-and-braces against accidental product-name exposure in Grafana Cloud labels.
+- **Workload-name compliance enforced in three layers** — source relabel removes pod and container name labels, sink relabel defensive guard catches any leak through, and the contract test at `bin/tests/test_no_forbidden_workload_names.py` fails the build at commit time. Belt-and-braces against accidental product-name exposure in Grafana Cloud labels.
 
 ### Residual risks
 
 | # | Risk | Class | Owner | Review-by | Notes |
 |---|---|---|---|---|---|
 | 5 | Grafana Cloud endpoint URLs (`grafana_cloud_prom_url`, `grafana_cloud_loki_url`) ship plaintext in SOPS file | secret-handling | @ariel-extending851 | 2026-08-01 | Existing `.sops.yaml` catch-all encrypts `*Token` / `*Key` / `*Secret` but not URL fields. URLs leak the GC tenant region (mildly sensitive). The path-specific `.sops.yaml` rule (encrypting `grafana_cloud_prom_url` and `_loki_url`) needs to be added by editing `.sops.yaml` through `sops` itself — the pre-commit `block-sops.sh` hook treats `.sops.yaml` as encrypted (false positive on the config file matching `*.sops.yaml`) and blocks direct edits. Tracked. |
-| 6 | Privileged DaemonSet (Alloy + Beyla) | runtime-permission | @ariel-extending851 | 2026-08-01 | Kyverno `PolicyException` scoped to ns `alloy` only; NetworkPolicy denies all non-essential egress; future Beyla release should support capability-only mode. |
+| 6 | DaemonSet with `hostPID: true` + `CAP_SYS_ADMIN` (Alloy / Beyla) | runtime-permission | @ariel-extending851 | 2026-08-01 | Capability list mirrors the Falco DaemonSet — drop-ALL + explicit adds. No `privileged: true`. Kyverno `PolicyException` scoped to ns `alloy` only; NetworkPolicy denies all non-essential egress; covered by Checkov baseline. |
 | 7 | IMDSv2 `http_put_response_hop_limit` raised 1 → 2 on `k3s_server` and `k3s_agent` launch templates | imds-exposure | @ariel-extending851 | 2026-08-01 | Required for pod-network access to `169.254.169.254`. 2 is AWS's documented ceiling; from-host SSRF still blocked by the standard IMDSv2 token-required + 2-hop guard. |
 
 ### Mitigations active

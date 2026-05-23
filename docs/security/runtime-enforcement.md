@@ -72,7 +72,7 @@ When a workload legitimately needs a configuration that one of the policies abov
 
 | PolicyException | Namespace | Selector | Policies exempted | Justification |
 |---|---|---|---|---|
-| `alloy-ebpf-privileged` | `alloy` | `app: alloy` | `disallow-privileged-containers`, `disallow-host-namespaces`, `disallow-capabilities` | Grafana Beyla requires `privileged: true` + `hostPID: true` + `CAP_BPF` / `CAP_PERFMON` / `CAP_SYS_ADMIN` to load CO-RE eBPF probes and read `/proc/<pid>/maps` across PID namespaces. NetworkPolicy + write-only IAM scope blast radius. See [`audit-history.md`](audit-history.md) (2026-05-23) and [`../architecture/observability-alloy-ebpf.md`](../architecture/observability-alloy-ebpf.md). Manifest: [`k8s/apps/alloy/policy-exception.yaml`](../../k8s/apps/alloy/policy-exception.yaml). |
+| `alloy-ebpf-privileged` | `alloy` | `app: alloy` | `disallow-host-namespaces`, `disallow-capabilities` | Grafana Beyla needs `hostPID: true` + `CAP_BPF` / `CAP_PERFMON` / `CAP_SYS_ADMIN` to load CO-RE eBPF probes and read `/proc/<pid>/maps` across PID namespaces. Runs `privileged: false` + `allowPrivilegeEscalation: false` + `capabilities.drop: [ALL]` + explicit adds — same shape as the Falco DaemonSet (`k8s/apps/falco/daemonset.yaml:51`). NetworkPolicy + write-only IAM scope blast radius. See [`audit-history.md`](audit-history.md) (2026-05-23) and [`../architecture/observability-alloy-ebpf.md`](../architecture/observability-alloy-ebpf.md). Manifest: [`../../k8s/apps/alloy/policy-exception.yaml`](../../k8s/apps/alloy/policy-exception.yaml). |
 
 ### 2.1 Mode promotion procedure
 

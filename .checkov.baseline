@@ -173,6 +173,34 @@
             ]
         },
         {
+            "file": "/infra/aws/modules/observability/main.tf",
+            "findings": [
+                {
+                    "resource": "module.observability[0].aws_s3_bucket.cold_storage",
+                    "check_ids": [
+                        "CKV2_AWS_61",
+                        "CKV2_AWS_62",
+                        "CKV_AWS_144",
+                        "CKV_AWS_145",
+                        "CKV_AWS_18"
+                    ]
+                }
+            ]
+        },
+        {
+            "file": "/infra/aws/modules/compute/main.tf",
+            "findings": [
+                {
+                    "resource": "module.k3s_cluster.aws_iam_role_policy.k3s_node_observability_s3[0]",
+                    "check_ids": [
+                        "CKV_AWS_288",
+                        "CKV_AWS_290",
+                        "CKV_AWS_355"
+                    ]
+                }
+            ]
+        },
+        {
             "file": "/infra/aws/modules/network/main.tf",
             "findings": [
                 {
@@ -228,6 +256,25 @@
                         "CKV_K8S_29",
                         "CKV_K8S_31",
                         "CKV_K8S_38"
+                    ]
+                }
+            ]
+        },
+        {
+            "file": "/k8s/apps/alloy/daemonset.yaml",
+            "findings": [
+                {
+                    "resource": "DaemonSet.alloy.alloy",
+                    "check_ids": [
+                        "CKV_K8S_17",
+                        "CKV_K8S_19",
+                        "CKV_K8S_22",
+                        "CKV_K8S_23",
+                        "CKV_K8S_25",
+                        "CKV_K8S_29",
+                        "CKV_K8S_31",
+                        "CKV_K8S_38",
+                        "CKV_K8S_40"
                     ]
                 }
             ]
