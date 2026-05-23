@@ -19,8 +19,11 @@ EnvironmentFile=/etc/default/alloy
 # Beyla eBPF probes need these capabilities. Avoiding full privilege +
 # NoNewPrivileges=false lets `bpf()`, perf_event_open(), and PTRACE work
 # without granting the process the entire root capability set.
-AmbientCapabilities=CAP_SYS_ADMIN CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
-CapabilityBoundingSet=CAP_SYS_ADMIN CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+# CAP_NET_RAW intentionally NOT included — Beyla's HTTP/TCP RED probes
+# run as uprobes / tracepoints, not raw socket capture (see Falco's
+# matching cap list in k8s/apps/falco/daemonset.yaml).
+AmbientCapabilities=CAP_SYS_ADMIN CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_BPF CAP_PERFMON CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
 NoNewPrivileges=false
 
 # Beyla pins eBPF maps; the kernel charges them against RLIMIT_MEMLOCK.

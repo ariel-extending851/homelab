@@ -74,6 +74,13 @@ spec:
             privileged: false
             allowPrivilegeEscalation: false
             runAsUser: 0
+            # Container rootfs is read-only — Alloy only writes to the WAL
+            # (emptyDir at /var/lib/alloy) and to /tmp (emptyDir, used by
+            # the awss3 exporter's multipart staging). Mirrors the
+            # otel-collector daemonset's pattern (k8s/apps/otel-collector/
+            # daemonset.yaml:37). Reduces blast radius if the Alloy binary
+            # is exploited — attacker cannot drop tooling on /, /usr, /etc.
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -84,7 +91,9 @@ spec:
                 - SYS_PTRACE         # cross-PID /proc/<pid>/maps
                 - DAC_READ_SEARCH    # read host /proc / /sys regardless of perms
                 - NET_ADMIN          # tc / socket filter attach
-                - NET_RAW            # raw socket capture for the network probes
+                # NET_RAW intentionally NOT added — Beyla's HTTP/TCP RED
+                # probes run as uprobes / tracepoints, not raw socket
+                # capture. Mirrors Falco's cap list (also no NET_RAW).
 
           env:
             # Non-sensitive runtime context — kept inline so the secret stays
@@ -138,6 +147,10 @@ spec:
               readOnly: true
             - name: wal
               mountPath: /var/lib/alloy
+            # Writable scratch — required because rootfs is read-only.
+            # Used by the awss3 exporter's multipart staging.
+            - name: tmp
+              mountPath: /tmp
             - name: sys-kernel-debug
               mountPath: /sys/kernel/debug
             - name: proc
@@ -164,6 +177,11 @@ spec:
         - name: wal
           emptyDir:
             sizeLimit: 4Gi
+        # /tmp scratch — multipart staging for the awss3 exporter; also
+        # the only writable location under readOnlyRootFilesystem: true.
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
         # eBPF / Beyla mounts. All host paths except WAL are readOnly.
         - name: sys-kernel-debug
           hostPath:

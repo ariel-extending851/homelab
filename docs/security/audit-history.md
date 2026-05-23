@@ -45,6 +45,15 @@ Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a wr
 - `force_destroy = false` on the bucket (archived logs evidentiary).
 - Contract test in CI blocks any commit that leaks a forbidden product name.
 
+### Convergent state — post-CI hardening (same PR)
+
+After the initial CI cycle reached 18/18 green, a follow-up security audit removed two avoidable elevations:
+
+- **`CAP_NET_RAW` dropped** from both the DaemonSet (`k8s/apps/alloy/daemonset.yaml`) and the native systemd unit (`ansible/roles/alloy/templates/alloy.service.j2`). Beyla's HTTP/TCP RED probes run via uprobes / tracepoints, not raw socket capture — the cap was over-privileged. Matches the Falco precedent (also no `NET_RAW`).
+- **`readOnlyRootFilesystem: true`** added to the DaemonSet container, paired with a 256 MiB `/tmp` emptyDir for the awss3 exporter's multipart staging. Mirrors the otel-collector daemonset pattern. Reduces blast radius if the binary is ever exploited — no writable rootfs to drop tooling.
+
+The Pi-side systemd unit already has `ProtectSystem=full` + `PrivateTmp=true`, so the filesystem hardening only needed to ship for the cluster mode.
+
 Linked architecture: [`../architecture/observability-alloy-ebpf.md`](../architecture/observability-alloy-ebpf.md).
 Linked runbook: [`../runbooks/alloy-troubleshooting.md`](../runbooks/alloy-troubleshooting.md).
 
