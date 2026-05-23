@@ -44,7 +44,8 @@ spec:
       # and granted a Kyverno PolicyException scoped to namespace `alloy`.
       hostPID: true
       hostNetwork: false
-      dnsPolicy: ClusterFirstWithHostNet
+      # Default ClusterFirst DNS is correct since we use the cluster network.
+      # ClusterFirstWithHostNet is only for hostNetwork: true.
 
       priorityClassName: system-node-critical
 
@@ -156,7 +157,7 @@ spec:
         - name: config
           configMap:
             name: alloy-config
-            defaultMode: 0o644
+            defaultMode: 0644
         # Per-node WAL — survives Grafana Cloud outages without losing
         # 5+ minutes of scrapes. emptyDir is correct here: WAL contents are
         # disposable and the pod is per-node by definition.
