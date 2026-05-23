@@ -50,7 +50,11 @@ spec:
 
       containers:
         - name: alloy
-          image: grafana/alloy:v1.5.1@sha256:1ec5e09b9203cdce4c52ef6fac4f54d8ed47f5e09b3e62bab1aafc4dbd62a9cd
+          # Pinned by tag only — operator runs `crane digest grafana/alloy:v1.5.1`
+          # and appends @sha256:<digest> before merging to main, per the supply
+          # chain hygiene introduced in PR-A (see docs/security/audit-history.md
+          # 2026-05-07 entry: "15 image refs missing @sha256: digest pin").
+          image: grafana/alloy:v1.5.1
           imagePullPolicy: IfNotPresent
 
           args:

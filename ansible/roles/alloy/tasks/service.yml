@@ -37,10 +37,10 @@
     url: "http://127.0.0.1:{{ alloy_http_port }}/-/ready"
     status_code: 200
     timeout: 5
-  register: _alloy_ready
+  register: alloy_ready
   retries: 24
   delay: 5
-  until: _alloy_ready.status == 200
+  until: alloy_ready.status == 200
   async: 180
   poll: 10
   changed_when: false

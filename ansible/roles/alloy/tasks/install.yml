@@ -6,7 +6,7 @@
 
 - name: Map host architecture to Grafana release suffix
   ansible.builtin.set_fact:
-    _alloy_release_arch: "{{ alloy_arch_map[ansible_architecture] }}"
+    alloy_release_arch: "{{ alloy_arch_map[ansible_architecture] }}"
 
 - name: Ensure dependencies for Alloy binary install are present (Debian / Ubuntu)
   ansible.builtin.apt:
@@ -48,22 +48,22 @@
 
 - name: Download Alloy archive (SHA256 verified via upstream SHA256SUMS)
   ansible.builtin.get_url:
-    url: "{{ alloy_download_url_base }}/v{{ alloy_version }}/alloy-linux-{{ _alloy_release_arch }}.zip"
-    dest: "/tmp/alloy-{{ alloy_version }}-{{ _alloy_release_arch }}.zip"
+    url: "{{ alloy_download_url_base }}/v{{ alloy_version }}/alloy-linux-{{ alloy_release_arch }}.zip"
+    dest: "/tmp/alloy-{{ alloy_version }}-{{ alloy_release_arch }}.zip"
     checksum: "sha256:{{ alloy_download_url_base }}/v{{ alloy_version }}/SHA256SUMS"
     mode: "0640"
     timeout: 120
-  register: _alloy_archive
+  register: alloy_archive
   when: not (alloy_skip_download | default(false))
 
 - name: Stat the installed binary to decide whether to extract
   ansible.builtin.stat:
     path: /usr/local/bin/alloy
-  register: _alloy_existing_binary
+  register: alloy_existing_binary
 
 - name: Extract Alloy binary into /usr/local/bin (only when archive is new or binary is missing)
   ansible.builtin.unarchive:
-    src: "/tmp/alloy-{{ alloy_version }}-{{ _alloy_release_arch }}.zip"
+    src: "/tmp/alloy-{{ alloy_version }}-{{ alloy_release_arch }}.zip"
     dest: /usr/local/bin
     remote_src: true
     owner: root
@@ -72,19 +72,19 @@
     creates: /usr/local/bin/alloy
   when:
     - not (alloy_skip_download | default(false))
-    - _alloy_archive.changed or not _alloy_existing_binary.stat.exists
+    - alloy_archive.changed or not alloy_existing_binary.stat.exists
 
 - name: Verify Alloy reports the expected version
   ansible.builtin.command: /usr/local/bin/alloy --version
-  register: _alloy_version_check
+  register: alloy_version_check
   changed_when: false
   failed_when:
-    - _alloy_version_check.rc != 0
-    - alloy_version not in _alloy_version_check.stdout
+    - alloy_version_check.rc != 0
+    - alloy_version not in alloy_version_check.stdout
   when: not (alloy_skip_download | default(false))
 
 - name: Clean up downloaded archive
   ansible.builtin.file:
-    path: "/tmp/alloy-{{ alloy_version }}-{{ _alloy_release_arch }}.zip"
+    path: "/tmp/alloy-{{ alloy_version }}-{{ alloy_release_arch }}.zip"
     state: absent
   when: not (alloy_skip_download | default(false))

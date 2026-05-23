@@ -34,15 +34,15 @@
 
 - name: Read free memory facts on memory-constrained hosts
   ansible.builtin.set_fact:
-    _alloy_memfree_mb: "{{ ansible_memfree_mb | default(ansible_memtotal_mb // 4) | int }}"
+    alloy_memfree_mb: "{{ ansible_memfree_mb | default(ansible_memtotal_mb // 4) | int }}"
   when: "'raspberry_pi' in group_names"
 
 - name: Assert minimum free memory on Raspberry Pi hosts
   ansible.builtin.assert:
     that:
-      - _alloy_memfree_mb | int >= alloy_min_free_mem_mb | int
+      - alloy_memfree_mb | int >= alloy_min_free_mem_mb | int
     fail_msg: >-
-      Only {{ _alloy_memfree_mb }} MiB free on {{ inventory_hostname }};
+      Only {{ alloy_memfree_mb }} MiB free on {{ inventory_hostname }};
       Alloy preflight requires >= {{ alloy_min_free_mem_mb }} MiB to stay
       below the documented RPi 3 OOM threshold. Free memory first or set
       `alloy_enable_beyla: false` in host_vars to skip the heaviest component.
@@ -52,12 +52,12 @@
 - name: Probe for BTF (CO-RE) support — warn if missing, Beyla degrades to kprobes
   ansible.builtin.stat:
     path: /sys/kernel/btf/vmlinux
-  register: _alloy_btf_probe
+  register: alloy_btf_probe
 
 - name: Surface BTF probe result
   ansible.builtin.debug:
     msg: >-
       {{ 'BTF present at /sys/kernel/btf/vmlinux ✓ (Beyla CO-RE enabled)'
-         if _alloy_btf_probe.stat.exists
+         if alloy_btf_probe.stat.exists
          else 'WARNING: BTF missing — Beyla will fall back to kprobes. Install '
               'linux-headers-' + ansible_kernel + ' to restore CO-RE.' }}
