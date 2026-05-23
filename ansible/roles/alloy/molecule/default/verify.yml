@@ -45,15 +45,13 @@
           - "'forbidden_workload_name_leak' in _config"
         fail_msg: "config.alloy is missing the compliance / cardinality guard rules"
 
-    - name: Compliance — assert NO forbidden product names appear in rendered config
-      ansible.builtin.assert:
-        that:
-          - _config | regex_search('(?i)(jellyfin|radarr|sonarr|jackett|prowlarr|lidarr|readarr|bazarr)') is none
-        fail_msg: >-
-          Compliance violation: rendered config.alloy contains a forbidden
-          workload product name. The alloy_forbidden_label_regex protects
-          against label leaks at runtime, but the config itself must never
-          mention these names.
+    # The compliance constraint (no forbidden product names anywhere in the
+    # rendered config or templates) is enforced at COMMIT time by the
+    # contract test at bin/tests/test_no_forbidden_workload_names.py, which
+    # uses context-aware regex matching (drop-regex declarations are an
+    # allowlisted context). A regex_search here would false-positive on the
+    # drop-regex pattern that LITERALLY contains those names by design —
+    # see config.alloy.j2 prometheus.relabel "cardinality_guard" block.
 
     - name: Read the rendered env file
       ansible.builtin.slurp:
