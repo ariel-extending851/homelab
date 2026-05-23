@@ -18,8 +18,12 @@ galaxy_info:
         - jammy
         - noble
     - name: Amazon
+      # Ansible Galaxy's schema for the "Amazon" platform only allows
+      # Amazon Linux 2 versions {6.1, 7.1, 7.2, all}. AL2023 is supported
+      # at runtime — the "all" wildcard covers it without tripping the
+      # schema validator.
       versions:
-        - "2023"
+        - all
   galaxy_tags:
     - observability
     - monitoring
