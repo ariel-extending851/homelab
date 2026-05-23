@@ -20,9 +20,8 @@ spec:
       labels:
         app: grafana
     spec:
-      # Pin to AWS worker — co-located with prometheus/loki it depends on.
-      nodeSelector:
-        homelab.io/tier: cloud
+      # No nodeAffinity — let the scheduler place this on any available node.
+      # Prefer to avoid the control plane; use resource requests/limits instead.
       containers:
         # Grafana Application
         - name: grafana

@@ -62,12 +62,16 @@
   changed_when: "'created' in cmp_apply.stdout or 'configured' in cmp_apply.stdout"
   when: not ansible_check_mode
 
+- name: Check current argocd-repo-server sidecar containers
+  ansible.builtin.command: >
+    kubectl get deployment argocd-repo-server -n {{ argocd_namespace }}
+    -o jsonpath='{.spec.template.spec.containers[*].name}'
+  environment: "{{ kubeconfig_env }}"
+  register: repo_server_containers
+  changed_when: false
+  when: not ansible_check_mode
+
 - name: Apply strategic merge patch to argocd-repo-server (adds cmp-sops sidecar)
-  # kubectl patch is itself idempotent: on a no-op it returns
-  # "deployment.apps/... patched (no change)". We always apply so that
-  # later edits to k8s/gitops/sops/argocd-repo-server-patch.yaml (e.g.,
-  # removing the amd64 nodeSelector that blocked Pi-only deploys) are
-  # picked up even when the sidecar is already present.
   ansible.builtin.command: >
     kubectl patch deployment argocd-repo-server
     -n {{ argocd_namespace }}
@@ -75,16 +79,16 @@
     --patch-file /tmp/argocd-sops/argocd-repo-server-patch.yaml
   environment: "{{ kubeconfig_env }}"
   register: repo_server_patch
-  changed_when:
-    - "'patched' in repo_server_patch.stdout"
-    - "'no change' not in repo_server_patch.stdout"
-  when: not ansible_check_mode
+  changed_when: "'patched' in repo_server_patch.stdout"
+  when:
+    - not ansible_check_mode
+    - "'cmp-sops' not in repo_server_containers.stdout"
 
 - name: Wait for argocd-repo-server to restart with cmp-sops sidecar
   ansible.builtin.command: >
     kubectl rollout status deployment/argocd-repo-server
     -n {{ argocd_namespace }}
-    --timeout=300s
+    --timeout=120s
   environment: "{{ kubeconfig_env }}"
   register: argocd_repo_rollout
   changed_when: false

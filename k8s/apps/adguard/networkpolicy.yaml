@@ -45,7 +45,7 @@ spec:
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
-        - { protocol: TCP, port: 80 }
+        - { protocol: TCP, port: 3000 }
   egress:
     # In-cluster DNS for any internal hostnames AdGuard itself resolves.
     - to:

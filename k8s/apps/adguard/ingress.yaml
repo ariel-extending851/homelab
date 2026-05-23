@@ -13,7 +13,7 @@ spec:
     service:
       name: adguard-service
       port:
-        number: 80
+        number: 3000
   tls:
     - hosts:
         - adguard.tail57bf10.ts.net

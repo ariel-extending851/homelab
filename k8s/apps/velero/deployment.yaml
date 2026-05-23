@@ -24,13 +24,6 @@ spec:
         prometheus.io/port: "8085"
         prometheus.io/path: /metrics
     spec:
-      # Pin to rasp-pi-04 — Velero runs in the AWS Lite slice (no AWS cluster
-      # required). Pi-04 has 8GB RAM (vs pi-03's 1GB) and already hosts the
-      # heavy media-stack, so the extra ~150Mi for Velero fits. S3 + IAM
-      # credentials come from infra/aws-velero/ via the velero-aws-credentials
-      # Secret (SOPS-encrypted).
-      nodeSelector:
-        kubernetes.io/hostname: rasp-pi-04
       serviceAccountName: velero
       restartPolicy: Always
       # Velero ships without object-store backends in the base image. The AWS

@@ -45,7 +45,8 @@
                 {
                     "resource": "aws_dynamodb_table.terraform_state_lock",
                     "check_ids": [
-                        "CKV_AWS_119"
+                        "CKV_AWS_119",
+                        "CKV_AWS_28"
                     ]
                 },
                 {
@@ -61,33 +62,13 @@
             ]
         },
         {
-            "file": "/infra/aws-velero/main.tf",
+            "file": "/infra/aws-oidc/main.tf",
             "findings": [
                 {
-                    "resource": "aws_iam_user.velero",
+                    "resource": "aws_iam_role_policy.terraform_plan_readonly",
                     "check_ids": [
-                        "CKV_AWS_273"
-                    ]
-                },
-                {
-                    "resource": "aws_iam_user_policy.velero_backup_access",
-                    "check_ids": [
-                        "CKV_AWS_40"
-                    ]
-                },
-                {
-                    "resource": "aws_s3_bucket.velero_backups",
-                    "check_ids": [
-                        "CKV2_AWS_62",
-                        "CKV_AWS_144",
-                        "CKV_AWS_145",
-                        "CKV_AWS_18"
-                    ]
-                },
-                {
-                    "resource": "aws_s3_bucket_lifecycle_configuration.velero_backups",
-                    "check_ids": [
-                        "CKV_AWS_300"
+                        "CKV_AWS_288",
+                        "CKV_AWS_355"
                     ]
                 }
             ]
@@ -113,6 +94,18 @@
             "file": "/infra/aws/main.tf",
             "findings": [
                 {
+                    "resource": "aws_iam_user.velero",
+                    "check_ids": [
+                        "CKV_AWS_273"
+                    ]
+                },
+                {
+                    "resource": "aws_iam_user_policy.velero_backup_access",
+                    "check_ids": [
+                        "CKV_AWS_40"
+                    ]
+                },
+                {
                     "resource": "aws_s3_bucket.ssm_transfer",
                     "check_ids": [
                         "CKV2_AWS_62",
@@ -122,7 +115,22 @@
                     ]
                 },
                 {
+                    "resource": "aws_s3_bucket.velero_backups",
+                    "check_ids": [
+                        "CKV2_AWS_62",
+                        "CKV_AWS_144",
+                        "CKV_AWS_145",
+                        "CKV_AWS_18"
+                    ]
+                },
+                {
                     "resource": "aws_s3_bucket_lifecycle_configuration.ssm_transfer",
+                    "check_ids": [
+                        "CKV_AWS_300"
+                    ]
+                },
+                {
+                    "resource": "aws_s3_bucket_lifecycle_configuration.velero_backups",
                     "check_ids": [
                         "CKV_AWS_300"
                     ]
@@ -165,23 +173,6 @@
             ]
         },
         {
-            "file": "/infra/aws/modules/compute/main.tf",
-            "findings": [
-                {
-                    "resource": "module.k3s_cluster.aws_launch_template.k3s_agent",
-                    "check_ids": [
-                        "CKV_AWS_341"
-                    ]
-                },
-                {
-                    "resource": "module.k3s_cluster.aws_launch_template.k3s_server",
-                    "check_ids": [
-                        "CKV_AWS_341"
-                    ]
-                }
-            ]
-        },
-        {
             "file": "/infra/aws/modules/network/main.tf",
             "findings": [
                 {
@@ -189,20 +180,6 @@
                     "check_ids": [
                         "CKV2_AWS_5",
                         "CKV_AWS_382"
-                    ]
-                }
-            ]
-        },
-        {
-            "file": "/infra/aws/modules/observability/main.tf",
-            "findings": [
-                {
-                    "resource": "module.observability[0].aws_s3_bucket.cold_storage",
-                    "check_ids": [
-                        "CKV2_AWS_62",
-                        "CKV_AWS_144",
-                        "CKV_AWS_145",
-                        "CKV_AWS_18"
                     ]
                 }
             ]
@@ -229,34 +206,12 @@
                 {
                     "resource": "Deployment.adguard.adguardhome",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_19",
                         "CKV_K8S_22",
-                        "CKV_K8S_23",
                         "CKV_K8S_25",
                         "CKV_K8S_31",
-                        "CKV_K8S_38",
-                        "CKV_K8S_40"
-                    ]
-                }
-            ]
-        },
-        {
-            "file": "/k8s/apps/alloy/daemonset.yaml",
-            "findings": [
-                {
-                    "resource": "DaemonSet.alloy.alloy",
-                    "check_ids": [
-                        "CKV_K8S_15",
-                        "CKV_K8S_17",
-                        "CKV_K8S_22",
-                        "CKV_K8S_23",
-                        "CKV_K8S_25",
-                        "CKV_K8S_29",
-                        "CKV_K8S_31",
-                        "CKV_K8S_35",
-                        "CKV_K8S_38",
-                        "CKV_K8S_39",
-                        "CKV_K8S_40"
+                        "CKV_K8S_38"
                     ]
                 }
             ]
@@ -267,6 +222,7 @@
                 {
                     "resource": "Deployment.blackbox.blackbox-exporter",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
                         "CKV_K8S_38"
@@ -315,6 +271,7 @@
                 {
                     "resource": "Deployment.grafana.grafana",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_22",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
@@ -330,6 +287,7 @@
                 {
                     "resource": "Deployment.kube-state-metrics.kube-state-metrics",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
                         "CKV_K8S_38"
@@ -343,6 +301,7 @@
                 {
                     "resource": "Deployment.loki.loki",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
                         "CKV_K8S_38"
@@ -356,6 +315,7 @@
                 {
                     "resource": "DaemonSet.node-exporter.node-exporter",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_17",
                         "CKV_K8S_19",
                         "CKV_K8S_26",
@@ -372,6 +332,7 @@
                 {
                     "resource": "DaemonSet.otel-collector.otel-collector",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_19",
                         "CKV_K8S_23",
                         "CKV_K8S_25",
@@ -400,6 +361,7 @@
                 {
                     "resource": "CronJob.storage-latency.storage-latency",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_22",
                         "CKV_K8S_23",
                         "CKV_K8S_25",
@@ -417,6 +379,7 @@
                 {
                     "resource": "Deployment.unifi.unifi-db",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_22",
                         "CKV_K8S_23",
                         "CKV_K8S_31",
@@ -433,6 +396,7 @@
                 {
                     "resource": "Deployment.unifi.unifi-network-application",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_19",
                         "CKV_K8S_22",
                         "CKV_K8S_23",
@@ -451,6 +415,7 @@
                 {
                     "resource": "DaemonSet.velero.node-agent",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_23",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
@@ -466,6 +431,7 @@
                 {
                     "resource": "Deployment.velero.velero",
                     "check_ids": [
+                        "CKV_K8S_15",
                         "CKV_K8S_29",
                         "CKV_K8S_31",
                         "CKV_K8S_38"
@@ -494,25 +460,6 @@
                         "CKV2_K8S_3",
                         "CKV2_K8S_4",
                         "CKV2_K8S_5"
-                    ]
-                }
-            ]
-        },
-        {
-            "file": "/k8s/gitops/sops/argocd-repo-server-patch.yaml",
-            "findings": [
-                {
-                    "resource": "Deployment.argocd.argocd-repo-server",
-                    "check_ids": [
-                        "CKV_K8S_14",
-                        "CKV_K8S_15",
-                        "CKV_K8S_22",
-                        "CKV_K8S_25",
-                        "CKV_K8S_29",
-                        "CKV_K8S_38",
-                        "CKV_K8S_40",
-                        "CKV_K8S_8",
-                        "CKV_K8S_9"
                     ]
                 }
             ]

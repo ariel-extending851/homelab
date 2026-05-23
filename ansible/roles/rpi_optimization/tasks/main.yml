@@ -249,43 +249,6 @@
   tags:
     - rpi3
 
-# ─── AdGuard DNS host prep ────────────────────────────────────────────────
-# Frees port 53 on this host so the AdGuard pod (hostNetwork=true) can bind
-# it. Required for k8s/apps/adguard/deployment.yaml's nodeSelector target.
-# Idempotent: stop/disable returns "ok" when already disabled; the regex on
-# /etc/resolv.conf only rewrites when content differs.
-- name: AdGuard DNS host prep — stop systemd-resolved
-  ansible.builtin.systemd:
-    name: systemd-resolved
-    state: stopped
-    enabled: false
-  when: adguard_dns_host | bool
-  tags:
-    - adguard-dns-host
-
-- name: AdGuard DNS host prep — replace /etc/resolv.conf with static upstream
-  ansible.builtin.copy:
-    # owner/group/mode pinned so the file is reproducible across re-runs.
-    dest: /etc/resolv.conf
-    owner: root
-    group: root
-    mode: "0644"
-    content: |
-      # Managed by ansible (rpi_optimization role, adguard_dns_host=true).
-      # Host-only resolver — keeps apt/k3s working independently of the
-      # AdGuard pod, which serves LAN clients on this same node:53.
-      # First nameserver is Tailscale MagicDNS (100.100.100.100) so the host
-      # itself can resolve *.{{ tailscale_network }} peers; rest are public.
-      {% for srv in host_dns_servers %}
-      nameserver {{ srv }}
-      {% endfor %}
-      search {{ tailscale_network }}
-    # Belt-and-braces: Ubuntu's symlink to /run/systemd/resolve/stub-resolv.conf
-    # would survive `copy` if `force: false`; keep default force=true.
-  when: adguard_dns_host | bool
-  tags:
-    - adguard-dns-host
-
 - name: Display final memory status
   ansible.builtin.command: free -h
   register: final_memory

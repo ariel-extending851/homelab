@@ -15,9 +15,6 @@ spec:
       labels:
         app: kube-state-metrics
     spec:
-      # Pin to AWS worker — co-located with the Prometheus that scrapes it.
-      nodeSelector:
-        homelab.io/tier: cloud
       serviceAccountName: kube-state-metrics
 
       containers:

@@ -91,22 +91,22 @@ output "schedule_summary" {
   value       = var.enable_scheduling && var.localstack_test == "no" ? module.scheduler[0].schedule_summary : "Scheduling disabled - instances run 24/7"
 }
 
-# Velero outputs (bucket name + IAM access keys) moved to infra/aws-velero/
-# so the always-on backup slice can be applied and destroyed independently
-# of this hybrid stack. Read them from there:
-#   cd infra/aws-velero && terraform output -raw velero_backup_bucket_name
-#   cd infra/aws-velero && terraform output -raw velero_aws_access_key_id
-#   cd infra/aws-velero && terraform output -raw velero_aws_secret_access_key
-
-# Observability Outputs (Alloy cold-storage S3 bucket)
-output "observability_bucket_id" {
-  description = "Name of the cold-storage S3 bucket consumed by the Alloy DaemonSet (otelcol.exporter.awss3). Empty under LocalStack."
-  value       = var.localstack_test == "no" ? module.observability[0].bucket_id : ""
+# Velero Backup Outputs
+output "velero_backup_bucket_name" {
+  description = "S3 bucket name for Velero cluster backups"
+  value       = aws_s3_bucket.velero_backups.id
 }
 
-output "observability_bucket_arn" {
-  description = "ARN of the cold-storage S3 bucket — wired into the k3s_node IAM role policy. Empty under LocalStack."
-  value       = var.localstack_test == "no" ? module.observability[0].bucket_arn : ""
+output "velero_aws_access_key_id" {
+  description = "Access key ID for the Velero IAM user (paste into k8s/apps/velero/secret.yaml then SOPS-encrypt)"
+  value       = aws_iam_access_key.velero.id
+  sensitive   = true
+}
+
+output "velero_aws_secret_access_key" {
+  description = "Secret access key for the Velero IAM user (paste into k8s/apps/velero/secret.yaml then SOPS-encrypt)"
+  value       = aws_iam_access_key.velero.secret
+  sensitive   = true
 }
 
 # Audit Outputs (CloudTrail + GuardDuty)

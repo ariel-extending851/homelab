@@ -20,21 +20,6 @@ disable:
 {% endfor %}
 {% endif %}
 
-{% if k3s_server_config.kubelet_arg | default([]) | length > 0 %}
-# Kubelet args (memory tuning on Pi server — see inventory/pi-only.yml).
-kubelet-arg:
-{% for arg in k3s_server_config.kubelet_arg %}
-  - {{ arg }}
-{% endfor %}
-{% endif %}
-
-{% if k3s_server_config.kube_apiserver_arg | default([]) | length > 0 %}
-kube-apiserver-arg:
-{% for arg in k3s_server_config.kube_apiserver_arg %}
-  - {{ arg }}
-{% endfor %}
-{% endif %}
-
 {% if (enable_cilium_cni | default(false)) in [true, "true"] %}
 flannel-backend: none
 {% else %}

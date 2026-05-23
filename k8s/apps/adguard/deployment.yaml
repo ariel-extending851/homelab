@@ -24,28 +24,19 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 
-      # Pin to rasp-pi-03 to keep AdGuard's LAN-facing DNS endpoint stable at
-      # 192.168.8.12 (the LAN IP of rasp-pi-03 per group_vars/router.sops.yml).
-      # The GL.iNet router's gatekeeper failover script (ansible/roles/gatekeeper)
-      # DNATs LAN :53 to `pi_adguard_ip` and only works when that IP matches the
-      # pod's actual host. rasp-pi-04 is loaded with the media stack (jellyfin +
-      # *arr + qbittorrent + 11 Tailscale ingress proxies); pi-03 is light.
-      # Prerequisite: ansible/roles/rpi_optimization disables systemd-resolved
-      # on rasp-pi-03 (gated by adguard_dns_host=true in host_vars).
-      nodeSelector:
-        kubernetes.io/hostname: rasp-pi-03
+      # No nodeAffinity — scheduler places this on any available node.
+      # IMPORTANT — hostNetwork constraints with DNS:
+      #   1. Only ONE AdGuard instance can run cluster-wide (port 53 is a singleton per host).
+      #   2. DNS binds to whichever node's IP the pod lands on — clients must use that IP.
+      #   3. Pod rescheduling changes the DNS IP; for stability, add a nodeSelector with
+      #      a custom label (e.g. role=dns-server) on the chosen node.
 
-      # AdGuard Home v0.107.50+ permcheck reads the binary's *file* capabilities
-      # (cap.GetFile on /opt/adguardhome/AdGuardHome), not the Pod-level caps
-      # injected by Kubernetes. The upstream image ships without setcap, so any
-      # non-root UID fails the first-launch admin check with
-      # "this is the first launch of adguard home; you must run it as administrator".
-      # hostNetwork + privileged port 53 makes root the upstream-recommended runtime
-      # for this app — see docs/runbooks/adguard-firstlaunch-permcheck.md.
-      # Mitigations retained: privileged=false, allowPrivilegeEscalation=false, capabilities drop ALL.
+      # Security context: Run as nobody user (UID 65534) to match image ownership
+      # fsGroup ensures mounted volumes are accessible by the container user
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
 
       containers:
         # AdGuard Home Application
@@ -54,17 +45,16 @@ spec:
           imagePullPolicy: IfNotPresent
 
           securityContext:
-            # With hostNetwork=true, container uses host's network namespace for port 53.
+            # With hostNetwork=true, container uses host's network namespace for port 53
+            # Minimal security: prevent privilege escalation, no privileged mode
             # Required capabilities:
             #   - NET_BIND_SERVICE: Bind to privileged port 53 (DNS)
-            #   - NET_RAW: also consulted by AdGuard's permcheck on first launch
-            #   - SETUID/SETGID: AdGuard may switch users during initialization
+            #   - SETUID/SETGID: AdGuard may need to switch users during initialization
             privileged: false
             allowPrivilegeEscalation: false
             capabilities:
               add:
                 - NET_BIND_SERVICE
-                - NET_RAW
                 - SETUID
                 - SETGID
               drop:
@@ -85,25 +75,21 @@ spec:
             - containerPort: 53
               name: dns-udp
               protocol: UDP
-            # AdGuard's first-launch wizard lives on :3000; once the admin password
-            # is set, the web UI binds to the configured `bind_port` (default 80)
-            # from /opt/adguardhome/conf/AdGuardHome.yaml. Probes and Service must
-            # match the post-wizard port, otherwise the pod CrashLoops.
-            - containerPort: 80
+            - containerPort: 3000
               name: admin-ui
               protocol: TCP
 
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
 
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 3000
             initialDelaySeconds: 10
             periodSeconds: 10
 

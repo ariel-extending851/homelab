@@ -29,23 +29,6 @@
     sops_enabled: true
 
   pre_tasks:
-    - name: Load SOPS-encrypted vars for optional extra ArgoCD repo
-      # The community.sops.sops vars plugin only resolves group_vars/ adjacent
-      # to the playbook basedir (here: playbooks/gitops/) and the inventory
-      # dir. ansible/group_vars/k3s_server.sops.yml lives two directories up
-      # from this playbook so the auto-discovery misses it, and the role's
-      # `when: argocd_extra_repo_url is defined` evaluates false — meaning
-      # the homelab-media-root Application is silently never created.
-      # Explicit load_vars here keeps the SOPS file at its canonical
-      # ansible/group_vars/ location while ensuring argocd_extra_* lands in
-      # the play's vars before the role runs.
-      community.sops.load_vars:
-        file: "{{ playbook_dir }}/../../group_vars/k3s_server.sops.yml"
-      run_once: true
-      delegate_to: localhost
-      when: argocd_extra_repo_url is not defined  # idempotent — skip if auto-discovered or overridden
-      tags: ['always', 'extra']
-
     - name: Display ArgoCD deployment information
       ansible.builtin.debug:
         msg: |

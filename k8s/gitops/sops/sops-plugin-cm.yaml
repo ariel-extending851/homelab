@@ -11,14 +11,12 @@ data:
       name: sops-kustomize
     spec:
       allowConcurrency: true
-      # Discover via kustomization.yaml presence. This lets the plugin handle
-      # any kustomize Application (including overlays under k8s/apps/envs/) —
-      # not only ones with a local .sops.yaml. Without this, overlays that
-      # reference encrypted Secrets via `resources: ../../<app>` never trigger
-      # the plugin and Secrets reach the API server with the SOPS envelope
-      # intact, failing ServerSideApply with `.sops: field not declared in schema`.
       discover:
-        fileName: "kustomization.yaml"
+        find:
+          command:
+            - sh
+            - "-c"
+            - "find . -name '.sops.yaml'"
       generate:
         command:
           - bash
@@ -28,27 +26,17 @@ data:
 
             export SOPS_AGE_KEY_FILE=/helm-sops-tools/age-key/keys.txt
 
-            # ArgoCD execs this plugin from spec.source.path. For overlays that
-            # `resources:` upward into k8s/apps/<name>/, find . from the overlay
-            # dir misses those referenced Secrets and they reach the API server
-            # encrypted. Walk up to the repo root (marker: .sops.yaml at root)
-            # and decrypt every YAML file with a top-level `sops:` envelope.
-            REPO_ROOT="$(pwd)"
-            while [ ! -f "$REPO_ROOT/.sops.yaml" ] && [ "$REPO_ROOT" != "/" ]; do
-              REPO_ROOT="$(dirname "$REPO_ROOT")"
-            done
+            # Decrypt all SOPS-encrypted YAML files in-place before kustomize build
+            # Detection: presence of top-level 'sops:' key (SOPS envelope marker)
+            while IFS= read -r -d '' file; do
+              if grep -q '^sops:' "$file" 2>/dev/null; then
+                echo "Decrypting $file..." >&2
+                sops -d --input-type yaml --output-type yaml "$file" > "${file}.dec"
+                mv "${file}.dec" "$file"
+              fi
+            done < <(find . \( -name '*.yaml' -o -name '*.yml' \) -not -name '.sops.yaml' -print0)
 
-            if [ -f "$REPO_ROOT/.sops.yaml" ]; then
-              while IFS= read -r -d '' file; do
-                if grep -q '^sops:' "$file" 2>/dev/null; then
-                  echo "Decrypting $file..." >&2
-                  sops -d --input-type yaml --output-type yaml "$file" > "${file}.dec"
-                  mv "${file}.dec" "$file"
-                fi
-              done < <(find "$REPO_ROOT" \( -name '*.yaml' -o -name '*.yml' \) -not -name '.sops.yaml' -print0)
-            fi
-
-            # Render manifests from the original application path (cwd unchanged)
+            # Render manifests via Kustomize or Helm
             if [ -f "Chart.yaml" ]; then
               helm template .
             elif [ -f "kustomization.yaml" ]; then

@@ -63,19 +63,3 @@ rpi3_power:
     - disable-wifi
     - disable-bt
   max_usb_current: 1
-
-# AdGuard DNS host preparation. When true, the role disables systemd-resolved
-# and rewrites /etc/resolv.conf to free port 53 so the AdGuard pod (with
-# hostNetwork=true) can bind it. Override to true via host_vars on whichever
-# Pi is pinned by the AdGuard k8s nodeSelector (currently rasp-pi-03).
-# host_dns_servers populates the static /etc/resolv.conf that the host itself
-# uses once systemd-resolved is gone — keeps apt/k3s working independently of
-# AdGuard's pod state.
-adguard_dns_host: false
-# 100.100.100.100 is Tailscale's MagicDNS IP — required for the host to
-# resolve *.ts.net names (e.g. peer hostnames). It must come FIRST so
-# tailnet lookups don't fall through to public resolvers.
-host_dns_servers:
-  - 100.100.100.100
-  - 1.1.1.1
-  - 8.8.8.8

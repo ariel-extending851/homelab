@@ -18,14 +18,10 @@ metadata:
 spec:
   statefulSet:
     pod:
-      # Pin proxies to rasp-pi-04 to co-locate with Pi-resident backends. Cross-Pi
-      # pod traffic via Service ClusterIP currently times out (proxy log: `dial tcp
-      # <svc-ip>: connect: connection timed out`); same-node and Pi→EC2 paths work.
-      # Avoids the 2GB k3s-server-1; Pi 4 has 8GB headroom.
-      # Revert to broad scheduling once the underlying cross-Pi networking is fixed.
+      # No hostname pin — let K8s scheduler distribute across all nodes
+      # This prevents memory pressure on k3s-server-1 (2GB node)
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: rasp-pi-04
 
       # Tailscale container configuration
       tailscaleContainer:

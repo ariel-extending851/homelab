@@ -12,8 +12,7 @@
 # Active sprint: docs/runbooks/image-upgrade-sprint-2026-q3.md
 #
 # Phase 1 outcome (2026-05-02):
-#   - AdGuard: bumped v0.107.71 → v0.107.74 and temporarily re-allowlisted
-#     after Trivy DB refresh reported new HIGH findings.
+#   - AdGuard: bumped v0.107.71 → v0.107.74 — now CLEAN, removed from list.
 #   - Blackbox / Node-exporter / KSM / Golink: bumped to latest upstream
 #     stable. All four still trip the gate exclusively on Go-stdlib +
 #     transitive Go library CVEs (CVE-2025-68121, CVE-2026-32280-83, gRPC,
@@ -22,16 +21,7 @@
 #     Despite still being allowlisted, **CVE counts dropped ~50%** vs the
 #     prior pins — net security win. Review-by 2026-08-01 to re-check
 #     whether upstream has rebuilt by then.
-#
-# 2026-05-15: AdGuard v0.107.74 re-appeared with HIGH=5 (new CVEs added to
-#     Trivy DB since Phase 1). Re-added temporarily; bump to v0.107.75+ to resolve.
-#
-# 2026-05-17: debian:bookworm-slim pinned digest tripped HIGH=5 after a Trivy
-#     DB refresh; fix available upstream. Bump the digest pinned in
-#     k8s/apps/storage-latency/cronjob.yaml to drop this entry.
 
-adguard/adguardhome:v0.107.74                        # review-by: 2026-06-14  (HIGH=5 re-appeared post Phase 1 from new Trivy DB entries; bump to v0.107.75+)
-debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252  # review-by: 2026-06-16  (HIGH=5 from new Trivy DB entries 2026-05-17; bump pinned digest in k8s/apps/storage-latency/cronjob.yaml)
 ghcr.io/tailscale/golink:main@sha256:011e6a242d525df54faec21defed5e3c164d89cb02192fbd950266dfde889d7d  # review-by: 2026-08-01  (4 HIGH from Go stdlib in static binary; awaiting Tailscale rebuild)
 grafana/grafana:10.2.3                               # review-by: 2026-07-30  (Grafana 11 LTS upgrade — Phase 6 of upgrade sprint)
 grafana/loki:2.9.2                                   # review-by: 2026-07-30  (Loki 3.x — schema migration required — Phase 5)
@@ -44,5 +34,3 @@ velero/velero:v1.14.1                                # review-by: 2026-07-30  (V
 velero/velero-plugin-for-aws:v1.10.1                 # review-by: 2026-07-30  (paired with Velero v1.14.1 — bumps together to v1.11.x when Velero hits v1.15; HIGH=21 CRITICAL=3)
 mongo:7.0                                            # review-by: 2026-07-31  (UniFi requires Mongo 4-7; pin patch tag once 8.0 compat verified)
 lscr.io/linuxserver/unifi-network-application:10.3.58 # review-by: 2026-07-31  (bump alongside next lsio release; see k8s/apps/unifi/README.md)
-falcosecurity/falco:0.43.1                           # review-by: 2026-08-15  (Trivy DB refresh 2026-05-23 surfaced new HIGH/CRITICAL during PR #112 round-10; Falco's modern_ebpf binary carries Go-stdlib + libc transitive CVEs — bump to next upstream patch when available. Not introduced by PR #112; pre-existing image in k8s/apps/falco/daemonset.yaml.)
-grafana/alloy:v1.5.1                                 # review-by: 2026-08-15  (new in PR #112 — Go-stdlib + transitive Go library CVEs baked into upstream's static binary, same shape as the other Grafana stack images; bump once Grafana publishes v1.6+ with refreshed Go toolchain)

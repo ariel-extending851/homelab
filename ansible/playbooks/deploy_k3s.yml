@@ -16,10 +16,7 @@
     - validate
 
 - name: Deploy k3s Agent (Worker Node)
-  # Exclude any host that is also in k3s_server. In Pi-only mode rasp-pi-04
-  # is in BOTH groups (k3s_server via inventory/pi-only.yml + k3s_agent via
-  # production.yml) and must not run the agent install on top of the server.
-  hosts: "k3s_agent:!k3s_server"
+  hosts: k3s_agent
   become: yes
   vars:
     k3s_control_node: false
@@ -61,24 +58,16 @@
 - name: Verify Cluster
   hosts: k3s_server
   become: yes
-  vars:
-    # Agents = members of k3s_agent that are NOT also in k3s_server (Pi-only
-    # mode puts the same host in both groups; the agent install play above
-    # already excludes it, so for verification we look for the actual worker).
-    _expected_agents: >-
-      {{ groups['k3s_agent'] | default([]) | difference(groups['k3s_server'] | default([])) }}
   tasks:
-    - name: Wait for first agent to join (skipped if no agents are expected)
+    - name: Wait for agent to join
       ansible.builtin.command: >
         kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get nodes
       register: nodes_result
-      until: (_expected_agents | first) in nodes_result.stdout
+      until: "'k3s-agent' in nodes_result.stdout"
       retries: 12
       delay: 10
       changed_when: false
-      when:
-        - not ansible_check_mode
-        - _expected_agents | length > 0
+      when: not ansible_check_mode
 
     - name: Display cluster nodes
       ansible.builtin.debug:
@@ -88,13 +77,6 @@
       when: not ansible_check_mode
 
     - name: Get kubeconfig command
-      vars:
-        # public_ip is injected by the AWS dynamic inventory only. For Pi-only,
-        # fall back to node_ip (already overridden to the LAN IP in
-        # inventory/pi-only.yml) so the message renders without errors.
-        _server_addr: "{{ hostvars[groups['k3s_server'][0]]['public_ip']
-                          | default(hostvars[groups['k3s_server'][0]]['node_ip']) }}"
-        _ssh_user: "{{ hostvars[groups['k3s_server'][0]]['ansible_user'] | default('ubuntu') }}"
       ansible.builtin.debug:
         msg: |
           =========================================
@@ -104,10 +86,10 @@
           To access your cluster:
 
           1. Copy kubeconfig to your local machine:
-             scp {{ _ssh_user }}@{{ _server_addr }}:/etc/rancher/k3s/k3s.yaml ~/.kube/config-homelab
+             scp -i ~/.ssh/homelab-aws ec2-user@{{ hostvars[groups['k3s_server'][0]]['public_ip'] }}:/etc/rancher/k3s/k3s.yaml ~/.kube/config-homelab
 
           2. Update the server address in kubeconfig:
-             server: https://{{ _server_addr }}:6443
+             server: https://{{ hostvars[groups['k3s_server'][0]]['public_ip'] }}:6443
 
           3. Test connection:
              kubectl --kubeconfig ~/.kube/config-homelab get nodes

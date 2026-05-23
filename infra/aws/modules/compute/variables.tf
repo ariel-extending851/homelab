@@ -91,12 +91,6 @@ variable "ssm_s3_bucket" {
   type        = string
 }
 
-variable "observability_bucket_arn" {
-  description = "ARN of the cold-storage bucket created by infra/aws/modules/observability/. The k3s_node IAM role gets a write-only inline policy scoped to this bucket so the Alloy DaemonSet on EC2 can archive logs without hardcoded credentials. Empty string disables the policy (LocalStack)."
-  type        = string
-  default     = ""
-}
-
 variable "principal_boundary_arn" {
   description = "ARN of the IAM permissions boundary required on every IAM role created by this module. Set by infra/aws/main.tf via data.aws_iam_policy.principal_boundary; null in localstack."
   type        = string

@@ -1,95 +1,12 @@
 # Security Audit History
 
 > **Status:** Active
-> **Last reviewed:** 2026-05-09
+> **Last reviewed:** 2026-05-07
 > **Owner:** @ariel-extending851
 
 Chronological record of security audits, findings, and remediations. The current security posture lives in [`overview.md`](overview.md); open work lives in [`fixes-backlog.md`](fixes-backlog.md).
 
 This page is the historical record — entries here describe the state at the time of each audit, not necessarily today's reality.
-
----
-
-## 2026-05-23 — Alloy + eBPF observability pipeline (planned change)
-
-Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a write-only IAM policy on the existing `hl-k3s-node` role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.
-
-### Scope
-
-- `k8s/apps/alloy/` — DaemonSet pinned to `homelab.io/tier: cloud` (excludes the 2 GB k3s server).
-- `ansible/roles/alloy/` — native systemd unit for Raspberry Pi `k3s-agent` nodes.
-- `infra/aws/modules/observability/` — new S3 bucket `hl-observability-cold-storage-*` with lifecycle Standard → Standard-IA @30d → Deep Archive @90d → expire @730d, SSE-S3, full public-access-block, versioning, abort-incomplete-multipart @7d, bucket policy denying non-TLS and unencrypted PUT.
-- `infra/aws/modules/compute/main.tf` — appended inline policy `hl-alloy-s3-export-*` on the existing `hl-k3s-node-*` role granting `s3:PutObject` / `s3:PutObjectAcl` / `s3:AbortMultipartUpload` / `s3:ListBucketMultipartUploads` on the new bucket ARN only. **No `s3:GetObject`, no `s3:DeleteObject` — write-only.**
-- IMDSv2 hop limit raised from 1 to 2 on both `aws_launch_template.k3s_server` and `aws_launch_template.k3s_agent` so the Alloy DaemonSet pod can reach the Instance Profile from inside the pod network namespace.
-
-### Decisions
-
-- **Capabilities-only DaemonSet (NOT privileged).** Beyla CO-RE probes need `CAP_SYS_ADMIN + CAP_BPF + CAP_PERFMON + CAP_SYS_PTRACE + CAP_DAC_READ_SEARCH + CAP_NET_ADMIN + CAP_NET_RAW` plus `hostPID: true`. The DaemonSet sets `privileged: false` + `allowPrivilegeEscalation: false` + `capabilities.drop: [ALL]` + the explicit add list — strictly less than full privilege and identical in shape to the Falco DaemonSet (`k8s/apps/falco/daemonset.yaml:51`). Kyverno `PolicyException` (at `k8s/apps/alloy/policy-exception.yaml`) covers only `disallow-host-namespaces` (hostPID) and `disallow-capabilities` (the cap add list). No exemption needed for `disallow-privileged-containers`.
-- **Hop-limit 1 → 2 accepted** as the AWS-recommended ceiling for pod IMDSv2 access. The previous test asserting `== 1` (`infra/aws/modules/compute/tests/security.tftest.hcl`) has been updated to assert `== 2` exactly (must not exceed).
-- **S3 IAM is write-only.** Cold reads are out-of-scope for this PR; a separate read-only IAM principal will be added in a future PR for cold-tier query tooling.
-- **Workload-name compliance enforced in three layers** — source relabel removes pod and container name labels, sink relabel defensive guard catches any leak through, and the contract test at `bin/tests/test_no_forbidden_workload_names.py` fails the build at commit time. Belt-and-braces against accidental product-name exposure in Grafana Cloud labels.
-
-### Residual risks
-
-| # | Risk | Class | Owner | Review-by | Notes |
-|---|---|---|---|---|---|
-| 5 | Grafana Cloud endpoint URLs (`grafana_cloud_prom_url`, `grafana_cloud_loki_url`) ship plaintext in SOPS file | secret-handling | @ariel-extending851 | 2026-08-01 | Existing `.sops.yaml` catch-all encrypts `*Token` / `*Key` / `*Secret` but not URL fields. URLs leak the GC tenant region (mildly sensitive). The path-specific `.sops.yaml` rule (encrypting `grafana_cloud_prom_url` and `_loki_url`) needs to be added by editing `.sops.yaml` through `sops` itself — the pre-commit `block-sops.sh` hook treats `.sops.yaml` as encrypted (false positive on the config file matching `*.sops.yaml`) and blocks direct edits. Tracked. |
-| 6 | DaemonSet with `hostPID: true` + `CAP_SYS_ADMIN` (Alloy / Beyla) | runtime-permission | @ariel-extending851 | 2026-08-01 | Capability list mirrors the Falco DaemonSet — drop-ALL + explicit adds. No `privileged: true`. Kyverno `PolicyException` scoped to ns `alloy` only; NetworkPolicy denies all non-essential egress; covered by Checkov baseline. |
-| 7 | IMDSv2 `http_put_response_hop_limit` raised 1 → 2 on `k3s_server` and `k3s_agent` launch templates | imds-exposure | @ariel-extending851 | 2026-08-01 | Required for pod-network access to `169.254.169.254`. 2 is AWS's documented ceiling; from-host SSRF still blocked by the standard IMDSv2 token-required + 2-hop guard. |
-
-### Mitigations active
-
-- NetworkPolicy (default-deny + explicit allowlist) in `k8s/apps/alloy/networkpolicy.yaml` — egress restricted to DNS, kube-apiserver, IMDSv2, Grafana Cloud (443), S3 (443). Ingress restricted to Prometheus + Tailscale operator.
-- Bucket policy denies all non-TLS requests and any PUT without SSE.
-- IAM policy is scope-minimal — no Get/Delete on the bucket.
-- `force_destroy = false` on the bucket (archived logs evidentiary).
-- Contract test in CI blocks any commit that leaks a forbidden product name.
-
-### Convergent state — post-CI hardening (same PR)
-
-After the initial CI cycle reached 18/18 green, a follow-up security audit removed two avoidable elevations:
-
-- **`CAP_NET_RAW` dropped** from both the DaemonSet (`k8s/apps/alloy/daemonset.yaml`) and the native systemd unit (`ansible/roles/alloy/templates/alloy.service.j2`). Beyla's HTTP/TCP RED probes run via uprobes / tracepoints, not raw socket capture — the cap was over-privileged. Matches the Falco precedent (also no `NET_RAW`).
-- **`readOnlyRootFilesystem: true`** added to the DaemonSet container, paired with a 256 MiB `/tmp` emptyDir for the awss3 exporter's multipart staging. Mirrors the otel-collector daemonset pattern. Reduces blast radius if the binary is ever exploited — no writable rootfs to drop tooling.
-
-The Pi-side systemd unit already has `ProtectSystem=full` + `PrivateTmp=true`, so the filesystem hardening only needed to ship for the cluster mode.
-
-Linked architecture: [`../architecture/observability-alloy-ebpf.md`](../architecture/observability-alloy-ebpf.md).
-Linked runbook: [`../runbooks/alloy-troubleshooting.md`](../runbooks/alloy-troubleshooting.md).
-
----
-
-## 2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)
-
-Triggered by an incident (`/incident`) on the production cluster: `adguard/adguardhome-*` in CrashLoopBackOff with **141 restarts over 23h**, exit code 1 inside the same wall-clock second. Logs showed AdGuard's first-launch permcheck rejecting the non-root container with `you must run it as administrator`.
-
-### Decision
-
-Pod-level `securityContext` changed from `runAsUser: 65534 / runAsGroup: 65534 / fsGroup: 65534` to `runAsUser: 0 / runAsGroup: 0` (drop `fsGroup`). Container caps add `NET_RAW` alongside `NET_BIND_SERVICE`.
-
-### Why root is acceptable here
-
-AdGuard Home v0.107.50+ permcheck inspects the **binary's file capabilities** (`cap.GetFile`), not the **process** caps injected by the Pod. The upstream image ships without `setcap` on the binary, so non-root + Pod-level `NET_BIND_SERVICE` still fails the check. Upstream's official k8s example also runs as root.
-
-The pod already requires `hostNetwork: true` to bind UDP/TCP 53 on the node — that alone makes the runtime co-tenant with the host's network namespace. Dropping `runAsUser: 65534` does not change the pod's blast radius materially in this configuration.
-
-### Mitigations retained
-
-- `privileged: false`
-- `allowPrivilegeEscalation: false` (`no_new_privs` on the process)
-- `capabilities.drop: [ALL]` then explicit add of `NET_BIND_SERVICE`, `NET_RAW`, `SETUID`, `SETGID`
-- NetworkPolicy `default-deny` + `allow-adguardhome` egress allowlist (added 2026-05-07 in PR-E)
-- Single-namespace, single-pod scope; no service account binding outside its namespace
-- Read-only mount for the docs ConfigMap
-
-### Hardening deferred
-
-- Init-container `setcap` workaround to allow non-root, once upstream stabilizes
-- `nodeSelector: role=dns-server` for IP-stability of the DNS endpoint
-
-Linked runbook: [`docs/runbooks/adguard-firstlaunch-permcheck.md`](../runbooks/adguard-firstlaunch-permcheck.md).
-
-Same-PR cleanup: deleted `k8s/apps/adguard/pv.yaml` (storageClassName mismatched the PVC; pinned to a node that has not existed in the cluster since the 2026-05-04 re-deploy). Dynamic `local-path` provisioning has covered this PVC since first deploy.
 
 ---
 

@@ -12,7 +12,6 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 | App | Doc | Namespace | Ingress | Owner | Tier |
 |---|---|---|---|---|---|
 | AdGuard Home | [adguard.md](adguard.md) | `adguard` | <https://adguard.tail57bf10.ts.net> | @ariel-extending851 | `rpi3-only` |
-| alloy | — | `alloy` | <https://alloy.tail57bf10.ts.net> | @ariel-extending851 | `any` |
 | blackbox | [monitoring-stack.md](monitoring-stack.md#blackbox) | `blackbox` | — | @ariel-extending851 | `any` |
 | Falco | [falco.md](falco.md) | `falco` | — | @ariel-extending851 | `any` |
 | GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> | @ariel-extending851 | `any` |
@@ -45,7 +44,6 @@ graph LR
   storage-latency --> prometheus
   storage-latency --> loki
   adguard
-  alloy
   falco
   golink
   hl-kyverno

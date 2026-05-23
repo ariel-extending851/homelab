@@ -1,18 +1,13 @@
 ---
 # Homelab Production Inventory
-# Architecture: Hybrid Cloud (default)
+# Architecture: Hybrid Cloud
 #   - Control Plane (k3s_server): AWS EC2 (discovered dynamically via terraform_inventory_aws.py)
 #   - Workers (k3s_agent):        Raspberry Pi 3 & 4  +  one AWS EC2 agent
 #
-# Pi-only mode: layer inventory/pi-only.yml on top of this file. That overlay
-# promotes rasp-pi-04 to the k3s_server group with the LAN-routed overrides
-# needed when no AWS control plane exists. See docs/operations/pi-only-deploy.md.
-#
 # Usage:
-#   Hybrid (default):  ansible-playbook -i inventory/production.yml \
-#                                       -i terraform_inventory_aws.py  playbooks/site.yml
-#   Pi-only:           ansible-playbook -i inventory/production.yml \
-#                                       -i inventory/pi-only.yml       playbooks/site.yml
+#   Pi-only runs:  ansible-playbook -i inventory/production.yml          playbooks/site.yml
+#   Full hybrid:   ansible-playbook -i inventory/production.yml \
+#                                   -i terraform_inventory_aws.py       playbooks/site.yml
 #
 # Tailscale is used for ALL inter-node communication (SSH management and
 # k3s cluster traffic).  Each node's ansible_host and node_ip are its
@@ -75,9 +70,6 @@ all:
           media_path: /mnt/storage/data
 
     # ── AWS instances (managed by Terraform, discovered dynamically) ────────
-    # Hybrid mode: k3s_server is empty here — terraform_inventory_aws.py injects
-    # the EC2 control plane at runtime. Pi-only mode does not use this file
-    # alone; layer inventory/pi-only.yml on top to promote rasp-pi-04 to server.
     # Use: ansible-playbook -i terraform_inventory_aws.py playbook.yml
     # Or merge the static mock for dry-run:
     #   ansible-playbook -i inventory/production.yml -i inventory/mock_aws.yml
@@ -102,18 +94,6 @@ all:
     low_memory_nodes:
       hosts:
         rasp-pi-03:
-
-    # ── Grafana Alloy native-systemd targets ─────────────────────────────
-    # Edge nodes run Alloy as a host-level systemd unit (saves the RAM that
-    # a k8s DaemonSet would add). Cloud nodes run the in-cluster DaemonSet
-    # at k8s/apps/alloy/ instead. See:
-    #   - ansible/roles/alloy/
-    #   - ansible/playbooks/deploy-alloy.yml
-    #   - docs/architecture/observability-alloy-ebpf.md
-    alloy_native:
-      hosts:
-        rasp-pi-03:
-        rasp-pi-04:
 
     # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
     router:

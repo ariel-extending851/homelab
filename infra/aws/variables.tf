@@ -120,10 +120,11 @@ variable "ssm_s3_bucket" {
   default     = "homelab-ssm-transfer-bucket"
 }
 
-# `velero_backup_bucket` variable removed — the bucket is now created and
-# owned by infra/aws-velero/ (always-on slice). Downstream code reads the
-# bucket name from that module's output or from the constant baked into
-# the velero ConfigMap (k8s/apps/velero/configmap.yaml).
+variable "velero_backup_bucket" {
+  description = "S3 bucket name for Velero cluster backups. Versioned, encrypted, lifecycle-tiered (Standard → IA → Glacier → expire 365d)."
+  type        = string
+  default     = "homelab-velero-backups-kkuhocyv"
+}
 
 variable "audit_trail_bucket" {
   description = "S3 bucket name for CloudTrail audit logs. Versioned, encrypted, lifecycle-tiered (Standard → IA → Glacier → expire 365d). Globally unique."

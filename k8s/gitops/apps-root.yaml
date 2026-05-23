@@ -18,11 +18,7 @@ spec:
     repoURL: git@github.com:ariel-extending851/homelab.git
     targetRevision: develop # Tracks develop branch (primary development branch)
     path: k8s/apps
-    # Explicit CMP plugin invocation — see k8s/gitops/apps-root-pi-only.yaml
-    # for the why. Required so SOPS-encrypted Secrets are decrypted before
-    # ServerSideApply schema validation.
-    plugin:
-      name: sops-kustomize
+    # Kustomize will automatically detect kustomization.yaml in this directory
 
   destination:
     server: https://kubernetes.default.svc

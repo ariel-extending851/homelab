@@ -13,9 +13,8 @@ spec:
     app: adguardhome
   ports:
     - name: admin-ui
-      # Post-wizard port — see deployment.yaml note. Pre-wizard the UI is on 3000.
-      port: 80
-      targetPort: 80
+      port: 3000
+      targetPort: 3000
       protocol: TCP
     - name: dns-tcp
       port: 53

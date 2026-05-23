@@ -19,10 +19,6 @@ variables {
 }
 
 # ── IMDSv2 enforcement ────────────────────────────────────────────────────────
-# hop_limit raised from 1 → 2 to allow the Alloy DaemonSet pod (k8s/apps/alloy/)
-# to reach IMDSv2 for its IAM instance profile. 2 is the AWS-recommended ceiling
-# for pod-level workloads — it still blocks SSRF-from-host attacks but adds one
-# hop for the CNI bridge. Must not exceed 2.
 
 run "imds_hardened" {
   assert {
@@ -30,16 +26,16 @@ run "imds_hardened" {
     error_message = "Server launch template must enforce IMDSv2 (http_tokens=required)"
   }
   assert {
-    condition     = aws_launch_template.k3s_server.metadata_options[0].http_put_response_hop_limit == 2
-    error_message = "Server launch template hop_limit must be exactly 2 (pod IMDSv2 access + SSRF guard)"
+    condition     = aws_launch_template.k3s_server.metadata_options[0].http_put_response_hop_limit == 1
+    error_message = "Server launch template must set hop_limit=1 to prevent SSRF to IMDS"
   }
   assert {
     condition     = aws_launch_template.k3s_agent.metadata_options[0].http_tokens == "required"
     error_message = "Agent launch template must enforce IMDSv2 (http_tokens=required)"
   }
   assert {
-    condition     = aws_launch_template.k3s_agent.metadata_options[0].http_put_response_hop_limit == 2
-    error_message = "Agent launch template hop_limit must be exactly 2 (pod IMDSv2 access + SSRF guard)"
+    condition     = aws_launch_template.k3s_agent.metadata_options[0].http_put_response_hop_limit == 1
+    error_message = "Agent launch template must set hop_limit=1 to prevent SSRF to IMDS"
   }
 }
 
@@ -91,43 +87,5 @@ run "s3_policy_least_privilege" {
   assert {
     condition     = length(jsondecode(aws_iam_role_policy.k3s_node_ssm_s3.policy).Statement[0].Action) == 2
     error_message = "S3 policy must have exactly 2 actions (GetObject, PutObject) — ListBucket removed to reduce attack surface"
-  }
-}
-
-# ── Observability S3 policy (Alloy cold-storage write) ───────────────────────
-# Asserts the policy exists when observability_bucket_arn is wired through, is
-# scoped to the bucket ARN passed in, and stays write-only (no GetObject, no
-# DeleteObject — cold reads happen out-of-band with a separate read-only role).
-
-run "alloy_s3_policy_present_when_bucket_arn_set" {
-  variables {
-    observability_bucket_arn = "arn:aws:s3:::hl-observability-cold-storage-test"
-  }
-  assert {
-    condition     = length(aws_iam_role_policy.k3s_node_observability_s3) == 1
-    error_message = "Alloy S3 policy must be created when observability_bucket_arn is non-empty"
-  }
-  assert {
-    condition     = jsondecode(aws_iam_role_policy.k3s_node_observability_s3[0].policy).Statement[0].Sid == "AlloyColdStorageWrite"
-    error_message = "Alloy S3 policy statement Sid must be AlloyColdStorageWrite"
-  }
-  assert {
-    condition     = contains(jsondecode(aws_iam_role_policy.k3s_node_observability_s3[0].policy).Statement[0].Action, "s3:PutObject")
-    error_message = "Alloy S3 policy must allow s3:PutObject"
-  }
-  assert {
-    condition     = !contains(jsondecode(aws_iam_role_policy.k3s_node_observability_s3[0].policy).Statement[0].Action, "s3:GetObject")
-    error_message = "Alloy S3 policy must be write-only — no s3:GetObject"
-  }
-  assert {
-    condition     = !contains(jsondecode(aws_iam_role_policy.k3s_node_observability_s3[0].policy).Statement[0].Action, "s3:DeleteObject")
-    error_message = "Alloy S3 policy must be write-only — no s3:DeleteObject"
-  }
-}
-
-run "alloy_s3_policy_absent_when_bucket_arn_empty" {
-  assert {
-    condition     = length(aws_iam_role_policy.k3s_node_observability_s3) == 0
-    error_message = "Alloy S3 policy must be skipped when observability_bucket_arn is empty (LocalStack mode)"
   }
 }

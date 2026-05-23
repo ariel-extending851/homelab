@@ -17,44 +17,27 @@ metadata:
 spec:
   template:
     spec:
-      # Pin to rasp-pi-04. The init container detects $(uname -m) so the
-      # binary download is arch-correct; the constraint here is operational,
-      # not architectural:
-      #   - rasp-pi-03 is the AdGuard host. `rpi_optimization` replaces
-      #     /etc/resolv.conf with a static upstream so the kubelet stops
-      #     hijacking port 53. When argocd-repo-server lands there, CoreDNS
-      #     forwards external lookups through that constrained path and
-      #     `dial tcp: lookup github.com ... no such host` blocks every
-      #     Application sync. pi-03 also has only 1 GB RAM — repo-server
-      #     plus AdGuard would push it toward OOM.
-      #   - rasp-pi-04 has 8 GB and a normal resolv.conf.
-      # `$patch: replace` is required: strategic merge defaults to "merge"
-      # for map[string]string, so without the directive the legacy
-      # `kubernetes.io/arch: amd64` selector (from the hybrid era) would
-      # survive and re-block scheduling on every patch re-apply.
+      # Pin to x86_64 nodes — SOPS binary and ArgoCD images are multi-arch
+      # but keeping on AWS nodes avoids slow ARM image pulls on Pis
       nodeSelector:
-        $patch: replace
-        kubernetes.io/hostname: rasp-pi-04
-      # Init container: copy SOPS binary from a pre-built multi-arch image.
-      # Previous version did `apk add curl` + `curl github releases`, which
-      # required external DNS at pod startup. In this cluster CoreDNS forwards
-      # to /etc/resolv.conf which lists Tailscale MagicDNS (100.100.100.100)
-      # first; MagicDNS SERVFAILs externals (no "Override local DNS" set on
-      # the tailnet admin) and CoreDNS does not fall through to 1.1.1.1/8.8.8.8.
-      # Result: alpine + apk + curl was unreachable. The pre-built image needs
-      # zero in-pod network — the image pull itself uses the host resolver
-      # (which works) and the script only does cp+chmod.
+        kubernetes.io/arch: amd64
+      # Init container: install SOPS binary (architecture-aware)
       initContainers:
         - name: install-sops
-          # Multi-arch (amd64 + arm64) manifest list pinned by digest.
-          # Variant: alpine (~12 MB, no GPG/cloud-KMS — unneeded here).
-          image: quay.io/getsops/sops:v3.9.4-alpine@sha256:4453219701ee1d6c6bef59839c1d59887c148f8a1930aec4fa112210fcddee88
+          image: alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
           command:
             - sh
             - -c
             - |
-              set -euo pipefail
-              cp /usr/local/bin/sops /custom-tools/sops
+              apk add --no-cache curl
+              ARCH=$(uname -m)
+              case $ARCH in
+                x86_64)  SOPS_ARCH="linux.amd64" ;;
+                aarch64) SOPS_ARCH="linux.arm64" ;;
+                *)       echo "ERROR: Unsupported arch $ARCH"; exit 1 ;;
+              esac
+              echo "Downloading SOPS for $SOPS_ARCH..."
+              curl -Lo /custom-tools/sops "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.$SOPS_ARCH"
               chmod +x /custom-tools/sops
               /custom-tools/sops --version
           volumeMounts:
@@ -74,9 +57,10 @@ spec:
               drop:
                 - ALL
               add:
-                # cp preserves ownership/mode of the source binary.
                 - CHOWN
                 - FOWNER
+                - SETGID
+                - SETUID
             seccompProfile:
               type: RuntimeDefault
       containers:

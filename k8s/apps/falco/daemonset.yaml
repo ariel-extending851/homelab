@@ -20,14 +20,17 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       priorityClassName: system-node-critical
 
-      # Cloud-only DaemonSet — runs on AWS nodes labelled homelab.io/tier=cloud.
-      # Pis are excluded by node-label match (replaces the older "NotIn pi-03"
-      # affinity rule from the pi-only era): pi-03 has 1GB RAM (can't host
-      # Falco's 100-200Mi steady + syscall-storm bursts above the 512Mi
-      # eviction-soft floor); pi-04 hosts the homelab-media stack and shouldn't
-      # carry a syscall monitor's overhead.
-      nodeSelector:
-        homelab.io/tier: cloud
+      # Skip rasp-pi-03 — 1GB RAM Pi3 cannot accommodate Falco's 100-200Mi
+      # steady plus syscall-storm bursts above the 512Mi eviction-soft floor.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - rasp-pi-03
 
       tolerations:
         - effect: NoSchedule

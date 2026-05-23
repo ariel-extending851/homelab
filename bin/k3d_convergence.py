@@ -198,37 +198,9 @@ def apply_root_app(
 
     rewritten = _rewrite_yaml_field(raw, "repoURL", repo_url)
     rewritten = _rewrite_yaml_field(rewritten, "targetRevision", target_rev)
-    rewritten = _strip_sops_kustomize_plugin(rewritten)
 
     subprocess.run(
         ["kubectl", "apply", "-f", "-"], input=rewritten, text=True, check=True
-    )
-
-
-def _strip_sops_kustomize_plugin(yaml_text: str) -> str:
-    """Remove the `plugin: { name: sops-kustomize }` block from a rewritten root.
-
-    The shipped apps-root.yaml sets `spec.source.plugin.name: sops-kustomize`
-    so ArgoCD invokes the CMP that walks the repo, decrypts SOPS-encrypted
-    YAML, and runs kustomize build. In this k3d test environment we install
-    vanilla upstream ArgoCD (apply_argocd) — no CMP sidecar, no SOPS age
-    key — so the plugin lookup fails fast with a ComparisonError:
-        `plugin sidecar failed. couldn't find cmp-server plugin with
-         name "sops-kustomize" supporting the given repository`
-    which trips wait_for_root_app_evaluated and blocks the gate. Stripping
-    the plugin name here lets ArgoCD fall back to its built-in kustomize
-    handler; comparison succeeds, and any downstream SOPS-Secret sync
-    failures land as SyncErrors (advisory in this test) rather than
-    ComparisonErrors (fatal). The full SOPS pipeline is exercised on the
-    real cluster, not here.
-    """
-    import re
-
-    return re.sub(
-        r"^    plugin:\n      name: sops-kustomize\n?",
-        "",
-        yaml_text,
-        flags=re.MULTILINE,
     )
 
 
