@@ -62,6 +62,10 @@ spec:
             - run
             - --server.http.listen-addr=0.0.0.0:12345
             - --storage.path=/var/lib/alloy
+            # Required: livedebugging, beyla.ebpf, otelcol.exporter.awss3 are
+            # all below GA stability in Alloy v1.5.1. Default stability is
+            # "generally-available" which would reject them at load.
+            - --stability.level=experimental
             - /etc/alloy/config.alloy
 
           securityContext:

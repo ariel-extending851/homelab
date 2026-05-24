@@ -101,11 +101,13 @@ resource "aws_iam_role_policy" "k3s_node_ssm_s3" {
 # design: no GetObject, no DeleteObject. Multipart actions are required
 # because Alloy's awss3 exporter uses multipart for batches > 5 MiB.
 #
-# Gated on observability_bucket_arn being non-empty so the module is still
-# applyable under LocalStack (where the observability module is skipped).
-# count = 0 in that case; count = 1 in production.
+# Gated on var.localstack_test (real AWS only) instead of the bucket ARN.
+# Original gate (observability_bucket_arn == "" ? 0 : 1) referenced a value
+# that's "known after apply", so terraform couldn't resolve count at plan
+# time. Same outcome (count=0 in LocalStack, count=1 in production) without
+# the cross-module data dependency.
 resource "aws_iam_role_policy" "k3s_node_observability_s3" {
-  count = var.observability_bucket_arn == "" ? 0 : 1
+  count = var.localstack_test == "no" ? 1 : 0
 
   name_prefix = "hl-alloy-s3-export-"
   role        = aws_iam_role.k3s_node.name
