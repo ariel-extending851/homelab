@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail
+  namespace: promtail
+data:
+  # Promtail config — file-based discovery, no kubernetes_sd_config.
+  #
+  # Why file-based:
+  #   PR #114 (Alloy edge) used kubernetes_sd_config / discovery.kubernetes,
+  #   which polls the apiserver continuously to maintain pod targets.
+  #   On rasp-pi-04 the apiserver IS the k3s server process — so Alloy's
+  #   discovery loop competed for CPU with k3s itself, which competed for
+  #   I/O with Jellyfin transcoding. Streaming degraded measurably.
+  #
+  #   Switching to static_configs + __path__ glob keeps the same coverage
+  #   (every pod's stdout shows up in /var/log/pods/) without any apiserver
+  #   call. inotify gives us delta reads — no polling.
+  #
+  #   See docs/architecture/observability-alloy-ebpf.md §Edge tier revision.
+  promtail.yaml: |
+    server:
+      http_listen_address: 0.0.0.0
+      http_listen_port: 3101
+      grpc_listen_port: 0
+      log_level: info
+      log_format: logfmt
+
+    # Position state — survives pod restart inside the host bind-mount.
+    # Without this, a restart re-ships every log file from byte 0 (and
+    # spikes the Grafana Cloud ingest budget).
+    positions:
+      filename: /run/promtail/positions.yaml
+
+    clients:
+      - url: ${GRAFANA_CLOUD_LOKI_URL}
+        basic_auth:
+          username: ${GRAFANA_CLOUD_USER}
+          password: ${GRAFANA_CLOUD_TOKEN}
+        # External label so Loki / Grafana Cloud can distinguish the edge
+        # tier from the (future) cloud Alloy push. Helps multi-tier queries.
+        external_labels:
+          tier: edge
+          cluster: homelab-pi
+        # Backoff for transient Grafana Cloud blips. 10 retries × max 5min
+        # ≈ 50 min worst-case buffering via positions file — well within
+        # the SD card budget on the Pi.
+        backoff_config:
+          min_period: 500ms
+          max_period: 5m
+          max_retries: 10
+        batchwait: 5s
+        batchsize: 1048576  # 1 MiB per push — Grafana Cloud sweet spot.
+
+    scrape_configs:
+      # Container logs via the k3s standard layout:
+      #   /var/log/pods/<namespace>_<pod>_<uid>/<container>/<n>.log
+      # Each file is a symlink → /var/lib/rancher/k3s/agent/containerd/...
+      # We mount both as hostPaths in daemonset.yaml so Promtail can follow
+      # symlinks.
+      - job_name: kubernetes-pods
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: kubernetes-pods
+              __path__: /var/log/pods/*/*/*.log
+        # Pipeline stages — applied left-to-right per log line.
+        pipeline_stages:
+          # 1. Parse k3s containerd CRI log format:
+          #    "2026-05-29T12:34:56.789Z stdout F actual log content"
+          - cri: {}
+          # 2. Extract pod metadata from the source filename. The regex
+          #    matches the standard k8s pod-log layout. UID is captured
+          #    but dropped (high-cardinality, not query-useful).
+          - regex:
+              source: filename
+              expression: '^/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>[^_]+)_(?P<uid>[^/]+)/(?P<container>[^/]+)/[0-9]+\.log$'
+          # 3. Promote extracted fields to Loki labels (low cardinality only).
+          - labels:
+              namespace:
+              pod:
+              container:
+          # 4. Drop the high-cardinality 'filename' label that promtail
+          #    auto-adds for static_configs — same data is in pod/container.
+          - labeldrop:
+              - filename

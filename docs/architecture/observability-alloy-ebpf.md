@@ -1,8 +1,8 @@
 # Alloy + eBPF Observability Pipeline
 
-> **Status:** Active (introduced 2026-05-23)
+> **Status:** Active — cloud tier as designed; **edge tier pivoted to Promtail 2026-05-29** (see § Edge tier revision below)
 > **Owner:** @ariel-extending851
-> **Related:** [`../runbooks/alloy-troubleshooting.md`](../runbooks/alloy-troubleshooting.md), [`../security/audit-history.md`](../security/audit-history.md) (2026-05-23 entry), [`./overview.md`](./overview.md)
+> **Related:** [`../runbooks/alloy-troubleshooting.md`](../runbooks/alloy-troubleshooting.md), [`../security/audit-history.md`](../security/audit-history.md) (2026-05-23 entry), [`./overview.md`](./overview.md), [`../../k8s/apps/promtail/`](../../k8s/apps/promtail/)
 
 This page is the authoritative architecture document for the Grafana Alloy
 unified observability agent — both the edge (Raspberry Pi, native systemd)
@@ -236,3 +236,88 @@ Phase 2 = idempotency + retry + observability + decommission docs.
 - OTel Collector `awss3` exporter: <https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter>
 - Existing homelab observability: [`./overview.md`](./overview.md), [`../services/monitoring-stack.md`](../services/monitoring-stack.md) (if present)
 - Cilium deferral context: [`../../ansible/playbooks/cilium-flip.yml`](../../ansible/playbooks/cilium-flip.yml), [`./networking.md`](./networking.md)
+
+---
+
+## 11. Edge tier revision (2026-05-29) — Promtail substitutes Alloy edge
+
+### Background
+
+The original design (sections 1–10 above) placed Grafana Alloy on both tiers
+under a single config template, rendered by Ansible on the Pis and by
+Kustomize on EC2. Cloud tier worked as expected. **Edge tier did not.**
+
+### Symptom observed
+
+After PR #114 landed and the `ansible/roles/alloy/` install ran on rasp-pi-04,
+Jellyfin streaming visibly degraded — buffering spikes during 1080p playback,
+transcoding stalls that did not exist on the baseline. Disabling the Alloy
+systemd unit restored smooth playback. The contention was reproducible.
+
+### Root-cause analysis
+
+Two contributors compounded on rasp-pi-04 specifically:
+
+1. **`discovery.kubernetes` polls the apiserver continuously.** On
+   rasp-pi-04 the apiserver IS the k3s-server process — the same binary
+   that serves etcd, handles webhook calls, and acts as the local kubelet's
+   API target. Alloy's discovery loop competed for CPU with k3s itself.
+2. **k3s competes for I/O with Jellyfin.** Both processes read from the
+   same SD-card-backed root filesystem. Adding even a small extra reader
+   (Alloy tailing `/var/log/containers/*.log` while k3s served log endpoints
+   to Alloy) shifted the I/O queue past the SD card's sustained throughput.
+
+Pi-04 has 7.6 GB RAM and 53.9 % I/O wait is achievable at idle; under
+Jellyfin transcoding it spiked routinely. Alloy's RSS was not the issue —
+the I/O+apiserver interactions were.
+
+Pi-03 (1 GB) was not measured under the same workload, but the same
+symptom is likely there given the tighter memory + slower SD.
+
+### Decision
+
+Replace Alloy edge with Promtail (the original Grafana log shipper, predates
+Alloy in this codebase). Three constraints drove the choice:
+
+- **No apiserver chatter.** Promtail with `static_configs` + `__path__` glob
+  reads files via inotify, never calls the K8s API. This invariant is now
+  enforced at the network layer too: `k8s/apps/promtail/networkpolicy.yaml`
+  blocks egress to the apiserver.
+- **Smaller footprint.** ~25-40 MiB RSS measured in file mode, vs. Alloy's
+  80-150 MiB before Beyla is even loaded. Fits Pi-03's 270 MiB free budget.
+- **Same destination, same supply-chain hygiene.** Pushes to the same
+  Grafana Cloud Loki endpoint as the cloud Alloy. Image is `grafana/*` and
+  pinned by digest the same way.
+
+### Cloud tier — unchanged
+
+Everything in sections 1–9 above remains valid for the cloud tier when
+AWS Full is active. `k8s/apps/alloy/` is unchanged. The DaemonSet's
+`nodeSelector: homelab.io/tier=cloud` keeps Alloy off the Pis; Promtail's
+`nodeAffinity NotIn ["cloud"]` keeps Promtail off the EC2 worker. The two
+agents never see the same node, never double-ingest.
+
+When AWS Full is dormant (current state), edge logs still flow via Promtail
+→ Grafana Cloud Loki. Edge metrics + traces remain dormant until cloud Alloy
+comes back online — that is an explicit trade-off, documented in the Promtail
+README and accepted because a 1 GB Pi is the wrong place to host Beyla anyway.
+
+### Implementation
+
+- New: [`../../k8s/apps/promtail/`](../../k8s/apps/promtail/) — DaemonSet,
+  ConfigMap, NetworkPolicy, NamespaceCustomization for Pi-only overlay.
+- Modified: [`../../k8s/apps/envs/pi-only/kustomization.yaml`](../../k8s/apps/envs/pi-only/kustomization.yaml) — registers Promtail.
+- Deprecated: [`../../ansible/roles/alloy/`](../../ansible/roles/alloy/) for edge install.
+  Role and playbook retained for reference; `alloy_native` Ansible group commented
+  out in `ansible/inventory/production.yml`.
+- Unchanged: cloud-tier `k8s/apps/alloy/`, `infra/aws/modules/observability/`,
+  `infra/aws/modules/compute/main.tf` IAM policy, `docs/security/audit-history.md`.
+
+### Operational lesson captured
+
+The original ADR listed "Native systemd; Beyla optional" against the 1 GB
+Pi 3, anticipating memory pressure. It did **not** anticipate that the
+discovery model (apiserver poll vs file-tail) would matter more than the
+agent's resident set size. That heuristic — *prefer file-based discovery
+on any node that also runs the apiserver* — is now an explicit design rule
+in this repo.

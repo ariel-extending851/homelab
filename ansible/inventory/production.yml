@@ -103,17 +103,21 @@ all:
       hosts:
         rasp-pi-03:
 
-    # ── Grafana Alloy native-systemd targets ─────────────────────────────
-    # Edge nodes run Alloy as a host-level systemd unit (saves the RAM that
-    # a k8s DaemonSet would add). Cloud nodes run the in-cluster DaemonSet
-    # at k8s/apps/alloy/ instead. See:
-    #   - ansible/roles/alloy/
-    #   - ansible/playbooks/deploy-alloy.yml
-    #   - docs/architecture/observability-alloy-ebpf.md
+    # ── Grafana Alloy native-systemd targets — DEPRECATED 2026-05-29 ────
+    # Edge installation pivoted to Promtail at k8s/apps/promtail/ after
+    # operational evidence showed Alloy edge contended with Jellyfin
+    # transcoding on rasp-pi-04 (apiserver chatter + shared SD-card I/O).
+    # See:
+    #   - ansible/roles/alloy/README.md      (revival procedure)
+    #   - docs/architecture/observability-alloy-ebpf.md § 11
+    #   - k8s/apps/promtail/                  (the replacement)
+    # The group is intentionally empty — `ansible-playbook ... deploy-alloy.yml`
+    # against an empty group is a no-op, which is the desired guard rail.
+    # Do NOT re-add the Pi hosts here without first removing Promtail from
+    # k8s/apps/envs/pi-only/kustomization.yaml in the same commit, otherwise
+    # both agents will double-ingest into Grafana Cloud Loki.
     alloy_native:
-      hosts:
-        rasp-pi-03:
-        rasp-pi-04:
+      hosts: {}
 
     # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
     router:
