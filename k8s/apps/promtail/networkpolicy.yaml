@@ -1,0 +1,75 @@
+# NetworkPolicy for the promtail namespace.
+# Default-deny + minimal allowlist:
+#   Ingress: Prometheus scrape only (no operator/UI surface).
+#   Egress:  DNS + Grafana Cloud Loki (TCP/443).
+#
+# Promtail does NOT need kube-apiserver egress because discovery is
+# file-based (static_configs + __path__ glob). Removing apiserver egress
+# is what enforces the "no chatter" invariant at the network layer —
+# even a misconfig that re-enabled kubernetes_sd_config would be blocked
+# by this policy.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: promtail
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-promtail
+  namespace: promtail
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app: promtail
+spec:
+  podSelector:
+    matchLabels:
+      app: promtail
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrape of Promtail's /metrics (when AWS Full + cloud
+    # Alloy/Prometheus is active). Pi-only mode has no scrapers — the
+    # rule is inert until cloud tier comes online, no harm in leaving it.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: prometheus
+      ports:
+        - { protocol: TCP, port: 3101 }
+  egress:
+    # DNS resolution.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Grafana Cloud Loki push (HTTPS only, public internet).
+    # Excludes RFC1918 + link-local so misconfigs don't accidentally
+    # exfiltrate to internal services.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - { protocol: TCP, port: 443 }

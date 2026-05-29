@@ -1,6 +1,6 @@
 # Unified Grafana Alloy + eBPF Observability Pipeline
 
-> **Status:** Active
+> **Status:** Active — cloud tier as originally designed; edge tier iterated to Promtail after production validation (see § Edge tier iteration).
 > **Repository:** This document is the portfolio-facing README for the Alloy + eBPF observability pipeline. It is derived from the engineering ADR at [`./observability-alloy-ebpf.md`](./observability-alloy-ebpf.md) and is intended to be copied verbatim into the public portfolio repository alongside a sanitized excerpt of the configuration.
 
 This pipeline collapses three independent telemetry agents
@@ -231,11 +231,65 @@ aws s3 ls "s3://$(mise exec -- terraform -chdir=infra/aws output -raw observabil
 
 ---
 
+## Edge tier iteration (2026-05-29)
+
+The original design placed a single Alloy template on both tiers — Ansible
+rendered it onto the Pis as a systemd unit, Kustomize rendered it onto the
+EC2 worker as a DaemonSet. Cloud tier worked as planned. **Edge tier
+revealed a real-world contention that the design did not predict:**
+co-locating Alloy with Jellyfin transcoding on the 8 GB Pi 4 degraded
+playback. Disabling Alloy restored it; the symptom was reproducible.
+
+### What I learned
+
+The bottleneck was not Alloy's resident set size. It was the *kind* of work
+Alloy does on an edge node that also serves the apiserver:
+
+1. `discovery.kubernetes` polls the apiserver continuously to maintain pod
+   targets. On the Pi 4 the apiserver IS the k3s-server process — so the
+   discovery loop competed for CPU with k3s itself.
+2. Jellyfin transcoding is I/O heavy on the same SD-card-backed root
+   filesystem the k3s log endpoints serve from. Every Alloy → apiserver →
+   pod log round-trip added I/O queue pressure that the SD card could not
+   absorb under transcoding load.
+
+Memory headroom was never the issue (Pi 4 had ~3 GB free). The interaction
+between the discovery model and the apiserver-on-edge topology was.
+
+### What I changed
+
+The edge tier now runs **Promtail with file-based discovery**
+(`static_configs` + `__path__` glob) instead of Alloy. Promtail reads container
+log files directly via inotify, never calls the apiserver, and idles around
+25–40 MiB RSS. The invariant is enforced at the network layer too: the
+Promtail NetworkPolicy blocks egress to port 6443.
+
+The cloud tier — section 1 through "Implementation" above — is unchanged.
+Alloy + Beyla + the S3 cold archive still run as designed when AWS Full is
+active. Promtail's `nodeAffinity NotIn ["cloud"]` and Alloy's existing
+`nodeSelector: tier=cloud` keep the two off each other's nodes. No
+double-ingest.
+
+### Why this matters for a portfolio
+
+The original ADR captured my reasoning *before* operating the system. The
+revision section in [`./observability-alloy-ebpf.md`](./observability-alloy-ebpf.md)
+captures what I learned *after*. Both stay in the repo. The lesson — *prefer
+file-based discovery on any node that also runs the apiserver* — is now an
+explicit design rule. If you are reviewing this for a role, the iteration is
+the artifact I want you to read: production validation found a defect the
+design missed, and the response was a surgical pivot with the cloud-side
+investment preserved.
+
+---
+
 ## References
 
 - **Architecture ADR (long-form):** [`./observability-alloy-ebpf.md`](./observability-alloy-ebpf.md)
 - **Operational runbook:** [`../runbooks/alloy-troubleshooting.md`](../runbooks/alloy-troubleshooting.md)
 - **Security audit entry:** [`../security/audit-history.md`](../security/audit-history.md) (2026-05-23)
+- **Edge Promtail manifests:** [`../../k8s/apps/promtail/`](../../k8s/apps/promtail/)
 - **Grafana Alloy docs:** <https://grafana.com/docs/alloy/>
+- **Grafana Promtail docs:** <https://grafana.com/docs/loki/latest/send-data/promtail/>
 - **Beyla docs:** <https://grafana.com/docs/beyla/>
 - **OTel `awss3` exporter:** <https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter>
