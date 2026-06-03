@@ -1,0 +1,26 @@
+---
+# Tenant-critical priority — interactive, latency-sensitive workloads that
+# must not be evicted or preempted by background batch work.
+#
+# Use on Deployments whose UX degrades immediately under contention:
+# anything serving an end-user request path. Pods carrying this class
+# combined with `resources.requests == resources.limits` reach QoS
+# Guaranteed — the strongest tier kubelet honors when it has to evict.
+#
+# value=1000 sits well below `system-cluster-critical` (2_000_000_000) so it
+# never starves the control plane; it sits above the default (0) so any pod
+# without an explicit priorityClass is preemptable in its favor.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: hl-tenant-critical
+  labels:
+    app.kubernetes.io/part-of: homelab
+    app.kubernetes.io/managed-by: argocd
+value: 1000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  Latency-sensitive tenant workloads. Survives memory/CPU pressure ahead of
+  hl-tenant-background. Pair with resources.requests == limits for QoS
+  Guaranteed.
