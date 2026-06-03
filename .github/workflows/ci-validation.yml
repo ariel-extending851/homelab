@@ -661,20 +661,10 @@ jobs:
     # schema-only) leaves: schema-valid manifests can still fail to converge
     # because of sync waves, CRD ordering, or broken refs.
     name: "Kubernetes: GitOps Convergence (k3d)"
-    # Skip on Dependabot PRs: the repo is private, ArgoCD inside the k3d
-    # cluster needs a token to clone, and Dependabot's GITHUB_TOKEN does
-    # not propagate to the in-cluster repo-server — so the fetch fails
-    # with `could not read Username for 'https://github.com'`. Dependabot
-    # only touches deps (terraform providers, pip, GH Actions); it never
-    # changes k8s/** manifests, so skipping this gate for it is safe.
-    # `k3d-convergence` is NOT in `pipeline-gate`'s required_success set,
-    # so SKIPPED here does not block the merge gate.
     if: |
-      github.actor != 'dependabot[bot]' && (
-        github.event_name == 'pull_request' ||
-        github.event_name == 'workflow_dispatch' ||
-        github.event_name == 'schedule'
-      )
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -699,10 +689,14 @@ jobs:
       - name: Run k3d GitOps Convergence Test
         env:
           IGNORE_MISSING_SECRET_APPS: "1"
-          # Override the SSH repoURL in the shipped root manifest with the
-          # public HTTPS clone so ArgoCD in k3d can fetch without creds.
-          # If the repo is private, replace with a fork/mirror URL.
-          K3D_REPO_URL_OVERRIDE: "https://github.com/${{ github.repository }}.git"
+          # The repo is private, so ArgoCD's in-cluster repo-server needs
+          # creds to clone. Inject the runner's GITHUB_TOKEN via the URL
+          # using x-access-token basic-auth. Token is auto-masked in logs
+          # and expires at job end (any leaked clone-URL artifact is dead
+          # within minutes). `contents: read` (the minimum permission
+          # granted to every workflow run, including dependabot context)
+          # is sufficient for `git clone` / `git fetch`.
+          K3D_REPO_URL_OVERRIDE: "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           # Pin to the actual PR head — tests THIS branch's GitOps tree,
           # not develop's. github.event.pull_request.head.sha is set on PR
           # events; falls through to github.sha for push/dispatch.
