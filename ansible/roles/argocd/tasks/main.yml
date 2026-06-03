@@ -20,7 +20,9 @@
 
 - name: Include installation tasks
   ansible.builtin.include_tasks: install.yml
-  tags: ['install']
+  # argocd-pin is exposed here so `--tags argocd-pin` reaches the patch
+  # tasks inside install.yml without re-running the full install.
+  tags: ['install', 'argocd-pin']
 
 - name: Include SOPS configuration
   ansible.builtin.include_tasks: configure_sops.yml

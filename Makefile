@@ -33,7 +33,9 @@
 		terraform-staging-destroy terraform-prod-select \
 		cilium-flip-status cilium-flip-node cilium-flip-rollback \
 		unifi-up unifi-down unifi-status \
-		pi-only-deploy pi-only-ansible pi-only-kubeconfig
+		pi-only-deploy pi-only-ansible pi-only-kubeconfig \
+		pi-only-sysctl pi-only-resolv-conf pi-only-argocd-pin \
+		pi-only-stability-fixes
 
 # Default target
 .DEFAULT_GOAL := help
@@ -408,6 +410,24 @@ pi-only-kubeconfig: ## Refresh local kubeconfig from rasp-pi-04 via SSH (no SSM)
 	@echo "🍓 Refreshing kubeconfig from rasp-pi-04..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
 		playbooks/site.yml --tags kubeconfig --limit k3s_server
+
+pi-only-sysctl: ## Apply only the kernel/inotify sysctl tasks on both Pis (idempotent, fast)
+	@echo "🍓 Applying sysctl (kernel-limits tag) on raspberry_pi group..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
+		playbooks/site.yml --tags kernel-limits --limit raspberry_pi
+
+pi-only-resolv-conf: ## Apply only the AdGuard /etc/resolv.conf rewrite on rasp-pi-03 (curated host_dns_servers)
+	@echo "🍓 Applying adguard-dns-host tag on rasp-pi-03..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
+		playbooks/site.yml --tags adguard-dns-host --limit rasp-pi-03
+
+pi-only-argocd-pin: ## Patch argocd-application-controller nodeSelector to rasp-pi-04 (idempotent)
+	@echo "🍓 Pinning argocd-application-controller to rasp-pi-04..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml -i inventory/pi-only.yml \
+		playbooks/site.yml --tags argocd-pin --limit k3s_server
+
+pi-only-stability-fixes: pi-only-sysctl pi-only-resolv-conf pi-only-argocd-pin ## Run all three Pi stability fixes (sysctl + resolv.conf + argocd pin)
+	@echo "✅ Pi stability fixes applied: inotify limits, DNS cleanup, ArgoCD controller pin."
 
 ##@ AWS Lite — always-on Velero backup slice (~$1-2/mo)
 
