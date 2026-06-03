@@ -54,6 +54,7 @@ provisioner:
           dirty_background_ratio: 5
         kernel:
           max_map_count: 262144
+          max_user_instances: 8192
           max_user_watches: 524288
           file_max: 2097152
           netfilter_connection_tracking_max: 131072
