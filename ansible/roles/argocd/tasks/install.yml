@@ -106,6 +106,45 @@
   register: argocd_repo_rollout
   changed_when: false
 
+# Pin application-controller to a specific node. The manifest install ships
+# with no nodeSelector, so the StatefulSet pod can land anywhere — including
+# memory-constrained workers where 200+ MiB RSS triggers swap-thrash and
+# kernel freezes. Patch is idempotent: kubectl prints "(no change)" when the
+# desired nodeSelector already matches, and we filter that out of changed.
+- name: Read current application-controller nodeSelector
+  ansible.builtin.command: >
+    kubectl get statefulset/argocd-application-controller
+    -n {{ argocd_namespace }}
+    -o jsonpath={.spec.template.spec.nodeSelector.kubernetes\.io/hostname}
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_controller_node_current
+  changed_when: false
+  when: argocd_application_controller_node | length > 0
+  tags:
+    - argocd-pin
+
+- name: Pin application-controller to {{ argocd_application_controller_node }}
+  ansible.builtin.command: >
+    kubectl patch statefulset/argocd-application-controller
+    -n {{ argocd_namespace }}
+    --type=merge
+    -p {{ patch_body | to_json | quote }}
+  vars:
+    patch_body:
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: "{{ argocd_application_controller_node }}"
+  environment: "{{ kubeconfig_env }}"
+  register: argocd_controller_patch
+  changed_when: "'patched' in argocd_controller_patch.stdout and 'no change' not in argocd_controller_patch.stdout"
+  when:
+    - argocd_application_controller_node | length > 0
+    - argocd_controller_node_current.stdout != argocd_application_controller_node
+  tags:
+    - argocd-pin
+
 - name: Wait for ArgoCD application-controller to be ready
   ansible.builtin.command: >
     kubectl rollout status statefulset/argocd-application-controller

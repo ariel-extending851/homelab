@@ -44,6 +44,14 @@ argocd_server_replicas: 1
 argocd_repo_server_replicas: 1
 argocd_application_controller_replicas: 1
 
+# Hostname of the node that should host argocd-application-controller. The
+# controller consumes ~200 MiB RSS and reschedules on every cluster watch
+# event; on memory-constrained worker nodes (e.g. a Pi 3 B with 900 MiB
+# total) it triggers swap-thrash that can hard-freeze the host. Pin to the
+# control-plane node by default and override per-environment via host_vars
+# or extra-vars. Set to "" to skip pinning.
+argocd_application_controller_node: rasp-pi-04
+
 # Resource limits (for RPi-friendly deployment)
 argocd_resource_limits:
   server:

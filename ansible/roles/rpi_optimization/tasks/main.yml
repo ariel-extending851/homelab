@@ -188,10 +188,14 @@
     sysctl_file: /etc/sysctl.d/99-k8s-optimization.conf
   loop:
     - { key: 'vm.max_map_count', value: '{{ kernel.max_map_count }}' }
+    - { key: 'fs.inotify.max_user_instances', value: '{{ kernel.max_user_instances }}' }
     - { key: 'fs.inotify.max_user_watches', value: '{{ kernel.max_user_watches }}' }
     - { key: 'fs.file-max', value: '{{ kernel.file_max }}' }
   loop_control:
     label: "{{ item.key }}"
+  tags:
+    - sysctl
+    - kernel-limits
 
 # net.netfilter.nf_conntrack_max requires the nf_conntrack kernel module.
 # In Docker containers the module may not be loaded; ignore failure in Molecule/CI.
@@ -274,8 +278,9 @@
       # Managed by ansible (rpi_optimization role, adguard_dns_host=true).
       # Host-only resolver — keeps apt/k3s working independently of the
       # AdGuard pod, which serves LAN clients on this same node:53.
-      # First nameserver is Tailscale MagicDNS (100.100.100.100) so the host
-      # itself can resolve *.{{ tailscale_network }} peers; rest are public.
+      # 100.100.100.100 (Tailscale MagicDNS) is intentionally omitted: with
+      # tailscaled CorpDNS=false, any non-tailnet query sent there returns
+      # SERVFAIL, polluting journald and adding a round-trip per lookup.
       {% for srv in host_dns_servers %}
       nameserver {{ srv }}
       {% endfor %}

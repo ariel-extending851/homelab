@@ -54,6 +54,30 @@
         fail_msg: >
           vm.max_map_count should be 262144, got {{ max_map_val.stdout }}.
 
+    - name: Read fs.inotify.max_user_instances runtime value
+      ansible.builtin.command: sysctl -n fs.inotify.max_user_instances
+      register: inotify_instances_val
+      changed_when: false
+
+    - name: Assert fs.inotify.max_user_instances matches configured value (8192)
+      ansible.builtin.assert:
+        that: inotify_instances_val.stdout | int == 8192
+        fail_msg: >
+          fs.inotify.max_user_instances should be 8192, got {{ inotify_instances_val.stdout }}.
+          The kernel default (128) is exhausted by ~50 pods on a k3s node.
+
+    - name: Read fs.inotify.max_user_watches runtime value
+      ansible.builtin.command: sysctl -n fs.inotify.max_user_watches
+      register: inotify_watches_val
+      changed_when: false
+
+    - name: Assert fs.inotify.max_user_watches matches configured value (131072 in molecule)
+      ansible.builtin.assert:
+        that: inotify_watches_val.stdout | int == 131072
+        fail_msg: >
+          fs.inotify.max_user_watches should be 131072 (molecule override),
+          got {{ inotify_watches_val.stdout }}.
+
     - name: Assert sysctl config file for memory params was written
       ansible.builtin.stat:
         path: /etc/sysctl.d/99-rpi-optimization.conf
@@ -85,10 +109,12 @@
           rpi_optimization sysctl scenario — PASSED
           =========================================
           Runtime kernel values (verified via sysctl):
-            vm.swappiness        = {{ swappiness_val.stdout }}  (expected 15)
-            vm.vfs_cache_pressure = {{ cache_pressure_val.stdout }}  (expected 60)
-            vm.overcommit_memory  = {{ overcommit_val.stdout }}  (expected 1)
-            vm.max_map_count      = {{ max_map_val.stdout }}  (expected 262144)
+            vm.swappiness                    = {{ swappiness_val.stdout }}  (expected 15)
+            vm.vfs_cache_pressure            = {{ cache_pressure_val.stdout }}  (expected 60)
+            vm.overcommit_memory             = {{ overcommit_val.stdout }}  (expected 1)
+            vm.max_map_count                 = {{ max_map_val.stdout }}  (expected 262144)
+            fs.inotify.max_user_instances    = {{ inotify_instances_val.stdout }}  (expected 8192)
+            fs.inotify.max_user_watches      = {{ inotify_watches_val.stdout }}  (expected 131072)
 
           Config files:
             ✓ /etc/sysctl.d/99-rpi-optimization.conf

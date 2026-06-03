@@ -21,10 +21,17 @@ memory:
   dirty_ratio: 10
   dirty_background_ratio: 5
 
-# Kernel tuning for containers
+# Kernel tuning for containers.
+# inotify limits matter for k3s nodes hosting many pods: every containerd-shim
+# and every container that opens watches consumes from the per-UID budget. Root
+# burns through the default max_user_instances=128 once ~50 pods land on the
+# node (each shim takes ~2 instances), and systemd then fails to create cgroup
+# inotify objects ("Too many open files"), blocking pod spawn. 8192/1048576 is
+# the Kubernetes/Elastic/Grafana recommended floor.
 kernel:
   max_map_count: 262144
-  max_user_watches: 524288
+  max_user_instances: 8192
+  max_user_watches: 1048576
   file_max: 2097152
   netfilter_connection_tracking_max: 131072
 
@@ -72,10 +79,14 @@ rpi3_power:
 # uses once systemd-resolved is gone — keeps apt/k3s working independently of
 # AdGuard's pod state.
 adguard_dns_host: false
-# 100.100.100.100 is Tailscale's MagicDNS IP — required for the host to
-# resolve *.ts.net names (e.g. peer hostnames). It must come FIRST so
-# tailnet lookups don't fall through to public resolvers.
+# Public-only upstreams for the host's own resolver. Tailscale's MagicDNS
+# (100.100.100.100) is deliberately NOT listed: tailscaled runs with
+# accept-dns=false (CorpDNS=false in prefs) on these nodes, so the
+# coordination server does not push upstream resolvers to it; any query for a
+# non-tailnet name sent to 100.100.100.100 returns SERVFAIL and the host falls
+# through to 1.1.1.1 / 8.8.8.8 with extra latency plus a journal line each
+# time. The host doesn't need to resolve *.<tailnet>.ts.net itself — kubeconfig,
+# Ansible inventory and the AdGuard pod's own upstreams use IPs.
 host_dns_servers:
-  - 100.100.100.100
   - 1.1.1.1
   - 8.8.8.8
