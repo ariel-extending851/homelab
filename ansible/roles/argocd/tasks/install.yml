@@ -116,7 +116,11 @@
     kubectl get statefulset/argocd-application-controller
     -n {{ argocd_namespace }}
     -o jsonpath={.spec.template.spec.nodeSelector.kubernetes\.io/hostname}
-  environment: "{{ kubeconfig_env }}"
+  # `kubeconfig_env` is set_fact'd by the caller play during the full
+  # site.yml run, but `--tags argocd-pin` skips that fact. Fall back to the
+  # k3s server's local kubeconfig (the role only runs on the k3s_server
+  # host, so this path is always present at runtime).
+  environment: "{{ kubeconfig_env | default({'KUBECONFIG': '/etc/rancher/k3s/k3s.yaml'}) }}"
   register: argocd_controller_node_current
   changed_when: false
   when: argocd_application_controller_node | length > 0
@@ -136,7 +140,7 @@
           spec:
             nodeSelector:
               kubernetes.io/hostname: "{{ argocd_application_controller_node }}"
-  environment: "{{ kubeconfig_env }}"
+  environment: "{{ kubeconfig_env | default({'KUBECONFIG': '/etc/rancher/k3s/k3s.yaml'}) }}"
   register: argocd_controller_patch
   changed_when: "'patched' in argocd_controller_patch.stdout and 'no change' not in argocd_controller_patch.stdout"
   when:
