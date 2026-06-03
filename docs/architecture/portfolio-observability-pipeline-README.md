@@ -237,7 +237,7 @@ The original design placed a single Alloy template on both tiers — Ansible
 rendered it onto the Pis as a systemd unit, Kustomize rendered it onto the
 EC2 worker as a DaemonSet. Cloud tier worked as planned. **Edge tier
 revealed a real-world contention that the design did not predict:**
-co-locating Alloy with Jellyfin transcoding on the 8 GB Pi 4 degraded
+co-locating Alloy with the media streaming daemon transcoding on the 8 GB Pi 4 degraded
 playback. Disabling Alloy restored it; the symptom was reproducible.
 
 ### What I learned
@@ -248,7 +248,7 @@ Alloy does on an edge node that also serves the apiserver:
 1. `discovery.kubernetes` polls the apiserver continuously to maintain pod
    targets. On the Pi 4 the apiserver IS the k3s-server process — so the
    discovery loop competed for CPU with k3s itself.
-2. Jellyfin transcoding is I/O heavy on the same SD-card-backed root
+2. The media streaming daemon transcoding is I/O heavy on the same SD-card-backed root
    filesystem the k3s log endpoints serve from. Every Alloy → apiserver →
    pod log round-trip added I/O queue pressure that the SD card could not
    absorb under transcoding load.

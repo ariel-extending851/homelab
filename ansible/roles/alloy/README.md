@@ -6,7 +6,7 @@
 
 The original PR #114 installed Grafana Alloy as a native systemd service on
 both Raspberry Pis using this role. Real-world operation revealed that Alloy
-edge contended with Jellyfin transcoding on rasp-pi-04 — `discovery.kubernetes`
+edge contended with a media streaming daemon transcoding on rasp-pi-04 — `discovery.kubernetes`
 chatter to the apiserver (which is the k3s-server process on the same node)
 plus shared SD-card I/O degraded streaming measurably.
 
@@ -46,4 +46,4 @@ revival procedure is:
 4. Remove `promtail` from `k8s/apps/envs/pi-only/kustomization.yaml`
    *in the same commit* — running Alloy + Promtail simultaneously would
    double-ingest into Grafana Cloud Loki.
-5. Re-apply, then validate the original Jellyfin-streaming workload.
+5. Re-apply, then validate the original media-streaming-daemon workload.
