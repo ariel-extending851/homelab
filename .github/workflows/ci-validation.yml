@@ -661,10 +661,20 @@ jobs:
     # schema-only) leaves: schema-valid manifests can still fail to converge
     # because of sync waves, CRD ordering, or broken refs.
     name: "Kubernetes: GitOps Convergence (k3d)"
+    # Skip on Dependabot PRs: the repo is private, ArgoCD inside the k3d
+    # cluster needs a token to clone, and Dependabot's GITHUB_TOKEN does
+    # not propagate to the in-cluster repo-server — so the fetch fails
+    # with `could not read Username for 'https://github.com'`. Dependabot
+    # only touches deps (terraform providers, pip, GH Actions); it never
+    # changes k8s/** manifests, so skipping this gate for it is safe.
+    # `k3d-convergence` is NOT in `pipeline-gate`'s required_success set,
+    # so SKIPPED here does not block the merge gate.
     if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule'
+      github.actor != 'dependabot[bot]' && (
+        github.event_name == 'pull_request' ||
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'schedule'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
