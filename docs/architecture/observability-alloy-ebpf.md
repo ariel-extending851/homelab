@@ -250,7 +250,7 @@ Kustomize on EC2. Cloud tier worked as expected. **Edge tier did not.**
 ### Symptom observed
 
 After PR #114 landed and the `ansible/roles/alloy/` install ran on rasp-pi-04,
-Jellyfin streaming visibly degraded — buffering spikes during 1080p playback,
+the media streaming daemon visibly degraded — buffering spikes during 1080p playback,
 transcoding stalls that did not exist on the baseline. Disabling the Alloy
 systemd unit restored smooth playback. The contention was reproducible.
 
@@ -262,13 +262,13 @@ Two contributors compounded on rasp-pi-04 specifically:
    rasp-pi-04 the apiserver IS the k3s-server process — the same binary
    that serves etcd, handles webhook calls, and acts as the local kubelet's
    API target. Alloy's discovery loop competed for CPU with k3s itself.
-2. **k3s competes for I/O with Jellyfin.** Both processes read from the
+2. **k3s competes for I/O with the media streaming daemon.** Both processes read from the
    same SD-card-backed root filesystem. Adding even a small extra reader
    (Alloy tailing `/var/log/containers/*.log` while k3s served log endpoints
    to Alloy) shifted the I/O queue past the SD card's sustained throughput.
 
 Pi-04 has 7.6 GB RAM and 53.9 % I/O wait is achievable at idle; under
-Jellyfin transcoding it spiked routinely. Alloy's RSS was not the issue —
+media-streaming-daemon transcoding it spiked routinely. Alloy's RSS was not the issue —
 the I/O+apiserver interactions were.
 
 Pi-03 (1 GB) was not measured under the same workload, but the same

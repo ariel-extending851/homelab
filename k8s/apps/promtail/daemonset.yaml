@@ -23,6 +23,10 @@ spec:
         homelab.io/class: low_priority_local_service
     spec:
       serviceAccountName: promtail
+      # Promtail reads logs from hostPath only — it never calls the K8s API,
+      # so the SA token does not need to be projected into the pod. Closes
+      # CKV_K8S_38 (mount SA tokens only where necessary).
+      automountServiceAccountToken: false
 
       # Edge-tier only. When AWS Full is active, k8s/apps/alloy/ runs on
       # the cloud worker (labelled homelab.io/tier=cloud) and handles
