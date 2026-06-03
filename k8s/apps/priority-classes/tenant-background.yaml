@@ -1,0 +1,26 @@
+---
+# Tenant-background priority — batch / non-interactive workloads that
+# tolerate eviction in favor of latency-sensitive ones.
+#
+# Use on Deployments and CronJobs whose work can be retried: downloaders,
+# indexers, syncers, cleanup jobs. Pods with this class are evicted first
+# when the node is under pressure, freeing memory/CPU for tenant-critical
+# pods (Jellyfin-class workloads).
+#
+# value=100 stays above the default (0) so explicit baseline is preserved,
+# but well below hl-tenant-critical (1000) so the scheduler always preempts
+# a background pod for a critical one.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: hl-tenant-background
+  labels:
+    app.kubernetes.io/part-of: homelab
+    app.kubernetes.io/managed-by: argocd
+value: 100
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  Batch / preemptable tenant workloads. First in line for eviction when the
+  node is under memory or CPU pressure. Pair with resources.requests well
+  below limits so the pod stays in QoS Burstable.

@@ -1,0 +1,10 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# PriorityClasses are cluster-scoped; they live here so ArgoCD App-of-Apps
+# manages them like any other tenant manifest. No namespace declaration —
+# PriorityClass is intentionally a non-namespaced resource.
+resources:
+  - tenant-critical.yaml
+  - tenant-background.yaml

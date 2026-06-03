@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: priority-classes
+  description: >-
+    Cluster-scoped PriorityClasses (hl-tenant-critical, hl-tenant-background)
+    that let kubelet/scheduler tier tenant workloads — protects user-facing
+    services from being evicted by batch jobs under node pressure.
+  annotations:
+    homelab.io/runbook: k8s/apps/priority-classes/README.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []
