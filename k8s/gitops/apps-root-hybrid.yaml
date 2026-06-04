@@ -11,10 +11,18 @@
 # Selected by the hybrid deploy via inventory/hybrid.yml overriding
 # `apps_root_manifest_path: k8s/gitops/apps-root-hybrid.yaml`.
 #
-# The third Application in the homelab — `homelab-media-root` — is created
-# separately by the argocd Ansible role's bootstrap_apps_extra.yml task
-# (reads argocd_extra_* SOPS vars), pointing at the private homelab-media
-# repo. It is NOT defined here because its repo URL is sensitive.
+# Other Applications in the homelab (NOT in this file):
+#   - `homelab-media-root` — created by the argocd Ansible role's
+#     bootstrap_apps_extra.yml task (reads argocd_extra_* SOPS vars),
+#     pointing at the private homelab-media repo. NOT defined here because
+#     the repo URL itself is sensitive (DMCA surface).
+#   - `jobhunter-root` — defined as a static manifest in
+#     k8s/gitops/jobhunter-root.yaml. URL is in plaintext because the
+#     project name has no secrecy value (the protection is repo visibility
+#     and the CV that lives inside as an encrypted Secret). Applied once
+#     via `kubectl apply -f k8s/gitops/jobhunter-root.yaml` — the Ansible
+#     role does not (yet) support a second extra repo, so this lives
+#     outside the normal bootstrap flow.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
