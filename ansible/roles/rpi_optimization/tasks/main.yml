@@ -253,11 +253,17 @@
   tags:
     - rpi3
 
-# ─── AdGuard DNS host prep ────────────────────────────────────────────────
-# Frees port 53 on this host so the AdGuard pod (hostNetwork=true) can bind
-# it. Required for k8s/apps/adguard/deployment.yaml's nodeSelector target.
-# Idempotent: stop/disable returns "ok" when already disabled; the regex on
-# /etc/resolv.conf only rewrites when content differs.
+# ─── Host resolver management ────────────────────────────────────────────
+# Two triggers, same outcome (static /etc/resolv.conf using host_dns_servers):
+#
+#   1. `adguard_dns_host: true`  — AdGuard pod owns :53 on the LAN; we MUST
+#      take port 53 away from systemd-resolved so the pod can bind it.
+#   2. `host_dns_managed: true` — non-AdGuard hosts (e.g. rasp-pi-04) where
+#      the manually-edited resolv.conf had 100.100.100.100 first, which
+#      with tailscaled CorpDNS=false breaks anything that forwards through
+#      it (CoreDNS bounce -> ArgoCD repo-server unable to resolve github).
+#      systemd-resolved is intentionally NOT stopped on this path — only
+#      the resolver list is rewritten.
 - name: AdGuard DNS host prep — stop systemd-resolved
   ansible.builtin.systemd:
     name: systemd-resolved
@@ -267,7 +273,7 @@
   tags:
     - adguard-dns-host
 
-- name: AdGuard DNS host prep — replace /etc/resolv.conf with static upstream
+- name: Host resolver — replace /etc/resolv.conf with static upstream
   ansible.builtin.copy:
     # owner/group/mode pinned so the file is reproducible across re-runs.
     dest: /etc/resolv.conf
@@ -275,21 +281,27 @@
     group: root
     mode: "0644"
     content: |
-      # Managed by ansible (rpi_optimization role, adguard_dns_host=true).
-      # Host-only resolver — keeps apt/k3s working independently of the
-      # AdGuard pod, which serves LAN clients on this same node:53.
+      # Managed by ansible (rpi_optimization role).
       # 100.100.100.100 (Tailscale MagicDNS) is intentionally omitted: with
-      # tailscaled CorpDNS=false, any non-tailnet query sent there returns
-      # SERVFAIL, polluting journald and adding a round-trip per lookup.
+      # tailscaled CorpDNS=false on these nodes, any non-tailnet query sent
+      # there returns SERVFAIL, polluting journald and adding a round-trip
+      # per lookup. CoreDNS forwarding through here would propagate the
+      # failure to every pod that resolves an external name.
+      {% if adguard_dns_host | bool %}
+      # adguard_dns_host=true: host-only resolver. AdGuard pod serves LAN
+      # clients on this node's :53; the host itself must not depend on it
+      # (chicken-and-egg on boot).
+      {% endif %}
       {% for srv in host_dns_servers %}
       nameserver {{ srv }}
       {% endfor %}
       search {{ tailscale_network }}
     # Belt-and-braces: Ubuntu's symlink to /run/systemd/resolve/stub-resolv.conf
     # would survive `copy` if `force: false`; keep default force=true.
-  when: adguard_dns_host | bool
+  when: (adguard_dns_host | bool) or (host_dns_managed | default(false) | bool)
   tags:
     - adguard-dns-host
+    - host-dns
 
 - name: Display final memory status
   ansible.builtin.command: free -h

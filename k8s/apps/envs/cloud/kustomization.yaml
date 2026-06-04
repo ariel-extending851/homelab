@@ -40,3 +40,4 @@ resources:
   # backups survive `terraform destroy` of the hybrid AWS stack.
   - ../../golink
   - ../../falco                 # experimental on AL2023; drop if CrashLoop persists
+  - ../../priority-classes      # cluster-scoped — tenant tier protection on the hybrid cluster
