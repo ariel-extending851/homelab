@@ -1,0 +1,83 @@
+---
+# ArgoCD Application — jobhunter (standalone Quarkus app, separate private repo).
+#
+# Mirrors the apps-root.yaml shape; differences are intentional:
+#   - repoURL points at the jobhunter repo (NOT homelab).
+#   - targetRevision: main  (jobhunter is "main" — homelab is "develop").
+#   - path: k8s/apps/jobhunter (single app, not the apps tree).
+#   - no `plugin: sops-kustomize` — jobhunter's k8s/apps/jobhunter does not
+#     yet ship SOPS-encrypted secrets in-repo (placeholders are .example
+#     files). When real secrets land, enable the plugin same as apps-root.
+#
+# Prerequisites (one-time, NOT handled by this manifest):
+#   1. Generate a deploy key for the jobhunter repo:
+#        ssh-keygen -t ed25519 -f ~/.ssh/argocd-jobhunter-deploy-key -N ""
+#   2. Add the *public* key to GitHub repo settings → Deploy keys
+#      (read-only is enough).
+#   3. Create the ArgoCD repo Secret in-cluster:
+#        kubectl -n argocd create secret generic argocd-jobhunter-repo \
+#          --from-literal=type=git \
+#          --from-literal=url=git@github.com:ariel-extending851/jobhunter.git \
+#          --from-file=sshPrivateKey=$HOME/.ssh/argocd-jobhunter-deploy-key
+#        kubectl -n argocd label secret argocd-jobhunter-repo \
+#          argocd.argoproj.io/secret-type=repository
+#
+# Apply this manifest once via kubectl (it does NOT live under k8s/apps/ so
+# the homelab-apps-root Application will not auto-pick-it-up):
+#   kubectl apply -f k8s/gitops/jobhunter-root.yaml
+#
+# After that ArgoCD owns the lifecycle and will track jobhunter@main.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jobhunter-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: jobhunter-root
+    app.kubernetes.io/part-of: jobhunter
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: git@github.com:ariel-extending851/jobhunter.git
+    targetRevision: main
+    path: k8s/apps/jobhunter
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jobhunter
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    # SOPS-decrypted Secrets differ from the encrypted Git representation —
+    # see apps-root.yaml for the rationale.
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
