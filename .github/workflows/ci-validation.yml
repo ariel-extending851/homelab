@@ -689,10 +689,14 @@ jobs:
       - name: Run k3d GitOps Convergence Test
         env:
           IGNORE_MISSING_SECRET_APPS: "1"
-          # Override the SSH repoURL in the shipped root manifest with the
-          # public HTTPS clone so ArgoCD in k3d can fetch without creds.
-          # If the repo is private, replace with a fork/mirror URL.
-          K3D_REPO_URL_OVERRIDE: "https://github.com/${{ github.repository }}.git"
+          # The repo is private, so ArgoCD's in-cluster repo-server needs
+          # creds to clone. Inject the runner's GITHUB_TOKEN via the URL
+          # using x-access-token basic-auth. Token is auto-masked in logs
+          # and expires at job end (any leaked clone-URL artifact is dead
+          # within minutes). `contents: read` (the minimum permission
+          # granted to every workflow run, including dependabot context)
+          # is sufficient for `git clone` / `git fetch`.
+          K3D_REPO_URL_OVERRIDE: "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           # Pin to the actual PR head — tests THIS branch's GitOps tree,
           # not develop's. github.event.pull_request.head.sha is set on PR
           # events; falls through to github.sha for push/dispatch.

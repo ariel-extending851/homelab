@@ -85,8 +85,17 @@ jobs:
             --quiet \
             --soft-fail
 
+      # Dependabot PRs run with a hardened GITHUB_TOKEN that lacks
+      # `security-events: write` no matter what `permissions:` declares —
+      # so the upload step returns "Resource not accessible by integration"
+      # and turns the whole job red. The SARIF still lands as a workflow
+      # artifact (next step), so the data isn't lost; we just can't push
+      # it to the Security tab from a dependabot context. `continue-on-error`
+      # keeps the job green; the upload still gates push/PRs from regular
+      # contributors where the token has the right scope.
       - name: Upload SARIF to GitHub Security tab
         if: always() && hashFiles('.qa/checkov/results_sarif.sarif') != ''
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba  # v4.35.5
         with:
           sarif_file: .qa/checkov/results_sarif.sarif
