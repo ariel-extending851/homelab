@@ -30,3 +30,4 @@ resources:
 - ./unifi
 - ./storage-latency
 - ./priority-classes
+- ./lifeops-jd

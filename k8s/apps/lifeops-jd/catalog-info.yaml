@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: lifeops-jd
+  description: Quarkus CronJob that classifies Gmail into Johnny.Decimal labels via Claude and creates Calendar/Tasks for actionable items.
+  annotations:
+    homelab.io/runbook: docs/runbooks/on-call.md
+    homelab.io/doc: docs/services/lifeops-jd.md
+    github.com/project-slug: ariel-extending851/lifeops-jd
+spec:
+  type: service
+  lifecycle: experimental
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []
