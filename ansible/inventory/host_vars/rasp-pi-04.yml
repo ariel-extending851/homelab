@@ -1,0 +1,16 @@
+---
+# rasp-pi-04 host overrides.
+#
+# Manage /etc/resolv.conf via the rpi_optimization role even though this host
+# does NOT serve LAN DNS (that's rasp-pi-03 with adguard_dns_host=true).
+#
+# Reason: the hand-edited resolv.conf left behind in 2026-05-08 had
+# 100.100.100.100 (Tailscale MagicDNS) as the first nameserver. With
+# tailscaled CorpDNS=false on this node, any non-tailnet query is answered
+# with SERVFAIL. CoreDNS (which migrates between Pis) forwards through
+# /etc/resolv.conf and inherited that failure on 2026-06-03 — ArgoCD's
+# repo-server could no longer resolve github.com and froze the GitOps sync.
+#
+# host_dns_managed=true makes the role render the same resolv.conf used by
+# the AdGuard host, minus the systemd-resolved stop step.
+host_dns_managed: true

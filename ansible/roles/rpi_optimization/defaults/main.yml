@@ -79,6 +79,13 @@ rpi3_power:
 # uses once systemd-resolved is gone — keeps apt/k3s working independently of
 # AdGuard's pod state.
 adguard_dns_host: false
+# Override per-host (via host_vars) on non-AdGuard nodes whose /etc/resolv.conf
+# would otherwise be hand-edited. Keeps the resolver list under the role and
+# prevents drift like the 2026-06-03 pi-04 incident where a stale
+# 100.100.100.100 entry forwarded CoreDNS through tailscaled CorpDNS=false and
+# broke ArgoCD repo-server's lookup of github.com. systemd-resolved is left
+# running on this path (only adguard_dns_host=true stops it).
+host_dns_managed: false
 # Public-only upstreams for the host's own resolver. Tailscale's MagicDNS
 # (100.100.100.100) is deliberately NOT listed: tailscaled runs with
 # accept-dns=false (CorpDNS=false in prefs) on these nodes, so the

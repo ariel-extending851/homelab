@@ -25,3 +25,4 @@ resources:
   - ../../storage-latency       # CronJob on rasp-pi-04 (nodeSelector pinned)
   - ../../node-exporter         # DaemonSet — runs on every Linux node
   - ../../velero                # AWS Lite — backups always on (S3 + IAM in infra/aws-velero/)
+  - ../../priority-classes      # cluster-scoped — tenant tier protection on this Pi-only cluster
