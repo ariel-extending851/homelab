@@ -10,6 +10,36 @@ This page is the historical record — entries here describe the state at the ti
 
 ---
 
+## 2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)
+
+Adds free/near-free AWS capabilities: cost alerting (Budgets + Cost Anomaly Detection + billing alarm), IAM Access Analyzer, EBS snapshot lifecycle (DLM), and a private ECR registry. Recorded ahead of merge so the new IAM grants and the widened `hl-k3s-node` surface are visible to future reviewers.
+
+### Scope
+
+- `infra/aws/modules/finops/` — new: SNS topic `hl-cost-alerts` (+ topic policy scoped to `aws:SourceAccount`), `aws_budgets_budget`, Cost Anomaly Detection monitor/subscription, CloudWatch billing alarm, `aws_accessanalyzer_analyzer` (ACCOUNT/external-access), and an EventBridge rule fanning GuardDuty + Access Analyzer findings to the topic.
+- `infra/aws/modules/backup-ebs/` — new: `aws_dlm_lifecycle_policy` + a DLM service role `hl-dlm-lifecycle-*` carrying the `homelab-principal-boundary`, attached to the AWS-managed `AWSDataLifecycleManagerServiceRole`.
+- `infra/aws/modules/ecr/` — new: private repos (default `hl-apps`) with `IMMUTABLE` tags, free basic `scan_on_push`, AES256, and a lifecycle policy capping retained images.
+- `infra/aws/modules/compute/main.tf` — appended inline policy `hl-ecr-pull-*` on the existing `hl-k3s-node-*` role: `ecr:GetAuthorizationToken` (Resource `*`, AWS-mandated) + `ecr:BatchGetImage` / `GetDownloadUrlForLayer` / `BatchCheckLayerAvailability` scoped to the `hl-*` repo ARNs. Added `Snapshot = hl-k3s` volume tag (DLM selector).
+- `infra/aws-oidc/main.tf` — extended the apply role's inline policy and boundary with `budgets:*`, `ce:*`, `dlm:*`, `access-analyzer:*`, `sns:*` (scoped to `hl-cost-alerts`), scoped `cloudwatch` alarm actions, and `ecr:*` (scoped to `repository/hl-*`). Boundary measured at 3428 bytes (limit 6144).
+
+### Decisions
+
+- **Access Analyzer + findings fan-out live in `finops`, not `audit`.** The audit module's contract explicitly scopes out EventBridge fan-out (`modules/audit/main.tf:15-16`); the rule belongs next to the SNS topic it publishes to.
+- **ACCOUNT-type Access Analyzer only.** The external-access analyzer is free; the unused-access tier is paid and deliberately not created.
+- **ECR tags are `IMMUTABLE` + scan-on-push.** Reproducible deploys; enhanced/Inspector scanning (paid) is NOT enabled.
+- **DLM role carries the principal boundary** like every other `hl-` role. `AWSDataLifecycleManagerServiceRole` is not in the boundary's admin-attach denylist, so it attaches under the cap.
+- **`alert_email` is a plain variable, not SOPS.** It is an alert destination, not a credential; the SOPS catch-all (`*Token`/`*Key`/`*Secret`) does not match it and encrypting it adds friction with no security benefit.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 8 | `hl-k3s-node` role widened with ECR pull (`BatchGetImage` etc.) | runtime-permission | @ariel-extending851 | 2026-09-01 | Read-only, scoped to `arn:aws:ecr:*:*:repository/hl-*`; `GetAuthorizationToken` requires Resource `*` (AWS limitation) but only mints a pull token for repos the other statement already scopes. No push/delete. |
+| 9 | `alert_email` stored as plaintext in tfvars / state | secret-handling | @ariel-extending851 | 2026-09-01 | Intentional — non-secret alert destination, not a credential. Worst case is a leaked email address. |
+| 10 | SNS topic `hl-cost-alerts` can be published to by AWS services | exposure | @ariel-extending851 | 2026-09-01 | Topic policy restricts `SNS:Publish` to the four service principals with an `aws:SourceAccount` condition; no cross-account publish. |
+
+---
+
 ## 2026-05-23 — Alloy + eBPF observability pipeline (planned change)
 
 Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a write-only IAM policy on the existing `hl-k3s-node` role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.

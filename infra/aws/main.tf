@@ -6,9 +6,14 @@
 # See: docs/architecture/aws-infrastructure.md, docs/operations/cost-and-scheduling.md
 #
 # Modules:
-#   - network:   VPC, subnets, security group (Zero Trust — no public ingress)
-#   - compute:   EC2 spot instances, IAM, SSH key, k3s install user-data
-#   - scheduler: Lambda + EventBridge for daily start/stop (10:00 / 21:00 BRT)
+#   - network:    VPC, subnets, security group (Zero Trust — no public ingress)
+#   - compute:    EC2 spot instances, IAM, SSH key, k3s install user-data
+#   - scheduler:  Lambda + EventBridge for daily start/stop (10:00 / 21:00 BRT)
+#   - audit:      CloudTrail + GuardDuty (cost-bounded)
+#   - observability: Alloy cold-storage S3 bucket
+#   - ecr:        private container registry (avoids Docker Hub rate limits)
+#   - backup-ebs: DLM daily EBS snapshots
+#   - finops:     Budgets + Cost Anomaly + billing alarm + Access Analyzer → SNS
 #
 # Security: SOPS-encrypted secrets, IMDSv2 required, EBS encryption
 # ==============================================================================
@@ -124,6 +129,10 @@ module "k3s_cluster" {
   # Wire the cold-storage bucket ARN so the k3s_node IAM role can PutObject.
   # Empty under LocalStack — the compute module gates the policy on this.
   observability_bucket_arn = var.localstack_test == "no" ? module.observability[0].bucket_arn : ""
+
+  # Wire the private ECR repo ARNs so the k3s_node IAM role can pull images.
+  # Empty under LocalStack — the compute module gates the pull policy on this.
+  ecr_repository_arns = var.localstack_test == "no" ? module.ecr[0].repository_arns : []
 
   principal_boundary_arn = local.principal_boundary_arn
 }
@@ -246,4 +255,53 @@ module "scheduler" {
   schedule_stop_hour  = var.schedule_stop_hour
 
   principal_boundary_arn = local.principal_boundary_arn
+}
+
+# ==============================================================================
+# ECR Module — Private Container Registry
+# ==============================================================================
+# Private registry so the cluster pulls its own images without hitting the
+# Docker Hub anonymous rate limit. Free tier 500 MB; intra-region pulls free.
+# Output repository_arns is wired into the compute module's k3s_node pull policy.
+# Skipped under LocalStack (provider lacks full ECR support).
+module "ecr" {
+  source = "./modules/ecr"
+  count  = var.localstack_test == "no" ? 1 : 0
+
+  repository_names = var.ecr_repository_names
+}
+
+# ==============================================================================
+# Backup Module — EBS Snapshot Lifecycle (DLM)
+# ==============================================================================
+# Daily snapshots of the k3s gp3 volumes with bounded retention. DLM is free;
+# only snapshot storage is billed (~$0.05/GB-month, incremental). Selects
+# volumes by the Snapshot=hl-k3s tag set in the compute module.
+# Skipped under LocalStack (DLM unsupported).
+module "backup_ebs" {
+  source = "./modules/backup-ebs"
+  count  = var.localstack_test == "no" ? 1 : 0
+
+  snapshot_retain_count  = var.snapshot_retain_count
+  principal_boundary_arn = local.principal_boundary_arn
+
+  # The Snapshot=hl-k3s volume tag must exist before the policy is meaningful.
+  depends_on = [module.k3s_cluster]
+}
+
+# ==============================================================================
+# FinOps Module — Cost Guardrails + Security Alerting
+# ==============================================================================
+# Free/near-free: AWS Budgets + Cost Anomaly Detection + CloudWatch billing
+# alarm + IAM Access Analyzer, all fanning out through one SNS topic that also
+# carries GuardDuty/Access-Analyzer findings. Closes the gap where the only
+# cost signal was the Infracost PR gate (no alert on real account spend).
+# Skipped under LocalStack (Budgets/CE/Access Analyzer/billing metrics unsupported).
+module "finops" {
+  source = "./modules/finops"
+  count  = var.localstack_test == "no" ? 1 : 0
+
+  alert_email        = var.alert_email
+  monthly_budget_usd = var.monthly_budget_usd
+  billing_alarm_usd  = var.billing_alarm_usd
 }

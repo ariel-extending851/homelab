@@ -3,7 +3,7 @@
 > **Status:** Active · **Last reviewed:** 2026-05-01
 > **Owner:** @ariel-extending851
 
-Two layers of cost governance: the **Infracost gate** in CI (catches regressions in PR), and the **scheduling Lambda** that bounds runtime expense. Per-resource estimates and steady-state cost live in [`cost-and-scheduling.md`](cost-and-scheduling.md); this doc covers *the gate* and *what to do when it fires*.
+Three layers of cost governance: the **Infracost gate** in CI (catches regressions *before* merge), the **scheduling Lambda** that bounds runtime expense, and the **account-level alerts** (Budgets + Cost Anomaly Detection + billing alarm) that catch *actual* spend the first two can't see. Per-resource estimates and steady-state cost live in [`cost-and-scheduling.md`](cost-and-scheduling.md); this doc covers *the gate*, *the alerts*, and *what to do when they fire*.
 
 ---
 
@@ -48,6 +48,38 @@ make terraform-enable-schedule     # restores the daily window
 ```
 
 `terraform plan` for either of these will trip the Infracost gate (large delta) — the gate is doing its job. Either bump the threshold for that PR or do the schedule change locally with `terraform apply` after CI plan-only review.
+
+---
+
+## Account-level alerts (runtime guardrails)
+
+The Infracost gate only sees *planned* changes; it cannot catch a spot price spike, a forgotten resource, or an externally-exposed bucket. The [`finops`](../../infra/aws/modules/finops) module adds free guardrails that watch the running account, all delivered through one SNS topic (`hl-cost-alerts`):
+
+| Alert | Fires when | Default |
+|---|---|---|
+| AWS Budget `hl-monthly-cost` | spend ≥ 80% / 100% of budget, or forecast ≥ 100% | `monthly_budget_usd = 30` |
+| Cost Anomaly Detection | a service's anomalous cost ≥ threshold | `anomaly_impact_threshold_usd = 10` |
+| CloudWatch billing alarm | `EstimatedCharges` > threshold | `billing_alarm_usd = 35` |
+| GuardDuty / Access Analyzer | a security finding is raised | — |
+
+**Setup (one-time):** set `alert_email` (a plain, non-secret variable — it is an alert destination, not a credential) and apply. AWS then sends a confirmation email; **click the link** or the SNS subscription stays `PendingConfirmation` and nothing is delivered:
+
+```bash
+aws sns list-subscriptions-by-topic \
+  --topic-arn "$(cd infra/aws && terraform output -raw cost_alerts_topic_arn)" \
+  --query 'Subscriptions[].SubscriptionArn'
+# "PendingConfirmation" => the email link was not clicked yet
+```
+
+Verify the rest:
+
+```bash
+aws budgets describe-budgets --account-id "$(aws sts get-caller-identity --query Account --output text)"
+aws ce get-anomaly-monitors
+aws accessanalyzer list-analyzers
+```
+
+When a budget/anomaly alert fires, work the same triage as the Infracost gate above; an Access Analyzer finding means a bucket or role is reachable from outside the account — treat as a security incident ([`../runbooks/on-call.md`](../runbooks/on-call.md)).
 
 ---
 

@@ -17,3 +17,13 @@ resource_usage:
   aws_instance.shadow_agent[0]:
     operating_system: linux
     monthly_hrs: 330
+
+  # Private ECR registry kept under the 500 MB free tier by the lifecycle policy.
+  module.ecr[0].aws_ecr_repository.repos["hl-apps"]:
+    storage_gb: 0.5
+
+  # NOTE: DLM EBS snapshots (module.backup_ebs) are created at runtime by the
+  # lifecycle policy, not as Terraform resources, so Infracost does not cost
+  # them here. Estimate ~$1-3/month incremental — see cost-and-scheduling.md.
+  # Budgets / Cost Anomaly Detection / Access Analyzer / SNS / the billing alarm
+  # carry no billable usage knobs at homelab volume (all free tier).

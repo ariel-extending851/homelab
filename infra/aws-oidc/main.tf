@@ -230,6 +230,19 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         Action   = ["guardduty:*"]
         Resource = "*"
       },
+      # FinOps + backup + ECR cap. Single Resource:"*" statement (boundary is a
+      # ceiling, not the grant) to stay under the 6144-byte managed-policy limit.
+      # ECR scoping is enforced by the inline policy; IAM/STS escalation stays
+      # blocked by the dedicated Deny statements below.
+      {
+        Sid    = "FinOpsBackupEcr"
+        Effect = "Allow"
+        Action = [
+          "budgets:*", "ce:*", "dlm:*", "access-analyzer:*",
+          "sns:*", "cloudwatch:*", "ecr:*",
+        ]
+        Resource = "*"
+      },
       # DynamoDB — terraform state lock only.
       {
         Sid    = "DynamoDB"
@@ -530,6 +543,45 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Effect   = "Allow"
         Action   = ["guardduty:*"]
         Resource = "*"
+      },
+      # FinOps + DLM — Budgets/Cost Explorer/DLM/Access Analyzer do not support
+      # useful resource-level conditions (account-global services). Low
+      # escalation surface: cost-management + snapshot-lifecycle reads/writes.
+      {
+        Sid    = "FinOpsAndBackupAccountLevel"
+        Effect = "Allow"
+        Action = [
+          "budgets:*",
+          "ce:*",
+          "dlm:*",
+          "access-analyzer:*",
+        ]
+        Resource = "*"
+      },
+      # SNS — the single hl-cost-alerts notification topic.
+      {
+        Sid      = "SNSHomelabAlerts"
+        Effect   = "Allow"
+        Action   = ["sns:*"]
+        Resource = "arn:aws:sns:*:*:hl-cost-alerts"
+      },
+      # CloudWatch alarms — billing alarm is hl-*; Describe is account-level.
+      {
+        Sid    = "CloudWatchAlarmsHomelab"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms",
+          "cloudwatch:DescribeAlarms", "cloudwatch:ListTagsForResource",
+          "cloudwatch:TagResource", "cloudwatch:UntagResource",
+        ]
+        Resource = "*"
+      },
+      # ECR — private repos use the hl- prefix.
+      {
+        Sid      = "ECRHomelabRepos"
+        Effect   = "Allow"
+        Action   = ["ecr:*"]
+        Resource = "arn:aws:ecr:*:*:repository/hl-*"
       },
       # DynamoDB — terraform state lock only.
       {

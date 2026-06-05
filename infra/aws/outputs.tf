@@ -124,3 +124,31 @@ output "guardduty_detector_id" {
   description = "ID of the GuardDuty detector (empty under LocalStack)."
   value       = var.localstack_test == "no" ? module.audit[0].guardduty_detector_id : ""
 }
+
+# FinOps Outputs (Budgets + Cost Anomaly + billing alarm + Access Analyzer)
+output "cost_alerts_topic_arn" {
+  description = "ARN of the shared hl-cost-alerts SNS topic (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.finops[0].cost_alerts_topic_arn : ""
+}
+
+output "budget_name" {
+  description = "Name of the monthly cost budget (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.finops[0].budget_name : ""
+}
+
+output "access_analyzer_arn" {
+  description = "ARN of the IAM Access Analyzer (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.finops[0].access_analyzer_arn : ""
+}
+
+# EBS Snapshot Lifecycle Output
+output "dlm_policy_id" {
+  description = "ID of the DLM EBS snapshot lifecycle policy (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.backup_ebs[0].dlm_policy_id : ""
+}
+
+# ECR Outputs
+output "ecr_repository_urls" {
+  description = "Private ECR repository URLs keyed by name (empty under LocalStack)."
+  value       = var.localstack_test == "no" ? module.ecr[0].repository_urls : {}
+}

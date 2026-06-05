@@ -128,3 +128,42 @@ run "localstack_invalid_value_rejected" {
   command         = plan
   expect_failures = [var.localstack_test]
 }
+
+# ── finops / backup / ecr root vars ───────────────────────────────────────────
+
+run "finops_backup_ecr_defaults_plan_clean" {
+  variables {
+    localstack_test    = "yes"
+    alert_email        = "ops@example.com"
+    monthly_budget_usd = 30
+    billing_alarm_usd  = 35
+  }
+  command = plan
+}
+
+run "monthly_budget_zero_rejected" {
+  variables {
+    localstack_test    = "yes"
+    monthly_budget_usd = 0
+  }
+  command         = plan
+  expect_failures = [var.monthly_budget_usd]
+}
+
+run "snapshot_retain_above_max_rejected" {
+  variables {
+    localstack_test       = "yes"
+    snapshot_retain_count = 15
+  }
+  command         = plan
+  expect_failures = [var.snapshot_retain_count]
+}
+
+run "ecr_non_hl_prefix_rejected" {
+  variables {
+    localstack_test      = "yes"
+    ecr_repository_names = ["badname"]
+  }
+  command         = plan
+  expect_failures = [var.ecr_repository_names]
+}
