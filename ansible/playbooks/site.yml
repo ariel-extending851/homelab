@@ -250,6 +250,19 @@
   roles:
     - role: rpi_optimization
 
+# Break-glass SSM agent (free standard tier — Run Command). Off unless
+# ssm_breakglass_enabled is true. Lets `aws ssm send-command` run recovery
+# (e.g. `tailscale up`) on the Pis without SSH when the tailnet is down.
+- name: Phase 1.1b — Register Raspberry Pis as SSM managed instances (break-glass)
+  hosts: raspberry_pi
+  become: true
+  gather_facts: true
+  tags: ['phase1', 'ssm', 'breakglass']
+
+  roles:
+    - role: ssm_agent
+      when: ssm_breakglass_enabled | default(false) | bool
+
 - name: Phase 1.2 — Deploy k3s Cluster
   ansible.builtin.import_playbook: deploy_k3s.yml
   tags: ['phase1', 'k3s', 'cluster', 'validate']

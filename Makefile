@@ -1177,6 +1177,14 @@ k3s-snapshot-bootstrap-secret: ## Inject hl-k3s-snapshot AWS creds from infra/aw
 	@echo "    git commit -S -m 'chore(k3s-snapshot): bootstrap AWS creds'"
 	@echo "    git push"
 
+ssm-activation-bootstrap: ## Inject SSM activation id/code from infra/aws-velero outputs into group_vars/all.sops.yml
+	@echo "🔐 Bootstrapping SSM activation creds from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/ssm_activation_bootstrap.py
+	@echo "  ✓ SSM activation creds updated in ansible/group_vars/all.sops.yml."
+	@echo "    Then register the Pis: ansible-playbook ... (ssm_breakglass_enabled=true)"
+
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 
 test-dr-execution: ## Run disaster recovery role as real execution in Molecule test environment

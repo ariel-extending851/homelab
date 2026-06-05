@@ -239,7 +239,7 @@ resource "aws_iam_policy" "terraform_apply_boundary" {
         Effect = "Allow"
         Action = [
           "budgets:*", "ce:*", "dlm:*", "access-analyzer:*",
-          "sns:*", "cloudwatch:*", "ecr:*",
+          "sns:*", "cloudwatch:*", "ecr:*", "ssm:*",
         ]
         Resource = "*"
       },
@@ -582,6 +582,18 @@ resource "aws_iam_role_policy" "terraform_apply_permissions" {
         Effect   = "Allow"
         Action   = ["ecr:*"]
         Resource = "arn:aws:ecr:*:*:repository/hl-*"
+      },
+      # SSM hybrid activations — account/region-level, no useful ARN scoping.
+      # The hl-ssm-hybrid-pi role + PassRole + managed-policy attach are covered
+      # by the existing role/hl-* IAM statements.
+      {
+        Sid    = "SSMHybridActivation"
+        Effect = "Allow"
+        Action = [
+          "ssm:CreateActivation", "ssm:DeleteActivation", "ssm:DescribeActivations",
+          "ssm:AddTagsToResource", "ssm:ListTagsForResource", "ssm:RemoveTagsFromResource",
+        ]
+        Resource = "*"
       },
       # DynamoDB — terraform state lock only.
       {

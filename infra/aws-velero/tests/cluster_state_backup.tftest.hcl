@@ -3,6 +3,15 @@
 
 mock_provider "aws" {}
 
+# aws_iam_role.ssm_hybrid_pi (same module) ARN-validates permissions_boundary at
+# apply — give the mocked boundary data source a real ARN.
+override_data {
+  target = data.aws_iam_policy.principal_boundary
+  values = {
+    arn = "arn:aws:iam::123456789012:policy/homelab-principal-boundary"
+  }
+}
+
 run "snapshot_user_is_write_only_and_prefix_scoped" {
   command = apply
 

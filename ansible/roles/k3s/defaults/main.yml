@@ -61,6 +61,11 @@ enable_cilium_cni: false
 k3s_protect_kernel_defaults: false  # Set to true for production hardening
 k3s_secrets_encryption: false  # Enable secrets encryption at rest
 
+# Authenticated Docker Hub pulls (zero-cost rate-limit fix). When true, renders
+# /etc/rancher/k3s/registries.yaml with dockerhub_username/dockerhub_token (set
+# in group_vars/all.sops.yml). Leave false for anonymous pulls.
+k3s_dockerhub_auth_enabled: false
+
 # Backup settings
 k3s_enable_etcd_snapshots: true
 k3s_etcd_snapshot_schedule: "0 */12 * * *"  # Every 12 hours

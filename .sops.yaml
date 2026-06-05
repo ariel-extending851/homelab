@@ -27,6 +27,13 @@ creation_rules:
     encrypted_regex: ^(wifi_password|wifi_guest_password|pi_mac|pi_ip)$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
 
+  # Encrypt all-hosts secrets: Docker Hub token + SSM activation creds.
+  # (Explicit list — ssm_activation_id/code don't match the generic token/key
+  # patterns below. Must precede the generic group_vars rule to take precedence.)
+  - path_regex: ansible/group_vars/all\.sops\.ya?ml$
+    encrypted_regex: ^(dockerhub_token|ssm_activation_id|ssm_activation_code)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
   # Encrypt Ansible router credentials in group_vars (catch-all for other files)
   - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
     encrypted_regex: ^(wifi_password|wifi_guest_password)$

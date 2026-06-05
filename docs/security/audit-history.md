@@ -10,6 +10,50 @@ This page is the historical record — entries here describe the state at the ti
 
 ---
 
+## 2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)
+
+Two zero/near-zero-cost adds for the Pi-only cluster: a free SSM break-glass path
+and authenticated Docker Hub pulls.
+
+### Scope
+
+- `infra/aws-velero/main.tf` — new IAM role `hl-ssm-hybrid-pi` (trust
+  `ssm.amazonaws.com`, `permissions_boundary` = principal boundary) + attach
+  AWS-managed `AmazonSSMManagedInstanceCore` + `aws_ssm_activation` (registration
+  limit 2). Outputs `ssm_activation_id`/`ssm_activation_code` are `sensitive`.
+- `infra/aws-oidc/main.tf` — apply role + boundary gain `ssm:CreateActivation`/
+  `DeleteActivation`/`DescribeActivations`/tags (Resource `*`; activations are
+  account-level). Role create/PassRole/policy-attach already covered by the
+  `role/hl-*` statements; `AmazonSSMManagedInstanceCore` is not in the
+  admin-attach denylist. Boundary remeasured ~3.4 KB (limit 6144).
+- `ansible/roles/ssm_agent/` — installs + idempotently registers the agent;
+  gated by `ssm_breakglass_enabled` (default false). Includes `molecule/default/`.
+- `ansible/roles/k3s/` — `registries.yaml.j2` for authenticated Docker Hub pulls
+  (`mode 0600`, `no_log`), gated by `k3s_dockerhub_auth_enabled` (default false).
+- `ansible/group_vars/all.sops.yml` (new, SOPS) — `dockerhub_token`,
+  `ssm_activation_id`, `ssm_activation_code` encrypted (dedicated `.sops.yaml`
+  rule); `dockerhub_username`/`ssm_region` plaintext (non-secret).
+
+### Decisions
+
+- **Standard tier only (Run Command), NOT advanced/Session Manager.** Interactive
+  on-prem SSM costs ~$5/instance/mo; Run Command is free and covers break-glass
+  (`tailscale up` without SSH). Documented in `tailscale-logged-out.md`.
+- **Authenticated Docker Hub over ECR pull-through.** For an on-prem Pi, ECR
+  pull-through adds egress (~$0.09/GB) + Secrets Manager ($0.40/mo); a free
+  Docker Hub PAT raises the pull limit at $0. Auth only, no mirror endpoint.
+- Both features ship **off by default** — opt-in via the gating vars.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 13 | SSM activation code/id are registration credentials in SOPS | secret-handling | @ariel-extending851 | 2026-09-01 | Both `sensitive` TF outputs + SOPS-encrypted in `all.sops.yml`; activation expires (AWS caps ≤30d) and managed instances persist after. registration_limit 2. |
+| 14 | hl-ssm-hybrid-pi role lets SSM run commands as root on the Pis | runtime-permission | @ariel-extending851 | 2026-09-01 | Standard tier, Run Command only; same blast radius as existing SSH-as-root. Role carries the principal boundary; off unless `ssm_breakglass_enabled`. |
+| 15 | Docker Hub PAT distributed to all k3s nodes in registries.yaml | secret-handling | @ariel-extending851 | 2026-09-01 | `mode 0600`, `no_log` task; read-only PAT recommended; SOPS-encrypted at rest. Worst case is Docker Hub pull abuse, not infra access. |
+
+---
+
 ## 2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)
 
 Closes a real DR gap: with `cluster-init: false` the k3s etcd-snapshot config is

@@ -276,3 +276,61 @@ resource "aws_iam_user_policy" "k3s_snapshot_access" {
     ]
   })
 }
+
+# ==============================================================================
+# SSM hybrid activation — FREE break-glass for the Raspberry Pis
+# ==============================================================================
+# Registers the on-prem Pis as SSM managed instances (standard tier — Run
+# Command, free for up to 1,000 hybrid instances). NOT advanced-instances tier:
+# interactive Session Manager on-prem costs ~$5/instance/mo and is deliberately
+# out of scope. The concrete win: when Tailscale logs out (the runbook
+# tailscale-logged-out.md scenario) there is otherwise NO remote path on the
+# Pi-only cluster — `aws ssm send-command` can run `tailscale up` without SSH.
+#
+# Lives in the always-on slice so break-glass survives a teardown of infra/aws.
+resource "aws_iam_role" "ssm_hybrid_pi" {
+  name                 = "hl-ssm-hybrid-pi"
+  permissions_boundary = data.aws_iam_policy.principal_boundary.arn
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ssm.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name    = "hl-ssm-hybrid-pi"
+    Purpose = "SSM hybrid-activation role for Raspberry Pi break-glass"
+  }
+}
+
+# Core SSM agent permissions (UpdateInstanceInformation, ssmmessages, etc.).
+# Not in the boundary's admin-attach denylist, so it attaches under the cap.
+resource "aws_iam_role_policy_attachment" "ssm_hybrid_pi_core" {
+  role       = aws_iam_role.ssm_hybrid_pi.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# The activation code/id are one-time registration credentials (sensitive).
+# expiration_date is omitted: AWS caps it at 30 days and the managed instances
+# persist after it lapses. Register the agents promptly after apply; to mint a
+# fresh window later, `terraform apply -replace=aws_ssm_activation.pi`.
+resource "aws_ssm_activation" "pi" {
+  name               = "hl-pi-breakglass"
+  description        = "Break-glass Run Command for the Raspberry Pi cluster"
+  iam_role           = aws_iam_role.ssm_hybrid_pi.name
+  registration_limit = 2 # rasp-pi-03 + rasp-pi-04
+
+  depends_on = [aws_iam_role_policy_attachment.ssm_hybrid_pi_core]
+
+  tags = {
+    Name = "hl-pi-breakglass"
+  }
+}

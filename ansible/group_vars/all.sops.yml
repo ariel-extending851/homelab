@@ -1,0 +1,26 @@
+# SOPS-encrypted vars applied to ALL hosts.
+#   dockerhub_*      — authenticated Docker Hub pulls (set manually with a free
+#                      Docker Hub account + read-only PAT), gated by
+#                      k3s_dockerhub_auth_enabled.
+#   ssm_activation_* — SSM break-glass; populate via `make ssm-activation-bootstrap`
+#                      from infra/aws-velero outputs, gated by ssm_breakglass_enabled.
+dockerhub_username: REPLACE_ME
+dockerhub_token: ENC[AES256_GCM,data:W9jRUSSCcxHNMQ==,iv:6YSTqoqnIyiyiyxG6v4i2nk9u/Ayi2+RB6c+Mkglp1E=,tag:THebDivuMjbV8cWE8EroCg==,type:str]
+ssm_activation_id: ENC[AES256_GCM,data:0EzwjrPEMhF0Dg==,iv:9XxHJTZFZ2L3ruGimjBeuooFi7r6aDJgnSe3MnUH7cQ=,tag:Vctl2VaELWPIUeAiTj9jlQ==,type:str]
+ssm_activation_code: ENC[AES256_GCM,data:S/wEN7WFgx0uUA==,iv:WEXQMFBSF8FVzR/qOgnlPvjbl38h0oQmdgBYKjLO1so=,tag:0o92AaHzq1TmZ1/TnUxxGA==,type:str]
+ssm_region: us-east-1
+sops:
+    age:
+        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBTWVJNeWtjTkZPMUc0Y3dJ
+            WEF1T0JrUksyN0tZbGJuMno1eHZ3ZzBMaENvCnUzWFIwN1ZoN0ZNaEw5aHQrdUhv
+            bFFQV2hHSGRJZGdtc1VWWHZtQ1BMWkkKLS0tIHJiakRVN2pkck9sSTZmUkhVN0s0
+            RFRhSldYbDZTRUo4ajNuNmNzUnhyZ3cKUg530ZgEyk79zrNlyv8st5uGwWmjZt3M
+            cV0pD3HxKvGw3NggfNxO8gAQuZhA2Lo4Gvv/HelRyf5tMYUCqJYZsg==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-06-05T17:31:51Z"
+    mac: ENC[AES256_GCM,data:DbRjv9hQ6uBr+b5Qo3cCtuwmwTvcX5/jc8qv9++UQ0L5ntdX5FrXXlzrkOdQB5FVZcU9jD3uEqE3mNNqlHYBR5uMEsEXKrBO8/yclBYusK86IVoSQZ0JXD9zOD4zZA6YNbhlBZnuo6TA5VhV84T8qP89AGdaCOyUBRLRB4rgxEc=,iv:70mVQO/O9NrBUL+69aa390Qt2V/g+I+h4d56GH9BjK8=,tag:/peimrPPtd1uNAkbU6xV4g==,type:str]
+    encrypted_regex: ^(dockerhub_token|ssm_activation_id|ssm_activation_code)$
+    version: 3.10.2

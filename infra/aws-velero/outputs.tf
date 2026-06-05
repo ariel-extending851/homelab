@@ -24,3 +24,15 @@ output "k3s_snapshot_aws_secret_access_key" {
   value       = aws_iam_access_key.k3s_snapshot.secret
   sensitive   = true
 }
+
+output "ssm_activation_id" {
+  description = "SSM hybrid-activation ID for registering the Pis (bootstrap into group_vars via make ssm-activation-bootstrap)."
+  value       = aws_ssm_activation.pi.id
+  sensitive   = true
+}
+
+output "ssm_activation_code" {
+  description = "SSM hybrid-activation code — one-time registration credential for the Pis."
+  value       = aws_ssm_activation.pi.activation_code
+  sensitive   = true
+}
