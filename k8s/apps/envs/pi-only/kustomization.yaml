@@ -23,6 +23,7 @@ kind: Kustomization
 resources:
   - ../../adguard               # hostNetwork :53 on rasp-pi-03 (nodeSelector pinned)
   - ../../storage-latency       # CronJob on rasp-pi-04 (nodeSelector pinned)
+  - ../../k3s-snapshot          # CronJob on rasp-pi-04 — SQLite control-plane backup → S3
   - ../../node-exporter         # DaemonSet — runs on every Linux node
   - ../../velero                # AWS Lite — backups always on (S3 + IAM in infra/aws-velero/)
   - ../../priority-classes      # cluster-scoped — tenant tier protection on this Pi-only cluster

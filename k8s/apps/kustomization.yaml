@@ -29,4 +29,5 @@ resources:
 - ./hl-kyverno
 - ./unifi
 - ./storage-latency
+- ./k3s-snapshot
 - ./priority-classes

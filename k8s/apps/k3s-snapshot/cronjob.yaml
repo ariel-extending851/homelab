@@ -1,0 +1,114 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k3s-snapshot
+  namespace: k3s-snapshot
+  labels:
+    app.kubernetes.io/name: k3s-snapshot
+    app.kubernetes.io/component: backup
+spec:
+  # Every 12h — matches the (previously inert) k3s_etcd_snapshot_schedule so the
+  # operational cadence stays familiar.
+  schedule: "0 */12 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 600
+
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: k3s-snapshot
+        spec:
+          restartPolicy: Never
+          serviceAccountName: k3s-snapshot
+          automountServiceAccountToken: false
+          # Pin to the k3s control-plane node — the only node with
+          # /var/lib/rancher/k3s/server/db/state.db. Using the control-plane
+          # role label (Exists, value-agnostic) instead of a hostname keeps this
+          # correct in BOTH modes: pi-only (pi-04 is the server) and hybrid
+          # (the EC2 server is — this overlay is shared by apps-root-hybrid.yaml).
+          # The debian image is multi-arch, so it runs on arm64 (Pi) or amd64 (EC2).
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: Exists
+
+          volumes:
+            # k3s datastore dir — mounted READ-ONLY; sqlite .backup only reads it.
+            - name: k3s-db
+              hostPath:
+                path: /var/lib/rancher/k3s/server/db
+                type: Directory
+            # Scratch for the .backup copy + gzip. On-disk (not Memory) to spare
+            # the Pi's RAM; small + infrequent so SD-card wear is negligible.
+            - name: work
+              emptyDir:
+                sizeLimit: 256Mi
+            - name: script
+              configMap:
+                name: k3s-snapshot-script
+                defaultMode: 0o555
+            - name: aws-creds
+              secret:
+                secretName: k3s-snapshot-aws-credentials
+
+          containers:
+            - name: snapshot
+              # Reuse the digest already pinned + Trivy-allowlisted for
+              # storage-latency (k8s/apps/storage-latency/cronjob.yaml) — no new
+              # image to vet. sqlite3 + awscli installed at runtime, same pattern
+              # storage-latency uses for fio.
+              image: debian:bookworm-slim@sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+                - name: BUCKET
+                  value: "homelab-velero-backups-kkuhocyv"
+                - name: AWS_SHARED_CREDENTIALS_FILE
+                  value: "/creds/cloud"
+              command: ["/bin/bash", "-euo", "pipefail", "-c"]
+              args:
+                - |
+                  apt-get update -qq
+                  apt-get install -y --no-install-recommends sqlite3 awscli ca-certificates >/dev/null
+                  exec /etc/script/backup.sh
+              securityContext:
+                # Reads root-owned /var/lib/rancher/k3s/server/db (mode 0700), so
+                # runs as root with a read-only source mount, all caps dropped.
+                # readOnlyRootFilesystem must stay false: apt-get writes to /var.
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                runAsUser: 0
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              volumeMounts:
+                - name: k3s-db
+                  mountPath: /db
+                  readOnly: true
+                - name: work
+                  mountPath: /work
+                - name: script
+                  mountPath: /etc/script/backup.sh
+                  subPath: backup.sh
+                  readOnly: true
+                - name: aws-creds
+                  mountPath: /creds
+                  readOnly: true

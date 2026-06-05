@@ -110,7 +110,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "velero_backups" {
     id     = "tier-and-expire-old-backups"
     status = "Enabled"
 
-    filter {}
+    # Scoped to Velero's own prefix so the cluster-state rule below can apply
+    # its own (shorter) retention without this catch-all tiering it to Glacier.
+    filter {
+      prefix = "backups/"
+    }
 
     transition {
       days          = 30
@@ -128,6 +132,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "velero_backups" {
 
     noncurrent_version_expiration {
       noncurrent_days = 30
+    }
+  }
+
+  # k3s control-plane (SQLite) snapshots uploaded by the k8s/apps/k3s-snapshot
+  # CronJob. Small (tens of MB gzipped) and meant for fast restore, so they
+  # stay in Standard and expire at 30 days — no IA/Glacier tiering.
+  rule {
+    id     = "expire-cluster-state-snapshots"
+    status = "Enabled"
+
+    filter {
+      prefix = "cluster-state/"
+    }
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
     }
   }
 }
@@ -180,6 +204,74 @@ resource "aws_iam_user_policy" "velero_backup_access" {
           "s3:ListBucketMultipartUploads",
         ]
         Resource = aws_s3_bucket.velero_backups.arn
+      },
+    ]
+  })
+}
+
+# ==============================================================================
+# IAM user for the k3s control-plane snapshot CronJob — WRITE-ONLY, prefix-scoped
+# ==============================================================================
+# The k8s/apps/k3s-snapshot CronJob on rasp-pi-04 uploads gzipped SQLite
+# snapshots of the k3s datastore to the cluster-state/ prefix of the Velero
+# bucket. This closes the real DR gap: with cluster-init=false the k3s
+# etcd-snapshot config is inert (SQLite), so there is no automated control-plane
+# backup — Velero only covers app namespaces + PVCs, not the datastore.
+#
+# Separate user (not Velero's) for a different blast radius and rotation cadence.
+# Write-only on cluster-state/* (no GetObject/DeleteObject): a compromised Pi pod
+# can append a snapshot but cannot read or wipe backup history. Restore is a
+# human operator action using admin credentials — see
+# docs/runbooks/control-plane-snapshot-restore-pi.md.
+#
+# Path /system/ matches the OIDC apply-role allowlist (user/system/*), so this
+# needs no infra/aws-oidc change.
+resource "aws_iam_user" "k3s_snapshot" {
+  name                 = "hl-k3s-snapshot"
+  path                 = "/system/"
+  permissions_boundary = data.aws_iam_policy.principal_boundary.arn
+
+  tags = {
+    Name    = "hl-k3s-snapshot"
+    Purpose = "k3s control-plane SQLite snapshot uploader"
+  }
+}
+
+resource "aws_iam_access_key" "k3s_snapshot" {
+  user = aws_iam_user.k3s_snapshot.name
+}
+
+resource "aws_iam_user_policy" "k3s_snapshot_access" {
+  name = "k3s-snapshot-cluster-state-write"
+  user = aws_iam_user.k3s_snapshot.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "WriteSnapshots"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts",
+        ]
+        Resource = "${aws_s3_bucket.velero_backups.arn}/cluster-state/*"
+      },
+      {
+        Sid    = "ListOwnPrefixOnly"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:ListBucketMultipartUploads",
+        ]
+        Resource = aws_s3_bucket.velero_backups.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = "cluster-state/*"
+          }
+        }
       },
     ]
   })

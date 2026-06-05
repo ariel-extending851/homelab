@@ -132,10 +132,15 @@ was rewritten. To return:
   all Tailscale ingresses go down. AdGuard on pi-03 keeps serving DNS
   because it uses `hostNetwork` and the GL.iNet router has a cron-based
   fallback to public DNS.
-- **No HA.** k3s runs with the default sqlite datastore. Etcd snapshots
-  (`k3s_enable_etcd_snapshots: true` in defaults) still trigger on sqlite
-  and back up `state.db` every 12 hours — restore manually via
-  `k3s server --cluster-reset-restore-path=<snapshot>`.
+- **No HA.** k3s runs with the default sqlite datastore (`cluster-init:
+  false`). Note: k3s's native etcd snapshots do **not** work on sqlite — the
+  `etcd-snapshot-*` flags are inert there (the server-config template now
+  suppresses them and says so). Control-plane backup is instead handled by the
+  **`k8s/apps/k3s-snapshot` CronJob**, which uploads a gzipped `sqlite3 .backup`
+  of `state.db` to `s3://homelab-velero-backups-kkuhocyv/cluster-state/` every
+  12h. Restore: [`docs/runbooks/control-plane-snapshot-restore-pi.md`](../runbooks/control-plane-snapshot-restore-pi.md).
+  (Etcd on an SD card is a write-amplification anti-pattern, so we keep sqlite +
+  offsite snapshots rather than migrating to embedded etcd.)
 - **Memory headroom on pi-04 is tight if the private media stack lands
   there.** Baseline (k3s + ArgoCD + ~11 Tailscale proxies + kube-system)
   is ~3 GB. Adding jellyfin/*arr can push past 6 GB. Set explicit memory

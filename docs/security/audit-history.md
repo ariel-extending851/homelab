@@ -10,6 +10,48 @@ This page is the historical record — entries here describe the state at the ti
 
 ---
 
+## 2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)
+
+Closes a real DR gap: with `cluster-init: false` the k3s etcd-snapshot config is
+inert (SQLite), so there was no automated control-plane backup — Velero covers
+only app namespaces + PVCs. Adds a write-only S3 uploader + a CronJob that
+snapshots `state.db` offsite.
+
+### Scope
+
+- `infra/aws-velero/main.tf` — new IAM user `hl-k3s-snapshot` at path `/system/`,
+  `permissions_boundary` = `homelab-principal-boundary`, **write-only** on the
+  `cluster-state/*` prefix (`s3:PutObject`/`AbortMultipartUpload`/`ListMultipart
+  UploadParts`); `ListBucket` is conditioned on `s3:prefix = cluster-state/*` so
+  it cannot enumerate Velero's backups. New lifecycle rule expiring
+  `cluster-state/` objects at 30d; the existing Velero rule is now scoped to the
+  `backups/` prefix.
+- `k8s/apps/k3s-snapshot/` — CronJob (every 12h) pinned via nodeAffinity to the
+  control-plane node, mounts `/var/lib/rancher/k3s/server/db` **read-only**, runs
+  `sqlite3 .backup` → gzip → `aws s3 cp`. SOPS secret holds the uploader creds.
+- `ansible/roles/k3s/templates/server-config.yaml.j2` — suppress the inert
+  `etcd-snapshot-*` lines under SQLite and emit an explanatory comment.
+
+### Decisions
+
+- **SQLite `.backup`, not etcd migration.** etcd on an SD card is a write-
+  amplification anti-pattern; keep SQLite + offsite snapshots.
+- **Write-only uploader.** A compromised Pi pod can append a snapshot but cannot
+  read or delete backup history. Restore is a human action with admin creds.
+- **Reused the storage-latency debian digest** (already Trivy-allowlisted) — no
+  new image to vet.
+- **Pinned to the control-plane role** (Exists, value-agnostic), not a hostname,
+  so it follows the control plane in both pi-only (pi-04) and hybrid (EC2) modes.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 11 | CronJob runs as root with a hostPath mount of the k3s db dir | runtime-permission | @ariel-extending851 | 2026-09-01 | hostPath is **read-only** and scoped to `/var/lib/rancher/k3s/server/db` (not `/`); `allowPrivilegeEscalation: false` + `drop: [ALL]`; pinned to the control-plane node; same posture already accepted for `storage-latency`. Root is required to read the 0700 root-owned datastore dir. |
+| 12 | Snapshot contains full cluster state (secrets, tokens) in S3 | data-at-rest | @ariel-extending851 | 2026-09-01 | Bucket is AES256-SSE, public-access-blocked, versioned; uploader is write-only; 30-day expiry. Same bucket/posture as Velero backups, which already contain Secrets. |
+
+---
+
 ## 2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)
 
 Adds free/near-free AWS capabilities: cost alerting (Budgets + Cost Anomaly Detection + billing alarm), IAM Access Analyzer, EBS snapshot lifecycle (DLM), and a private ECR registry. Recorded ahead of merge so the new IAM grants and the widened `hl-k3s-node` surface are visible to future reviewers.
