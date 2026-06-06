@@ -1,0 +1,28 @@
+---
+# Deploy a GitHub Actions self-hosted runner as a native systemd service.
+# Targets:
+#   - github_runners: only rasp-pi-04 today (Pi-3 RAM too tight)
+#
+# Run:
+#   mise exec -- ansible-playbook -i ansible/inventory/production.yml \
+#       ansible/playbooks/deploy-github-runner.yml \
+#       --tags github_runner --diff
+#
+# Prereqs:
+#   1. ansible/group_vars/github_runners.sops.yml must exist with a real PAT.
+#   2. The host already has Tailscale + outbound 443 to github.com / api.github.com.
+
+- name: Deploy GitHub Actions self-hosted runner (native systemd)
+  hosts: github_runners
+  become: true
+  gather_facts: true
+  tags:
+    - github_runner
+    - ci
+
+  # group_vars/github_runners.sops.yml is auto-loaded for hosts in the
+  # github_runners group. See ansible/roles/github_runner/README.md for the
+  # PAT scopes required.
+
+  roles:
+    - role: github_runner

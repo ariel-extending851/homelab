@@ -1,16 +1,16 @@
-wifi_password: ENC[AES256_GCM,data:o0SWgzuMtCBqwQJTIa2upymqGc2uF7Gxrfnsj9kp,iv:JLI+pNltcd0To/jbW6XsCXukF7fkh49axuQur3rIuuw=,tag:oBXsrtIOUMG0+Nu+GbQgNA==,type:str]
+wifi_password: ENC[AES256_GCM,data:19zZC2ycw4CmEGH9gjO45TZQXF4X2MY/AtVmW90b,iv:JLI+pNltcd0To/jbW6XsCXukF7fkh49axuQur3rIuuw=,tag:1J1FOfvcScoxZPZTeD6Jmw==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+        - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWS2VSc2N4MW9Ta20yUEh3
-            L0M1akNhZWVUS05uam51MDRvV0g2WHlFVHlVCnpFTWF1ODZDZDk4R0czWHNPODFn
-            eDk2ZjhLeEdXQ1YvWXlSRC9ETFZWeHcKLS0tIGE3NGFQNVpjcXFkTjk2WmVDdjlm
-            VGQ1UTdsdXZ2VEMrNkZKWFpqTVNKUWcKqBlwiAxDWpbgi6nknjZvG5EfKHU2D0BA
-            lcoMEiYKyBbykESyHOjaO6fF96NmkzrpglAYolNQdnMoFyX0f+iMFQ==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBhb0R1ZnIyZk1yd2lvWFdB
+            TW1WcU5BcW1XZlhaeEZnM1R3bmQrR1A1U0JzCktZSk9pcFFOSEEyMzM0YU1uODdo
+            ZEhuRnlyUkFaYnFTeFhRUFYvcy9UOXcKLS0tICtGRmhwUEY5a1B0Z01uMnltalpE
+            TjZoRmZWZVA4MFhXVmtkbnJvNlhRencKNkmji0g9Z2vUWpzQvZXwnX6eQ6UX4Lqw
+            Tc5Fg2/3gxwSk2yv204SYgwT9Ii+ZeMiXDpBkLQRGFNuOn2a2rEh2Q==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-03-28T15:02:13Z"
-    mac: ENC[AES256_GCM,data:TrqS+XKH4nh9E3/GoiNrTu1ZG22BNxZ007P0gDiAXZ7qWerPHP2I+wCIGK7F1/PgAb02LsVNiL+PSDJbFMTqDHcv406KDHLtsFzNqALUa5Rhe3NVkrxRB1XJGWQR2GWCff4lnC8FOmJlqzlHPNOOIWGHFtSy5EFvbDtWL/We4pA=,iv:FYIkHR6/sDxzTRwo90TSMoasCV5MeXgdcDRFf8VfIUY=,tag:6wQuLuv+u7Qo2d/zx3QTEg==,type:str]
+    lastmodified: "2026-06-06T19:43:32Z"
+    mac: ENC[AES256_GCM,data:aZ8ajKLEO7c77hNH0FtJDLVNlcZgEGJIvaaQYtxwDyjymHc48SyxLTw3n+BTFIZ7FL8T5qxVASPYQ3wS5zU4j8IZjr+ozCnfdJsxLrQrn8/xZlgmjRe+fPNPApxtK59M8MP4QlcalpqbxhCLeqZ/57oT2Bb0phFoh9GRYAy449g=,iv:JoVI4kk2+MFOKosmcZkA0oYgQn79dF+ST1a62HFJpHg=,tag:4eog0hB2ZaZkS1MXfZjL+A==,type:str]
     encrypted_regex: ^(wifi_password)$
     version: 3.12.2

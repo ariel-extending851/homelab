@@ -15,7 +15,7 @@ argocd_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argo
 
 # SOPS integration
 sops_enabled: true
-sops_age_public_key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+sops_age_public_key: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
 # Age private key location (on laptop/control machine)
 sops_age_private_key_path: "{{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt"
