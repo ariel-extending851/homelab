@@ -50,50 +50,50 @@ Critical tell: a successful run at SHA `X` is followed by failures at the same S
 
 ## Recovery (pick one)
 
-### A. Pay (immediate unblock)
+### Option A — Docker compose runner on pc-tower (preferred, free, currently deployed)
 
-Go to <https://github.com/settings/billing> → *Plans and usage* → *GitHub Actions* → set a spending limit > $0 (overage billing kicks in). New runs allocate within minutes.
-
-### B. Wait for monthly reset (free, but slow)
-
-Free-tier Actions minutes reset on the 1st of each month. Until then, **no GitHub-hosted runs**. Use Option C in parallel to keep landing low-risk PRs.
-
-### C. Self-hosted runner on the Pi-4 (free, light jobs only)
-
-Deploy the `github_runner` role on rasp-pi-04. See [`ansible/roles/github_runner/README.md`](../../ansible/roles/github_runner/README.md). Steps after the SOPS secret is created:
+Lightest path when a host with Docker is available. The pc-tower (Bluefin / Fedora x86_64, 12c / 15G) hosts the runner as a long-lived container via `ci/runner/docker-compose.yml`; the `make runner-up` target reads the PAT from the SOPS-encrypted group_vars file and starts it. See [`ci/runner/README.md`](../../ci/runner/README.md).
 
 ```bash
-cd ansible
-mise exec -- ansible-playbook -i inventory/production.yml \
-    playbooks/deploy-github-runner.yml --tags github_runner --diff
+make runner-up      # start + register
+make runner-status  # ps + GitHub-side registration
+make runner-logs    # tail
+make runner-down    # stop without deleting cache volume
+make runner-reset   # also drop the persistent work cache
 ```
 
-Verify <https://github.com/ariel-extending851/homelab/settings/actions/runners> shows `rasp-pi-04-runner` with status **Idle** before merging any PR that touches the redirected jobs in `.github/workflows/ci-validation.yml`. GitHub Actions does **not** auto-fallback: a `runs-on: [self-hosted, arm64, pi-homelab]` job queues indefinitely (24h expiry) if no matching runner is online.
+The runner registers as `pc-tower-runner` with labels `self-hosted, X64, pc-homelab`. Verify Idle at <https://github.com/ariel-extending851/homelab/settings/actions/runners>.
 
-The 5 jobs currently redirected to the self-hosted tier are light enough for the Pi-4: `yaml-lint`, `python-tests-collect`, `sops-validation`, `lint-workflows`, `shellcheck`. Heavy jobs (`molecule`, `k3d-convergence`, `kubernetes-dry-run`, `disaster-recovery-execution`, `arm64-validation`, `integration-localstack`, terraform tests, trivy-image-scan) cannot run on a Pi-4 alongside k3s and remain on `ubuntu-latest`. Until A or B is resolved, Pipeline Gate stays red on every PR — the self-hosted tier only unblocks visual signal for the light tier.
+**Coverage today:** the workflow redirects only the 5 light jobs (`yaml-lint`, `python-tests-collect`, `sops-validation`, `lint-workflows`, `shellcheck`) to `runs-on: [self-hosted, pc-homelab]`. Heavy jobs (`molecule`, `k3d-convergence`, `kubernetes-dry-run`, `disaster-recovery-execution`, `arm64-validation`, `integration-localstack`, `trivy-image-scan`, terraform set) still target `ubuntu-latest` and remain red until billing returns. pc-tower has the raw capacity for them (12c/15G + Docker socket access for sibling containers) — peel them over one at a time as compatibility is verified.
 
-### Pausing the runner for media playback
-
-Pi-4 also runs Jellyfin. The role drops `CPUQuota=50%` + `MemoryMax=1G` + `Nice=15` + idle I/O class so the runner cannot starve transcoding. For a movie night where you want zero competition, pause completely:
+**Pausing for foreground work** (movies, gaming, build of your own code):
 
 ```bash
-ssh ubuntu@192.168.8.11 \
-  'sudo systemctl stop actions.runner.ariel-extending851-homelab.rasp-pi-04-runner.service'
+make runner-down   # instantaneous; in-flight jobs are killed
+make runner-up     # back online in ~30 s
 ```
 
-Re-enable with `systemctl start ...`. State flips to `Offline` / `Idle` in the GitHub runners UI.
+State flips between `Offline` and `Idle` in the GitHub runners UI.
 
-### Removing the runner entirely (when GitHub-hosted comes back)
+**Full decommission when GitHub-hosted minutes come back:**
 
 ```bash
-cd ansible
-mise exec -- ansible-playbook -i inventory/production.yml \
-    playbooks/deploy-github-runner.yml \
-    --tags github_runner,uninstall \
-    --extra-vars github_runner_uninstall=true --diff
+make runner-reset                                # stop + clear work volume
+# revert the 5 `runs-on: [self-hosted, pc-homelab]` lines in
+# .github/workflows/ci-validation.yml back to `runs-on: ubuntu-latest`
 ```
 
-Then revert the 5 `runs-on: [self-hosted, arm64, pi-homelab]` lines in `.github/workflows/ci-validation.yml` back to `runs-on: ubuntu-latest` in the same commit — otherwise those jobs queue forever.
+### Option B — Pay for GitHub-hosted minutes
+
+<https://github.com/settings/billing> → *Plans and usage* → *GitHub Actions* → set a spending limit > $0. New runs allocate within minutes.
+
+### Option C — Wait for monthly reset
+
+Free-tier Actions minutes reset on the 1st of each month. Until then, no GitHub-hosted runs. Keep Option A active in parallel so the light tier stays green.
+
+### Option D — Ansible/systemd runner on another host (Pi or Fedora workstation)
+
+For hosts without Docker (Raspberry Pi) or where systemd unit management is preferable to a container, the `ansible/roles/github_runner/` role installs and registers the runner as a `actions.runner.*` systemd unit. Distro-aware (`apt`/`dnf`), arch-detected (`arm64`/`x64`). See [`ansible/roles/github_runner/README.md`](../../ansible/roles/github_runner/README.md). Add the host to the `github_runners` group in `ansible/inventory/production.yml` first.
 
 ## Why we hit this
 

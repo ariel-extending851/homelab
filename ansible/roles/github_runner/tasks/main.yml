@@ -30,7 +30,7 @@
       when: not github_runner_skip_register
       tags: [github_runner, validate]
 
-    - name: Install runner prerequisites
+    - name: Install runner prerequisites (Debian/Ubuntu)
       ansible.builtin.apt:
         name:
           - curl
@@ -42,6 +42,20 @@
         state: present
         update_cache: true
         cache_valid_time: 3600
+      when: ansible_pkg_mgr == 'apt'
+      tags: [github_runner, packages]
+
+    - name: Install runner prerequisites (Fedora/RHEL)
+      ansible.builtin.dnf:
+        name:
+          - curl
+          - tar
+          - git
+          - jq
+          - ca-certificates
+          - libicu  # actions/runner needs libicu at runtime (Fedora package name)
+        state: present
+      when: ansible_pkg_mgr in ['dnf', 'dnf5']
       tags: [github_runner, packages]
 
     - name: Create runner system group

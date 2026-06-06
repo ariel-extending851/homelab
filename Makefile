@@ -35,7 +35,8 @@
 		unifi-up unifi-down unifi-status \
 		pi-only-deploy pi-only-ansible pi-only-kubeconfig \
 		pi-only-sysctl pi-only-resolv-conf pi-only-argocd-pin \
-		pi-only-stability-fixes
+		pi-only-stability-fixes \
+		runner-up runner-down runner-logs runner-reset runner-status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -352,6 +353,44 @@ setup-ci-deps-all: ## Install ALL CI dependencies (Makefile as source of truth f
 	@make setup-ci-deps-molecule
 	@make setup-ci-deps-arm64
 	@echo "✅ All CI/CD dependencies installed"
+
+##@ Self-hosted CI runner (Docker compose on pc-tower)
+
+# Reads the PAT from the SOPS-encrypted group_vars file; exports it as the
+# ACCESS_TOKEN env var that docker-compose.yml expects. Plaintext never lands
+# on disk — only in the shell's environment for the duration of the call.
+RUNNER_COMPOSE := ci/runner/docker-compose.yml
+RUNNER_SOPS    := ansible/group_vars/github_runners.sops.yml
+
+runner-up: ## Start the self-hosted runner container (decrypts SOPS PAT)
+	@echo "🤖 Starting GitHub Actions self-hosted runner..."
+	@test -f $(RUNNER_SOPS) || (echo "❌ $(RUNNER_SOPS) missing — create it per ci/runner/README.md"; exit 1)
+	@ACCESS_TOKEN=$$($(MISE_EXEC) sops -d $(RUNNER_SOPS) | grep '^github_runner_pat:' | sed -E 's/^github_runner_pat: *"?([^"]*)"?$$/\1/') ; \
+		test -n "$$ACCESS_TOKEN" || (echo "❌ Empty PAT after sops -d"; exit 1) ; \
+		ACCESS_TOKEN=$$ACCESS_TOKEN docker compose -f $(RUNNER_COMPOSE) up -d
+	@echo "✅ Runner starting. Confirm Idle at:"
+	@echo "   https://github.com/ariel-extending851/homelab/settings/actions/runners"
+
+runner-down: ## Stop the self-hosted runner container (keeps the work cache volume)
+	@echo "🛑 Stopping GitHub Actions runner..."
+	@docker compose -f $(RUNNER_COMPOSE) down
+	@echo "✅ Runner stopped (volume hl-github-runner-work preserved)."
+
+runner-logs: ## Tail the runner container logs
+	@docker logs -f --tail=100 hl-github-runner
+
+runner-reset: ## Stop runner and wipe its persistent work cache volume
+	@echo "💣 Resetting runner from scratch..."
+	@ACCESS_TOKEN=unused docker compose -f $(RUNNER_COMPOSE) down -v 2>/dev/null || docker rm -f hl-github-runner 2>/dev/null || true
+	@docker volume rm hl-github-runner-work 2>/dev/null || true
+	@echo "✅ Runner stopped + cache cleared. Run \`make runner-up\` to recreate."
+
+runner-status: ## Show runner container status + GitHub-side registration
+	@docker ps --filter name=hl-github-runner --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' 2>/dev/null || true
+	@echo ""
+	@echo "GitHub API view:"
+	@gh api repos/ariel-extending851/homelab/actions/runners --jq '.runners[] | .name + ": status=" + .status + ", busy=" + (.busy | tostring)' 2>/dev/null \
+		|| echo "  (gh CLI not authenticated)"
 
 ##@ Configuration Management
 
