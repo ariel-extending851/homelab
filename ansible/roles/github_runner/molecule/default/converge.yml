@@ -1,0 +1,11 @@
+---
+# Converge: apply the github_runner role.
+# All network/systemd hits are disabled via host_vars set in molecule.yml.
+
+- name: Converge — apply github_runner role
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: github_runner
