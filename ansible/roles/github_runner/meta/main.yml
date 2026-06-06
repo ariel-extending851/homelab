@@ -1,0 +1,26 @@
+---
+# Role metadata and dependencies
+
+galaxy_info:
+  role_name: github_runner
+  author: homelab
+  description: "Install and register a GitHub Actions self-hosted runner on a Linux host (systemd, ARM64-capable)."
+  company: homelab
+  license: MIT
+  min_ansible_version: "2.12"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+
+  galaxy_tags:
+    - homelab
+    - ci
+    - github-actions
+
+dependencies: []

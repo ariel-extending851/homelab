@@ -6,22 +6,22 @@
 # repository. Leave keys unset (or remove this file) if you don't run the
 # private side; the role will skip extra wiring when argocd_extra_repo_url is
 # undefined.
-argocd_extra_repo_url: ENC[AES256_GCM,data:A92aqkWOoNojzCVvRmEK36ld2vfstoBvn5spSoUAK6DX4f3lUj8Ubf98J+pqW65DKit4,iv:GOZZCAm2BXOkgByfDDGZ9Sat+dvuWA2dPXiqpGoGwRY=,tag:9X9Sn1lkjhUFWSoWCgf6rA==,type:str]
-argocd_extra_branch: ENC[AES256_GCM,data:JED0rw==,iv:zAJkmCPaVEhm99rMXOoOXHC2W1NVEH6m6iVT1hAjGro=,tag:SxGeU2Mvc/0M5UE/f0asBg==,type:str]
-argocd_extra_path: ENC[AES256_GCM,data:20qlHh5WIi0=,iv:hZt+dMHVDzCRhIgQxStKQvBu22Do8q3LEA9Ws+atLU8=,tag:3uE+kmlczuKYnDqPt8+mKg==,type:str]
-argocd_extra_app_name: ENC[AES256_GCM,data:5hkVGS+vWoGfqruHirAVNIus,iv:fiZFvWGzfOiqOVRsXk1asz4UaaFf+CSAG5aofhJgBog=,tag:sMxdQzSz+hFVVomyBUjl4A==,type:str]
+argocd_extra_repo_url: ENC[AES256_GCM,data:YAksf40lrx/GuYUTlpzMVEE3sLhREsvltecagCGNGr8JlhFQuMdmgyQqlfQZbBCrlc5D,iv:GOZZCAm2BXOkgByfDDGZ9Sat+dvuWA2dPXiqpGoGwRY=,tag:OpruEogp2ydPonIePS67PQ==,type:str]
+argocd_extra_branch: ENC[AES256_GCM,data:BWYVcw==,iv:zAJkmCPaVEhm99rMXOoOXHC2W1NVEH6m6iVT1hAjGro=,tag:my0cqYz7289Mgs7iCIj0cA==,type:str]
+argocd_extra_path: ENC[AES256_GCM,data:toIta9AtFHk=,iv:hZt+dMHVDzCRhIgQxStKQvBu22Do8q3LEA9Ws+atLU8=,tag:DgaYVTDzbVfbIbXSWZiaSA==,type:str]
+argocd_extra_app_name: ENC[AES256_GCM,data:kBOXTmZBxh5d1kRFo1vvkUtw,iv:fiZFvWGzfOiqOVRsXk1asz4UaaFf+CSAG5aofhJgBog=,tag:btC4wwCnL/d7m+q9E1f8ng==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+        - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWVDNHTXZHUnMycEFpS3FE
-            cFZpVzhQWW5PMkd5YmFsN25sampvbnZrcXdFCkNYazRmamhsZkRhTkd1bDB2dnBP
-            MzVjMldwSmZUUlN0MVM4cnBkVUFCWFUKLS0tIEFUQXRtaHBQQlhvY05TVFAxWkpa
-            aVQxNVFCZHJ4ZEdFMDcrNmRGOWU0UXMK2+98gn3n7AWWW8unnDGZpMbtihK53yzc
-            aURdjj/c+WEYLG3HbCCwRFmp5Pxlxd03Ad8YM+FNlBBwtHf4Vst4UA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBQMGtXcE9NNmxkN3NpRzYx
+            eFJVRjUramtoZ1djNG03VnZ1Z2ZiMUFRNDNvCmI3Y040OTYzanBxemtjZWJFdERv
+            L21zNFY2Vm8ydHYrTzhHc0ZoRUxzZFEKLS0tIGtNQWlaSHdTZ1lhVzJNaHdyNVU1
+            Qkg3SjBqVUhSTlhDOUs5NjdyQkZTSm8KFzVIHwjZoukNzdXnP8Eud327c1IwgLGv
+            hKZSTExFrIwSuHnx4kLrORZrml3F7yxyjNHDAVvJGWokT5seYlSHnA==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-04-26T20:44:05Z"
-    mac: ENC[AES256_GCM,data:YN+u36f4sUuY2eLXgARumYRGKS/QZLdFBcpWx+6l/sDBYQEptsbbDxUwqsX843lINO5Xptxl0yC2T9JMa9bv0DnP1fmHG/GuHzGEAESPm/lzHoXA1wGstcAJzLmQUiuYRgSkBfnXrh6lpNuNAHUHiATLdW1sU04bijTjksM4s8M=,iv:HKANaGNoUqRT3dV2fmrQx5q1XF3jIcsWIjqCOeEK5rY=,tag:+B02BZcaA98YRbTCxF5E1A==,type:str]
+    lastmodified: "2026-06-06T19:43:33Z"
+    mac: ENC[AES256_GCM,data:4dK6b8QSXo8X8r7A8ksRZ6A01k/uB/c38Aac+WdD9q3cgiozmN/Dn89GuF/okX+dSAf/UzBjelLQMmqaQk+xGw8Pk1yNyFA+Kham+HJewOkvAv9EuOXNt3JGwyb5SVHMpvDf77owMNv2sYwfBAanSCCXg2T/dQD5YQCAnLxmLLs=,iv:Lu1RwPuwiprvML3EmSmL0M9JwqYR++Q2UhqHBXYof4c=,tag:fKJiObjF18RfJ+Tn7QIe4g==,type:str]
     encrypted_regex: ^(argocd_extra_.*)$
     version: 3.12.2

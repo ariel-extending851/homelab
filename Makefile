@@ -35,7 +35,8 @@
 		unifi-up unifi-down unifi-status \
 		pi-only-deploy pi-only-ansible pi-only-kubeconfig \
 		pi-only-sysctl pi-only-resolv-conf pi-only-argocd-pin \
-		pi-only-stability-fixes
+		pi-only-stability-fixes \
+		runner-up runner-down runner-logs runner-reset runner-status
 
 # Default target
 .DEFAULT_GOAL := help
@@ -249,10 +250,21 @@ setup-ci-deps-k3d: ## Install k3d (preferred over kind for GitOps convergence �
 	@echo "🔧 Setting up k3d for CI..."
 	@command -v mise >/dev/null && mise install k3d || true
 	@if ! command -v k3d >/dev/null 2>&1; then \
-		curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash; \
+		# k3d install.sh is hosted on raw.githubusercontent.com which returns intermittent \
+		# 504s; retry up to 5 times with exponential backoff. \
+		for attempt in 1 2 3 4 5; do \
+			if curl -fsSL --retry 3 --retry-delay 5 \
+				https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh \
+				| TAG=v5.8.3 bash; then \
+				break; \
+			fi; \
+			echo "  ⚠️  k3d install attempt $$attempt failed; sleeping then retrying..."; \
+			sleep $$((attempt * 5)); \
+		done; \
+		command -v k3d >/dev/null 2>&1 || (echo "❌ k3d install failed after 5 attempts"; exit 22); \
 	fi
 	@command -v kubectl >/dev/null || (echo "❌ kubectl missing; run setup-ci-deps-kubernetes first"; exit 1)
-	@kind version && echo "✅ kind installed"
+	@k3d version && echo "✅ k3d installed"
 
 setup-ci-deps-molecule: ## Install Molecule + Ansible tooling (for CI)
 	@echo "📦 Setting up Molecule + Ansible tooling for CI..."
@@ -352,6 +364,44 @@ setup-ci-deps-all: ## Install ALL CI dependencies (Makefile as source of truth f
 	@make setup-ci-deps-molecule
 	@make setup-ci-deps-arm64
 	@echo "✅ All CI/CD dependencies installed"
+
+##@ Self-hosted CI runner (Docker compose on pc-tower)
+
+# Reads the PAT from the SOPS-encrypted group_vars file; exports it as the
+# ACCESS_TOKEN env var that docker-compose.yml expects. Plaintext never lands
+# on disk — only in the shell's environment for the duration of the call.
+RUNNER_COMPOSE := ci/runner/docker-compose.yml
+RUNNER_SOPS    := ansible/group_vars/github_runners.sops.yml
+
+runner-up: ## Start the self-hosted runner container (decrypts SOPS PAT)
+	@echo "🤖 Starting GitHub Actions self-hosted runner..."
+	@test -f $(RUNNER_SOPS) || (echo "❌ $(RUNNER_SOPS) missing — create it per ci/runner/README.md"; exit 1)
+	@ACCESS_TOKEN=$$($(MISE_EXEC) sops -d $(RUNNER_SOPS) | grep '^github_runner_pat:' | sed -E 's/^github_runner_pat: *"?([^"]*)"?$$/\1/') ; \
+		test -n "$$ACCESS_TOKEN" || (echo "❌ Empty PAT after sops -d"; exit 1) ; \
+		ACCESS_TOKEN=$$ACCESS_TOKEN docker compose -f $(RUNNER_COMPOSE) up -d
+	@echo "✅ Runner starting. Confirm Idle at:"
+	@echo "   https://github.com/ariel-extending851/homelab/settings/actions/runners"
+
+runner-down: ## Stop the self-hosted runner container (keeps the work cache volume)
+	@echo "🛑 Stopping GitHub Actions runner..."
+	@docker compose -f $(RUNNER_COMPOSE) down
+	@echo "✅ Runner stopped (volume hl-github-runner-work preserved)."
+
+runner-logs: ## Tail the runner container logs
+	@docker logs -f --tail=100 hl-github-runner
+
+runner-reset: ## Stop runner and wipe its persistent work cache volume
+	@echo "💣 Resetting runner from scratch..."
+	@ACCESS_TOKEN=unused docker compose -f $(RUNNER_COMPOSE) down -v 2>/dev/null || docker rm -f hl-github-runner 2>/dev/null || true
+	@docker volume rm hl-github-runner-work 2>/dev/null || true
+	@echo "✅ Runner stopped + cache cleared. Run \`make runner-up\` to recreate."
+
+runner-status: ## Show runner container status + GitHub-side registration
+	@docker ps --filter name=hl-github-runner --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' 2>/dev/null || true
+	@echo ""
+	@echo "GitHub API view:"
+	@gh api repos/ariel-extending851/homelab/actions/runners --jq '.runners[] | .name + ": status=" + .status + ", busy=" + (.busy | tostring)' 2>/dev/null \
+		|| echo "  (gh CLI not authenticated)"
 
 ##@ Configuration Management
 
@@ -1335,6 +1385,22 @@ validate-k8s-dry-run: ## Spin up a kind cluster and server-side dry-run all K8s 
 	@command -v kubectl >/dev/null 2>&1 || (echo "❌ kubectl not found"; exit 1)
 	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
 	@kind create cluster --name homelab-dryrun --wait 60s
+	@# Self-hosted runner inside a Docker container: the kubeconfig kind writes
+	@# points at 127.0.0.1:<random-port>, which from inside the runner container
+	@# is the runner's loopback, not the kind cluster. Connect the runner to
+	@# the `kind` Docker network and re-export kubeconfig with --internal so
+	@# the API is reachable via the kind control-plane container's IP.
+	@# `hostname` returns the container's hostname (= short container ID, the
+	@# form `docker network connect` accepts); $$HOSTNAME isn't reliably set
+	@# under POSIX sh, so use the command instead.
+	@if [ -f /.dockerenv ]; then \
+		RUNNER_ID=$$(hostname); \
+		echo "  → connecting runner $$RUNNER_ID to kind network"; \
+		docker network connect kind $$RUNNER_ID 2>&1 | grep -v "already exists in network" || true; \
+		echo "  → re-exporting kubeconfig with --internal"; \
+		mkdir -p $$HOME/.kube; \
+		kind get kubeconfig --internal --name homelab-dryrun > "$$HOME/.kube/config"; \
+	fi
 	@( \
 		echo "✓ Preparing manifests (filtering SOPS and custom resources)..." && \
 		kustomize build k8s/apps \
@@ -1372,7 +1438,11 @@ validate-yaml-lint: ## Run yamllint across the entire repo (root .yamllint confi
 
 validate-shellcheck: ## Run shellcheck on all shell scripts (local equivalent of CI shellcheck action)
 	@echo "✓ Running shellcheck..."
-	@command -v shellcheck >/dev/null 2>&1 || (echo "❌ shellcheck not found. Install: apt install shellcheck"; exit 1)
+	@if ! command -v shellcheck >/dev/null 2>&1; then \
+		echo "  shellcheck missing — attempting on-demand install..."; \
+		$(MAKE) setup-ci-deps-shellcheck; \
+	fi
+	@command -v shellcheck >/dev/null 2>&1 || (echo "❌ shellcheck install failed"; exit 1)
 	@files=$$(find . -name "*.sh" -not -path "./.git/*" -not -path "./.terraform/*" -not -path "./docs/archive/*"); \
 	if [ -z "$$files" ]; then \
 	  echo "  ℹ️  No shell scripts found — all migrated to Python."; \

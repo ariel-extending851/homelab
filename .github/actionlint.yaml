@@ -1,0 +1,10 @@
+# actionlint configuration.
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+self-hosted-runner:
+  # Custom labels for the homelab self-hosted runners (see ansible/roles/github_runner/).
+  # `pc-homelab` covers pc-tower (Fedora x86_64, 12c/15G).
+  # `pi-homelab` reserved for the Pi-4 (currently unused; bring back via
+  # group_vars override if a redundant tier is needed).
+  labels:
+    - pc-homelab
+    - pi-homelab
