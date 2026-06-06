@@ -12,23 +12,14 @@ argocd_extra_path: ENC[AES256_GCM,data:20qlHh5WIi0=,iv:hZt+dMHVDzCRhIgQxStKQvBu2
 argocd_extra_app_name: ENC[AES256_GCM,data:5hkVGS+vWoGfqruHirAVNIus,iv:fiZFvWGzfOiqOVRsXk1asz4UaaFf+CSAG5aofhJgBog=,tag:sMxdQzSz+hFVVomyBUjl4A==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBNM3Q2TVcybG16a0hDdzBO
-            UHVIR09mVUlFVTlnejlHUVhmZDFqU2ZEOXljCmNLRm1MS1daZ09XNENHMS8xNEhq
-            bzJqb2VMK3NONU9TQmJQa0ZYVkhzNDgKLS0tIHZrektnNjlYYytYSjlyR3c5M3FC
-            b3RQRFQ0SWJ5WlM3S1BZWWljeWs5YUUKKmUEEEUUYAfbSR2c6tuRkUBAQnpDHWOW
-            3cubT0+QVSvSbagIdUPrrTgy6Q8+eNNlkaxDmXKXUyso/hlPJpv9aw==
-            -----END AGE ENCRYPTED FILE-----
         - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAxS1NhcUZXM2o1SjlWelR5
-            U0ZlWHJiTEUxSmZRYkxGSkh1WHJLeU9xSW1RCmJENTVxaC92T0NNLzFBZVRSWDFt
-            cmNDWFZFQ0xWMU5tT0NES2JXZkZ1S0EKLS0tIGVKZ0gydFRsTGNadGNsVDdtK1Mx
-            T1p3SGwvSHdKaVdreDdTU1BZVkZxQU0KdFdVOFpRh6EI56jMX41IrVZMrZX/y0Ze
-            93XO5o6gCjmMXrQThj9iMNS+ukSB9vgaavD/H7pONHPsA5hzUrrttg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBLWlFLRmZmZW40c2NqdDNI
+            aXVneHdESVlIZG1rM0JEMWlRV1ZUcGRZSmlRClpSUTc3MW9UZGgxQkdKN1hyV3ls
+            QmtjYVQvc3BPcEhCSndjRlBZYkF4V2MKLS0tIFZHQi9Wc0liQ25xU1A3Qy93c0Rp
+            R1k3NFQrOVBCTUIrYmFBc01RbllRMzAKGSwnkLHrzVdkzemMhFeBMJqPF5E26YYf
+            pLRXD8llgkjR2InqgMdqvmyKIgh7iITlVlIHmq5GJjuqHeLQZmU4ng==
             -----END AGE ENCRYPTED FILE-----
     lastmodified: "2026-04-26T20:44:05Z"
     mac: ENC[AES256_GCM,data:YN+u36f4sUuY2eLXgARumYRGKS/QZLdFBcpWx+6l/sDBYQEptsbbDxUwqsX843lINO5Xptxl0yC2T9JMa9bv0DnP1fmHG/GuHzGEAESPm/lzHoXA1wGstcAJzLmQUiuYRgSkBfnXrh6lpNuNAHUHiATLdW1sU04bijTjksM4s8M=,iv:HKANaGNoUqRT3dV2fmrQx5q1XF3jIcsWIjqCOeEK5rY=,tag:+B02BZcaA98YRbTCxF5E1A==,type:str]

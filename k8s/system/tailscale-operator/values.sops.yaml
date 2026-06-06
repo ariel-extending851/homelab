@@ -8,23 +8,14 @@ proxyConfig:
     defaultTags: ENC[AES256_GCM,data:8lrHw7D9IOkjG0+q9h/E/g==,iv:0nzvErlYmT3G67uE40j9SSjmkbIjb+64LcgZgDB+dQ8=,tag:KeaJT3jBzKEMRQ3R0AoIAQ==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBKRW41SG1IeHJsZlpVMXpa
-            ZU1OLy82TzlKbzlBVnBHRG5DSEh5R2pzMGdnCm1UQXQxWVpZS0lWNE5YUm4wVmNC
-            M2NuT2RrVnlqR1hTb3hnR3o4NzcyU0EKLS0tIGVFQ0R4L1IzektVU3FrNi9zanRI
-            WUI1WmJLeXpyeGJUTXRsMXNkZ0FoVXcK6xNdR3F7iZweAshFMg7dOb2JIEJFMi+I
-            vNYTAfGdB9YkwEuN/crFtuzKkUZAwMwvORwiziDjAfygauqCvdC3mg==
-            -----END AGE ENCRYPTED FILE-----
         - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWbmdxMHMva3JmdHlJUDg0
-            MHRrTks0QSt6dmZ1T1ArdFBFNTg0cjhQTUhzCllZbFYvVXhuaUxQRjhWbk5qNW5B
-            R0RSNm1xbUFKalVFc3hLQUxFNnRKMWsKLS0tIE5DNGNVUnA4ek8relBVdDQ5ZWVY
-            b1B3WkwyNUg1VFBucGtWbElKalg1OGcKKJojjCHECBI/E1sZekEMGi/r+1Gnsxnk
-            1nL52cQwBUXZR23lHFMSVqUPVyvacH0/fcdmH+Hq/BeGWzaeOq/r4A==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBENkdKbVV3WWR4cnY5WE5Z
+            NTNsb1VqVlduc2xwcnZ4bHFMRjJhbHJOL1ZVCmtEaC9wR2RVM2VOdUpuaHBkTW5W
+            MVI2K0NtbTNiZW1PVUVCL0JmclRsdDgKLS0tIGJvLzVZU3BtUllWN0k4NDJxaTNF
+            V29tQXN5U3hDdWZrYTM1VFUvYUt0QkkKCKIQRlSjjdIQ2V8ORcSDTha3xEOK7wVw
+            kq6y+BEbkcuByAm3bhwwVfpDZXs+AxHKEtbnnSk4bvNYF3EYoO+KJQ==
             -----END AGE ENCRYPTED FILE-----
     lastmodified: "2026-05-05T18:52:06Z"
     mac: ENC[AES256_GCM,data:LVE2r3W9fQBDEagkGCbz6Ql0yYxfy/7qRmy5ZX2E5K79tFUzAhi/PKBIXl2ByTOTPD9MxJo4T5Y9t7gCCV3hkwmBb4qJ+c7sBWNDRhDtzYiFLlKUheYDJ+U/cLm6LdcY5ae73AymxGbLqlzEcOMlUtyFdWH7wmwVV5YRyco7ZXQ=,iv:cc8Y32QsSQLuJx2/RIdeunipRelCN4AJGocxllc4F9Y=,tag:M8fJfMwNdvDxvBj3VZx62g==,type:str]

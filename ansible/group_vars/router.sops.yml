@@ -14,23 +14,14 @@ pi_dhcp_reservations:
       pi_ip: ENC[AES256_GCM,data:M+yCaQwuffoHjd7N,iv:rrnbKWdtLnAI4lRp5BCoTvJDAUIfOAudaQ8VlDUwlrM=,tag:dEcHwphFXaXFJGxRLkB0cQ==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB5VlJhbUVvOXQ1aEE3QXZo
-            aTBpdGk2UkV2TnBTYTlTN3ZIL014K0poTlI0Cis5eEM1SHFGek5WN0NMbHFFMmdE
-            QmRJR0ZSOURXSG05MVkvMEdiUzB5TVUKLS0tIGxnL0puMkVoR1BGaTdNa281UHBw
-            SnFDRzdSdEVxMlNOOUlnQW9vWFFlanMKO/DkWrJhKgiNK/cAmkcApoGBY/jpm/rG
-            bLP3cOAK+3vymDnl4wQ17GnDL2cXk8A1AZ+OXRyRciIMUzgsyr6Y2Q==
-            -----END AGE ENCRYPTED FILE-----
         - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWbFlQMzVJbUZlVkwzUmti
-            OUEwbFpDcVJLQnIzR2RZUlJtZEtJcHRUVFRrCkhNc1pJdjVGR2ZZLzVmV3lURjN4
-            bTQ4WUdLUVBIV1lLdnR6M0FYTGhSajAKLS0tIER1dXVPaU1jRmsyayttNFBBTFRI
-            Rk1od1NtZTBza3BVQzUxdjg1dk93eTAKuSBz8CLzLcVSNN5cRvS9zDVJsQmZIFcv
-            hclMuLS+WULVXoJd5mdJG2uj6dp5v2+j0U4ZilKEJteVli9m0p60Vw==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB1VERieWFtQ25udzZkQnV3
+            Uko3MzA3a0NpNWtYYXFxcURnSTZacXA1VUZjClFkaUk0S0hwUzZCMEFpczd6aHBW
+            Z2NTQXNOMjRYeXV0OTR4bjQyZlBOa2cKLS0tIFlEdlNQb2hrR0liUDVLdEVUbEtz
+            RERVOHFNd3k1a0ZiOW9td1M0TUJQWWsKH1/rm3SdMyC2HJCFMGqIGzVMfuTc6JnU
+            VgEDFq1ipNkRjbNtwg5UbGNdpDH8Yp3K+Cn5iH/09flp2Wy1uMIZtA==
             -----END AGE ENCRYPTED FILE-----
     lastmodified: "2026-05-03T20:34:32Z"
     mac: ENC[AES256_GCM,data:YNMjFTwLRB6pYTHLTUWohrPeJQrXWXCDGjJfk0vR4R8xNKJI3mWrz+pddzqOz1xewYVRyNpVtN+4bJxvyr03WWhg0bB+tVFwA37+ID2hfKanbdOBDiQKwmaWso810xJi9W0/hVcxHhbU7tdGA8vy2/L8A5qunzEFxZydnNATZes=,iv:laYIrTz6DwJ0KJML/W9CoPSqO3e+ABvJ62gMs3aLQ8o=,tag:QTcIniXq7bFv3Gja9rgAIQ==,type:str]

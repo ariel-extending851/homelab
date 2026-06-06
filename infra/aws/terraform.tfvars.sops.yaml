@@ -10,23 +10,14 @@ tailscale_auth_key: ENC[AES256_GCM,data:oMS12UtF8p6Beb5Cp4gCymA08XjacmtYhd1YiTUM
 tailscale_api_key: ENC[AES256_GCM,data:HoJPD5youD+Ip+sGqjGCDwypdpzeei5Y9E+p83ofPt/cBc0kDUQvBmvVR2OftZ6/XIjgt5pfXTZKvyQ1,iv:BSz64AJEKItKoP2hbeRl0Me5M8amhoqVuf89rXH9eQw=,tag:f3BD8Aj5qBxfG+LhDEmihw==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBaZTRsNjVpUFpvUzgvVVpt
-            ajdvQkZlcWQwS2pEeThCRE5Ea1pNODZKTkFRCkIyWklWa3hVZEtseUFwdE80OTk5
-            cnNCMks4T2VtcVh2cDdjVEpLQndpK1UKLS0tIHRobE1JRTN6dlRiQndOcmtvR1Fz
-            TXZvNWRHY0NIK1NMVG9lbHpGSXMyWXcK1SrNE18uPDkbu5cl8D+tlWVvRktILw8z
-            UQnX3VqKaBmNd0MauOTi3SPYKhu6YHowuwAhdadeO2qqsEfK83N7uw==
-            -----END AGE ENCRYPTED FILE-----
         - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBPcGpySUVacnVpSW5rQUhN
-            UXgwMDdIU3RaYm5FSVlRbXZaMkhJNHFwNmdzClRZVHR0bWk5U2ZZQXZqVzUxeS9D
-            cWcwUGJ3a3IvZXU0ZWxMY2F0bmtaNk0KLS0tIC92YzhnQ29tL2JEQjlzRXVnczNy
-            MkhxM05CVDFaWlppcEkyczRzd0ZuVlkKQ/hMzKvuH7yygBKQThQ0eb3jutK/ykMf
-            kJZwv5z1hy4AuSbUJk64xT9UUaTy/WOqHseaKaQNhb563gb36QBpzg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAxWUZ6YW12L0ZBRHdYVlYr
+            RXJVSVJ1OHkvMlhVM0owcDhla09lUWRpV0cwClFwWm1XUlozc3dpblI5WGVSRTdk
+            ZmVXb1lOcXRlWmZFWEJkQldER0JSM0UKLS0tIGRkSDlCV0djU2Zkc2NjaHI3YjV2
+            OVhJWmRvdnVVc0NUeFNMRWVYbkp1RnMKW3Z4/EZjTHQFtObXipEKVm8kSkvx70IK
+            qOwaCQswyIyYCUa5aFp2j6lqzmAUx+XKN0PR1J1L1o6UP2WnSqC99Q==
             -----END AGE ENCRYPTED FILE-----
     lastmodified: "2026-05-05T18:46:31Z"
     mac: ENC[AES256_GCM,data:9I3LdF/CDWwTNymr2YUQXmRvPJX2NgwlaZQI74qI7tKk2+p0fSsxw25CNYs0Tg1o1gttoTcWgfmmzYy78/P5MGRWKo95uwhFWzJ6gs0ZlDaJ1Jz9Mfzeur/Vl4e1jmIK8FE+nEI2jzLuUq4y7QZ6xEvtlmbhQhjbbv93BN6WuXQ=,iv:ohzne5IK4/ZFcOVsAY4Wse1F08VJg8/p8RPj9AXRRDU=,tag:P+zi7krouLVoPqKBH32g0g==,type:str]

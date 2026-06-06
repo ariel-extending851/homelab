@@ -1,23 +1,14 @@
 wifi_password: ENC[AES256_GCM,data:o0SWgzuMtCBqwQJTIa2upymqGc2uF7Gxrfnsj9kp,iv:JLI+pNltcd0To/jbW6XsCXukF7fkh49axuQur3rIuuw=,tag:oBXsrtIOUMG0+Nu+GbQgNA==,type:str]
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBPbDZOUEVaMGsrdHZ4Y1Js
-            QW5vSGcvWjZxUmw0WC9tbDcxYlRQZm5SVDN3ClI2UmlzakNoVW5vckx2ZEZaUkFz
-            dTcrZUtrRkQ5SGI4WUZ3ekM4MzBNSzgKLS0tIEpDN3poYkErdTJPSGtSOFRYdjNu
-            d2hIVEladzRlN3A0SjRQM29zWGg3Zk0KSzfS+tMg7KP3CQBTruaxfjld2TO82LkL
-            l9Uor6HVb2VJBpZaMY3dyS4epQwkSqmHEUMDwqn0M0Om1YARbzk7Tg==
-            -----END AGE ENCRYPTED FILE-----
         - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBMd1ZFaTBNem5NK1h3Z2lu
-            RUcyd29RS0s4TG9ZVHBSRVJnMmRUVDVJNnk4CjZyUGs2cERRWnlIeDFHM3hWMjFl
-            RXhRTU9VaGhIOXFJa1ZKeDJjZmVLNWsKLS0tIEZSQjRhRi9wUmJwSDNraU03SC9Q
-            SmFIcVNhQU1qUjlnbFFoZUY5ZlpDcXcK0RuswK67fcwpogfb4y2OgxYgU593hmGY
-            j5CpDKsxgHZrUvzMaraIKswNJy39aC91mVjl9E2xFyrVHtq6dKS+cA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBMeWNHVDZXMTFXTjNuaTBq
+            WHJtNDRJdFlmdkdjN2RlaHdyMTl4NE1RdUFVCnIzUFlkM2tWa05Vc29aL3JTZ1Zi
+            a2ZLQ040ME50MjBCQzlscVlBMVd1VEkKLS0tIHU2WjVPSk9sOGxYUGg0cDRqbnBw
+            cXFOaWtMTjlnazB5YWJ3ZHhEQXdxOFkK2hc6X/4A7+/fiFwy+k/8fTq/NWaVcmDY
+            6YFv3lFBBRf0dXav0hARcoI3WVyrcZPlzle+mjlQLCgDPe5yHOpTfw==
             -----END AGE ENCRYPTED FILE-----
     lastmodified: "2026-03-28T15:02:13Z"
     mac: ENC[AES256_GCM,data:TrqS+XKH4nh9E3/GoiNrTu1ZG22BNxZ007P0gDiAXZ7qWerPHP2I+wCIGK7F1/PgAb02LsVNiL+PSDJbFMTqDHcv406KDHLtsFzNqALUa5Rhe3NVkrxRB1XJGWQR2GWCff4lnC8FOmJlqzlHPNOOIWGHFtSy5EFvbDtWL/We4pA=,iv:FYIkHR6/sDxzTRwo90TSMoasCV5MeXgdcDRFf8VfIUY=,tag:6wQuLuv+u7Qo2d/zx3QTEg==,type:str]
