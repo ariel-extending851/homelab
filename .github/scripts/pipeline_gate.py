@@ -19,7 +19,6 @@ import sys
 
 PR_REQUIRED = frozenset(
     [
-        "disaster-recovery-execution",
         "policy-as-code-critical",
         "trivy-image-scan",
         "sops-validation",
@@ -49,6 +48,7 @@ PR_ADVISORY = frozenset(
         "arm64-validation",
         "k8s-dry-run",
         "k3d-convergence",
+        "disaster-recovery-execution",
     ]
 )
 
