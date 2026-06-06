@@ -1,0 +1,66 @@
+---
+# Molecule test for github_runner role.
+# Mirrors the alloy role pattern: systemd-capable image + skip flags so the
+# role's idempotency, user/group/dir creation, and (mocked) systemd unit
+# handling can be exercised without internet egress to api.github.com or
+# github.com release downloads.
+
+driver:
+  name: docker
+
+platforms:
+  - name: rasp-pi-04
+    image: geerlingguy/docker-ubuntu2204-ansible@sha256:3a9474d843917fbeb737a78626c1b8bc31daf6424fe51575e6ce4affffecfa24
+    privileged: true
+    pre_build_image: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    groups:
+      - raspberry_pi
+      - github_runners
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    host_vars:
+      rasp-pi-04:
+        # Block real network calls to github.com (tarball download + mise).
+        github_runner_skip_download: true
+        # Block real API call to api.github.com (PAT exchange + config.sh).
+        github_runner_skip_register: true
+        # Skip svc.sh install + systemctl start; verify side-effects only.
+        github_runner_skip_service_start: true
+        # Stub PAT so the validate task's `length > 0` assertion stays
+        # disabled (skip_register guards it) without leaking a fake secret
+        # into Ansible's no_log surface.
+        github_runner_pat: ""
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - cleanup
+    - destroy

@@ -1,0 +1,101 @@
+---
+# Uninstall path for the github_runner role. Triggered by
+# `github_runner_uninstall: true` (--extra-vars at run time). Idempotent:
+# missing pieces are silently ignored so a second run is a no-op.
+#
+# Order matters:
+#   1. Stop the service so jobs in-flight finish or fail cleanly.
+#   2. Tell GitHub the runner is gone (frees the slot in repo settings).
+#   3. Uninstall the systemd unit + drop-in.
+#   4. Delete the install directory, user, group.
+# We deliberately do NOT remove libicu-dev or mise — those are useful host
+# packages and may be in use by other workloads (e.g. ansible runs from Pi-4).
+
+- name: Stop runner systemd unit (if present)
+  ansible.builtin.systemd:
+    name: "actions.runner.{{ github_runner_repo_owner }}-{{ github_runner_repo_name }}.{{ github_runner_name }}.service"
+    state: stopped
+    enabled: false
+  failed_when: false
+  register: runner_stop
+  tags: [github_runner, uninstall]
+
+- name: Check if runner config exists
+  ansible.builtin.stat:
+    path: "{{ github_runner_install_dir }}/.runner"
+  register: runner_config_stat_uninstall
+  tags: [github_runner, uninstall]
+
+- name: Exchange PAT for a runner removal token
+  ansible.builtin.uri:
+    url: >-
+      https://api.github.com/repos/{{ github_runner_repo_owner }}/{{ github_runner_repo_name }}/actions/runners/remove-token
+    method: POST
+    headers:
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ github_runner_pat }}"
+      X-GitHub-Api-Version: "2022-11-28"
+    status_code: 201
+    return_content: true
+  register: runner_remove_token
+  no_log: true
+  when:
+    - runner_config_stat_uninstall.stat.exists
+    - github_runner_pat | length > 0
+  tags: [github_runner, uninstall]
+
+- name: Run config.sh remove (unregister from GitHub)
+  ansible.builtin.command:
+    cmd: "./config.sh remove --token {{ runner_remove_token.json.token }}"
+    chdir: "{{ github_runner_install_dir }}"
+  become_user: "{{ github_runner_user }}"
+  become: true
+  when:
+    - runner_config_stat_uninstall.stat.exists
+    - runner_remove_token is defined
+    - runner_remove_token.json is defined
+  changed_when: true
+  no_log: true
+  failed_when: false
+  tags: [github_runner, uninstall]
+
+- name: Uninstall systemd unit via svc.sh
+  ansible.builtin.command:
+    cmd: "./svc.sh uninstall"
+    chdir: "{{ github_runner_install_dir }}"
+  when: runner_config_stat_uninstall.stat.exists
+  changed_when: true
+  failed_when: false
+  tags: [github_runner, uninstall]
+
+- name: Remove systemd drop-in directory
+  ansible.builtin.file:
+    path: >-
+      /etc/systemd/system/actions.runner.{{ github_runner_repo_owner }}-{{ github_runner_repo_name }}.{{ github_runner_name }}.service.d
+    state: absent
+  tags: [github_runner, uninstall]
+
+- name: Remove runner install directory
+  ansible.builtin.file:
+    path: "{{ github_runner_install_dir }}"
+    state: absent
+  tags: [github_runner, uninstall]
+
+- name: Delete runner system user
+  ansible.builtin.user:
+    name: "{{ github_runner_user }}"
+    state: absent
+    remove: true
+    force: true
+  tags: [github_runner, uninstall]
+
+- name: Delete runner system group
+  ansible.builtin.group:
+    name: "{{ github_runner_group }}"
+    state: absent
+  tags: [github_runner, uninstall]
+
+- name: Reload systemd so the removed unit name no longer lingers
+  ansible.builtin.systemd:
+    daemon_reload: true
+  tags: [github_runner, uninstall]
