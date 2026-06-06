@@ -129,7 +129,11 @@ jobs:
   yaml-lint:
     name: "YAML: Lint + K8s Schemas"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # Self-hosted Pi-4 runner. GitHub Actions does NOT auto-fallback: if no
+    # matching runner is online, the job queues until 24h expiry. Verify
+    # rasp-pi-04 shows Idle in repo Settings > Actions > Runners before
+    # merging changes to this `runs-on:` list.
+    runs-on: [self-hosted, arm64, pi-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -271,7 +275,8 @@ jobs:
     # would silently neuter the staging-canary Velero gate in ci-deployment.yml.
     # `pytest --collect-only` is ~5s and catches that class of regression at PR time.
     name: "Python: Test Collection (import guard)"
-    runs-on: ubuntu-latest
+    # Self-hosted Pi-4 runner: 5s collect, no heavy compute.
+    runs-on: [self-hosted, arm64, pi-homelab]
     timeout-minutes: 5
     steps:
       - name: Checkout Code
@@ -379,7 +384,8 @@ jobs:
 
   sops-validation:
     name: "SOPS: Workflow Validation"
-    runs-on: ubuntu-latest
+    # Self-hosted Pi-4 runner: sops + age are mise-managed ARM64 binaries.
+    runs-on: [self-hosted, arm64, pi-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -408,7 +414,8 @@ jobs:
 
   lint-workflows:
     name: "Workflows: actionlint + zizmor"
-    runs-on: ubuntu-latest
+    # Self-hosted Pi-4 runner: actionlint + zizmor are mise-managed Go binaries.
+    runs-on: [self-hosted, arm64, pi-homelab]
     timeout-minutes: 10
     steps:
       - name: Checkout Code
@@ -432,7 +439,8 @@ jobs:
   shellcheck:
     name: ShellCheck
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # Self-hosted Pi-4 runner: shellcheck is a mise-managed ARM64 binary.
+    runs-on: [self-hosted, arm64, pi-homelab]
     steps:
       - name: Checkout Code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1

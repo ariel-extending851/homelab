@@ -1,0 +1,12 @@
+# Resource caps for the GitHub Actions runner on rasp-pi-04.
+# Goal: never compete with Jellyfin transcoding on the same host.
+#
+# Drop-in for actions.runner.<repo>.<host>.service — managed by Ansible role
+# `github_runner`. Edits here are clobbered on the next playbook run.
+
+[Service]
+CPUQuota={{ github_runner_cpu_quota }}
+MemoryMax={{ github_runner_memory_max }}
+Nice={{ github_runner_nice }}
+IOSchedulingClass={{ github_runner_io_scheduling_class }}
+IOSchedulingPriority={{ github_runner_io_scheduling_priority }}

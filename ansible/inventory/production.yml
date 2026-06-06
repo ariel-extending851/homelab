@@ -115,6 +115,15 @@ all:
         rasp-pi-03:
         rasp-pi-04:
 
+    # ── GitHub Actions self-hosted runners ───────────────────────────────
+    # Pi-4 hosts a single systemd runner for light CI jobs (lint, syntax,
+    # secret-scan). Heavy jobs (k3d/molecule/QEMU) stay on ubuntu-latest.
+    # Pi-3 excluded: 1 GB RAM is too tight for runner + k3s-agent + AdGuard.
+    # See ansible/roles/github_runner/README.md.
+    github_runners:
+      hosts:
+        rasp-pi-04:
+
     # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
     router:
       hosts:

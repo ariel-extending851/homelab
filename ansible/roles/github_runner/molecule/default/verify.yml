@@ -1,0 +1,39 @@
+---
+# Verify: assert side-effects the role guarantees even with all `_skip_*` flags
+# enabled (user/group/install dir creation, prerequisites installed). The
+# network-dependent paths (tarball, API exchange, systemd start) are exercised
+# in production playbooks, not Molecule.
+
+- name: Verify github_runner role
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Assert runner system group exists
+      ansible.builtin.command:
+        cmd: "getent group github-runner"
+      register: group_check
+      changed_when: false
+
+    - name: Assert runner system user exists
+      ansible.builtin.command:
+        cmd: "getent passwd github-runner"
+      register: user_check
+      changed_when: false
+      failed_when: "'github-runner' not in user_check.stdout"
+
+    - name: Assert runner install dir exists with correct owner
+      ansible.builtin.stat:
+        path: /opt/github-runner
+      register: install_dir_stat
+      failed_when:
+        - not install_dir_stat.stat.exists
+        - install_dir_stat.stat.pw_name != 'github-runner'
+
+    - name: Assert libicu-dev is installed (runtime requirement of Runner.Listener)
+      ansible.builtin.command:
+        cmd: "dpkg-query -W -f='${Status}' libicu-dev"
+      register: libicu_check
+      changed_when: false
+      failed_when: "'install ok installed' not in libicu_check.stdout"

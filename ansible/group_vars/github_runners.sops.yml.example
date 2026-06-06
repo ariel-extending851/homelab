@@ -1,0 +1,34 @@
+# Example structure for ansible/group_vars/github_runners.sops.yml
+#
+# The file name matches the inventory group `github_runners` so Ansible
+# auto-loads it for hosts in that group — no explicit `vars_files:` needed
+# in the deploy playbook.
+#
+# IMPORTANT: file MUST end in `.sops.yml` (not `.yaml`). The community.sops
+# vars plugin matches `.sops.yml` only; `.yaml` is silently ignored. See
+# auto-memory `feedback_ansible_sops_plugin.md`.
+#
+# Workflow:
+#   1. Copy this file:    cp github_runners.sops.yml.example /tmp/gh.yml
+#   2. Replace the placeholder PAT with a real value (see below).
+#   3. Encrypt + place:   sops -e /tmp/gh.yml > ansible/group_vars/github_runners.sops.yml
+#   4. Verify:            sops -d ansible/group_vars/github_runners.sops.yml | head
+#   5. Securely wipe:     shred -u /tmp/gh.yml
+#
+# The block-sops pre-commit hook will reject the file unless it is encrypted.
+# Key fingerprint (must match .sops.yaml age recipient):
+#   age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
+# ── GitHub Personal Access Token ────────────────────────────────────────────
+# Used by the role to exchange for a short-lived runner registration token.
+# Scopes required (fine-grained PAT, repo-scoped):
+#   - Administration: Read and Write   (manage self-hosted runners)
+#   - Metadata:       Read             (always required)
+#
+# Classic PAT alternative: `repo` scope (full repo control) — works but is
+# broader than needed; prefer fine-grained.
+#
+# Rotation: GitHub does not currently expire fine-grained PATs by default.
+# Set an explicit expiry (90 days) and rotate via:
+#   sops ansible/group_vars/github_runners.sops.yml   # edit in-place
+github_runner_pat: "REPLACE_WITH_github_pat_11AB..."

@@ -1,0 +1,66 @@
+---
+# Default variables for github_runner role
+# Override in playbooks or group_vars/github_runners.sops.yml as needed
+
+# ── Runner binary ───────────────────────────────────────────────────────────
+# Pin the runner version explicitly. Bump after verifying ARM64 tarball still
+# ships at the same URL pattern (actions/runner releases).
+github_runner_version: "2.319.1"
+github_runner_arch: "arm64"
+github_runner_install_dir: "/opt/github-runner"
+github_runner_work_dir: "/opt/github-runner/_work"
+
+# ── Service identity ────────────────────────────────────────────────────────
+github_runner_user: "github-runner"
+github_runner_group: "github-runner"
+
+# ── Registration target ─────────────────────────────────────────────────────
+# Repo-scoped runner. Use ORG-level if you ever share across repos (different
+# token-exchange endpoint).
+github_runner_repo_owner: "ariel-extending851"
+github_runner_repo_name: "homelab"
+github_runner_name: "{{ inventory_hostname }}-runner"
+github_runner_labels: "self-hosted,arm64,pi-homelab"
+github_runner_group_name: "default"
+
+# ── Credentials (override via SOPS) ─────────────────────────────────────────
+# PAT with `repo` scope (for repo-level) or `admin:org` (for org-level).
+# Required at converge time to exchange for a short-lived registration token.
+# Stored in ansible/group_vars/github_runners.sops.yml — NEVER set here.
+github_runner_pat: ""
+
+# ── mise (the host needs mise so workflows can call `mise exec -- <tool>`) ─
+# Installed via the canonical github releases binary (matches the runtime path
+# used by Makefile setup-ci-deps-* targets). Version aligned with the floor
+# pinned in .mise.toml's tool resolutions.
+github_runner_install_mise: true
+github_runner_mise_version: "2026.6.0"
+
+# ── Resource caps (so the runner never starves Jellyfin) ───────────────────
+# Pi-4 hosts both the runner and the media stack (Jellyfin transcoding on
+# `storage: media` node). systemd drop-in caps the runner to a small slice
+# even when fully loaded, and sets idle I/O class so disk reads always yield
+# to the media server. To pause completely for a movie night:
+#   sudo systemctl stop actions.runner.<repo>.<host>.service
+# To re-enable:
+#   sudo systemctl start actions.runner.<repo>.<host>.service
+github_runner_cpu_quota: "50%"          # caps to ~2 of 4 cores
+github_runner_memory_max: "1G"          # leaves 7G headroom on the 8G Pi-4
+github_runner_nice: 15                  # de-prioritise vs default 0
+github_runner_io_scheduling_class: 3    # idle (yields to all other I/O)
+github_runner_io_scheduling_priority: 7 # lowest within class
+
+# ── Uninstall toggle ───────────────────────────────────────────────────────
+# Set to `true` (via --extra-vars) to fully remove the runner: stops the
+# service, unregisters from GitHub, deletes install dir + user + group.
+# Idempotent: running uninstall twice is a no-op the second time.
+github_runner_uninstall: false
+
+# ── Molecule / sandbox bypass flags ─────────────────────────────────────────
+# Mirrors the alloy role pattern: in a Docker-driven Molecule sandbox we cannot
+# reach api.github.com, cannot run a real `config.sh` (it would phone home),
+# and cannot start the runner service (the unit expects an interactive PTY).
+# Production playbooks leave all three at the default `false`.
+github_runner_skip_download: false
+github_runner_skip_register: false
+github_runner_skip_service_start: false

@@ -1,0 +1,6 @@
+# actionlint configuration.
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+self-hosted-runner:
+  # Custom labels for the Pi-4 self-hosted runner (see ansible/roles/github_runner/).
+  labels:
+    - pi-homelab
