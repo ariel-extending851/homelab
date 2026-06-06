@@ -8,7 +8,7 @@
 #
 # Key Management:
 #   - Age private key: ~/.config/sops/age/keys.txt
-#   - Age public key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+#   - Age public key: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 #   - IMPORTANT: Back up your Age private key securely!
 #
 # ArgoCD Integration:
@@ -19,7 +19,7 @@ creation_rules:
   # Encrypt argocd_extra_* keys in k3s_server group_vars (optional second repo URL/branch/path)
   - path_regex: ansible/group_vars/k3s_server\.sops\.ya?ml$
     encrypted_regex: ^(argocd_extra_.*)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt the GitHub PAT used by the github_runner role to exchange for a
   # short-lived runner registration token. Specific rule so the catch-all
@@ -27,35 +27,35 @@ creation_rules:
   # leave github_runner_pat in cleartext.
   - path_regex: ansible/group_vars/github_runners\.sops\.ya?ml$
     encrypted_regex: ^(github_runner_pat)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt Ansible router secrets + DHCP reservation hardware data
   # (rule must come before the generic group_vars rule to take precedence)
   - path_regex: ansible/group_vars/router\.sops\.ya?ml$
     encrypted_regex: ^(wifi_password|wifi_guest_password|pi_mac|pi_ip)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt Ansible router credentials in group_vars (catch-all for other files)
   - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
     encrypted_regex: ^(wifi_password|wifi_guest_password)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt all Kubernetes Secret manifests
   - path_regex: .*secret.*\.yaml$
     encrypted_regex: ^(data|stringData|ssh_public_key|k3s_token|tailscale_auth_key|tailscale_api_key)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt all files in k8s/apps/*/secrets/ directories
   - path_regex: k8s/apps/.*/secrets/.*\.yaml$
     encrypted_regex: ^(data|stringData)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt environment files with sensitive data
   - path_regex: .*\.enc\.yaml$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt all .sops.yaml files — pattern covers common secret field names
   # including tokens, keys, passwords, API keys, and Tailscale credentials
   - path_regex: .*\.sops\.ya?ml$
     encrypted_regex: ^(k3s_token|tailscale_auth_key|tailscale_api_key|.*[Tt]oken|.*[Ss]ecret|.*[Pp]assword|.*[Kk]ey|.*[Aa][Pp][Ii]_?[Kk]ey|.*[Cc]redential.*)$
-    age: "age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja"
+    age: "age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3"
