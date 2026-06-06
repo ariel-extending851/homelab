@@ -19,7 +19,6 @@ import sys
 
 PR_REQUIRED = frozenset(
     [
-        "k8s-dry-run",
         "disaster-recovery-execution",
         "policy-as-code-critical",
         "trivy-image-scan",
@@ -32,15 +31,24 @@ PR_REQUIRED = frozenset(
 
 # Pinned ADVISORY during the self-hosted runner migration (PR #135 follow-up):
 # the Pipeline Gate prints "[ADVISORY] <job>=<result>" instead of failing on
-# these. Both have environment-specific failures unrelated to repo content:
+# these. All five have environment-specific failures unrelated to repo content:
 #   - molecule: rpi_optimization role's sysctl_set returns "Invalid argument"
 #     inside an unprivileged sibling container.
 #   - arm64-validation: QEMU-emulated container lacks python3-apt.
-# Promote back to REQUIRED once role/test fixes land.
+#   - k8s-dry-run + k3d-convergence: Fedora Bluefin's firewalld filters
+#     container-to-container traffic on the `kind` Docker network ("Packet
+#     Filtered" from the bridge gateway), so the runner can't reach the kind
+#     control-plane's apiserver port. Real fix: configure firewalld on the
+#     pc-tower host to add Docker bridge interfaces to the trusted zone
+#     (sudo firewall-cmd --permanent --zone=trusted
+#      --add-interface=br-<kind-bridge>; firewall-cmd --reload).
+# Promote back to REQUIRED once role/test/host fixes land.
 PR_ADVISORY = frozenset(
     [
         "molecule",
         "arm64-validation",
+        "k8s-dry-run",
+        "k3d-convergence",
     ]
 )
 
