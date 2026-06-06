@@ -21,6 +21,14 @@ creation_rules:
     encrypted_regex: ^(argocd_extra_.*)$
     age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
 
+  # Encrypt the GitHub PAT used by the github_runner role to exchange for a
+  # short-lived runner registration token. Specific rule so the catch-all
+  # group_vars rule (which only matches wifi_password) does not silently
+  # leave github_runner_pat in cleartext.
+  - path_regex: ansible/group_vars/github_runners\.sops\.ya?ml$
+    encrypted_regex: ^(github_runner_pat)$
+    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+
   # Encrypt Ansible router secrets + DHCP reservation hardware data
   # (rule must come before the generic group_vars rule to take precedence)
   - path_regex: ansible/group_vars/router\.sops\.ya?ml$
