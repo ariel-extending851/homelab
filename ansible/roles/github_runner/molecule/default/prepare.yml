@@ -1,0 +1,22 @@
+---
+# Bootstrap: python3 + sudo for debian:bookworm-slim
+# These packages are required before Ansible facts gathering can work
+
+- name: Prepare — bootstrap python3 and sudo
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Bootstrap python3 and sudo (multi-distro)
+      ansible.builtin.raw: |
+        if command -v python3 >/dev/null 2>&1; then
+          exit 0
+        fi
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update && apt-get install -y python3 sudo
+        elif command -v dnf >/dev/null 2>&1; then
+          dnf install -y python3 sudo
+        elif command -v yum >/dev/null 2>&1; then
+          yum install -y python3 sudo
+        fi
+      changed_when: false

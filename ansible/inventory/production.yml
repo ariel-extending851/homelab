@@ -119,6 +119,15 @@ all:
     alloy_native:
       hosts: {}
 
+    # ── GitHub Actions self-hosted runners (Ansible/systemd path) ────────
+    # Empty by default: pc-tower runs the runner as a Docker container under
+    # `ci/runner/docker-compose.yml` (no Ansible needed). To deploy a runner
+    # on a host without docker-in-docker (e.g. a Pi or another workstation),
+    # add the host here and run `playbooks/deploy-github-runner.yml`.
+    # See ansible/roles/github_runner/README.md.
+    github_runners:
+      hosts: {}
+
     # ── OpenWrt router (GL.iNet Opal SFT1200) ─────────────────────────────
     router:
       hosts:
