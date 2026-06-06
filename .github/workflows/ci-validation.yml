@@ -106,6 +106,10 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          # Self-hosted runners persist /tmp across runs; the previous
+          # `git worktree add /tmp/base-tree` left it behind. Prune first.
+          git worktree remove --force /tmp/base-tree 2>/dev/null || true
+          rm -rf /tmp/base-tree
           git fetch --no-tags --depth=1 origin "$BASE_REF"
           git worktree add /tmp/base-tree "origin/$BASE_REF"
           BASELINE_OUT=/tmp/infracost-base.json make -C /tmp/base-tree terraform-cost-baseline
