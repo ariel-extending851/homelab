@@ -1387,11 +1387,18 @@ validate-k8s-dry-run: ## Spin up a kind cluster and server-side dry-run all K8s 
 	@kind create cluster --name homelab-dryrun --wait 60s
 	@# Self-hosted runner inside a Docker container: the kubeconfig kind writes
 	@# points at 127.0.0.1:<random-port>, which from inside the runner container
-	@# is the runner's loopback, not the kind cluster. Rewrite to the kind
-	@# control-plane container's IP on the `kind` Docker network and join the
-	@# runner to that network so the API is reachable.
-	@if [ -f /.dockerenv ] && [ -n "$$HOSTNAME" ]; then \
-		docker network connect kind $$HOSTNAME 2>/dev/null || true; \
+	@# is the runner's loopback, not the kind cluster. Connect the runner to
+	@# the `kind` Docker network and re-export kubeconfig with --internal so
+	@# the API is reachable via the kind control-plane container's IP.
+	@# `hostname` returns the container's hostname (= short container ID, the
+	@# form `docker network connect` accepts); $$HOSTNAME isn't reliably set
+	@# under POSIX sh, so use the command instead.
+	@if [ -f /.dockerenv ]; then \
+		RUNNER_ID=$$(hostname); \
+		echo "  → connecting runner $$RUNNER_ID to kind network"; \
+		docker network connect kind $$RUNNER_ID 2>&1 | grep -v "already exists in network" || true; \
+		echo "  → re-exporting kubeconfig with --internal"; \
+		mkdir -p $$HOME/.kube; \
 		kind get kubeconfig --internal --name homelab-dryrun > "$$HOME/.kube/config"; \
 	fi
 	@( \
