@@ -11,7 +11,7 @@ argocd_namespace: argocd
 
 # SOPS configuration
 sops_enabled: true
-sops_age_public_key: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+sops_age_public_key: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
 # Git repository for ArgoCD
 git_repo_url: "git@github.com:ariel-extending851/homelab.git"
