@@ -30,7 +30,7 @@ jobs:
   terraform:
     name: "Terraform: Validate + Test"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -60,7 +60,7 @@ jobs:
   terraform-cost-gate:
     name: "Terraform: Infracost PR Gate"
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 15
     permissions:
       contents: read
@@ -129,10 +129,10 @@ jobs:
   yaml-lint:
     name: "YAML: Lint + K8s Schemas"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    # Self-hosted Pi-4 runner. GitHub Actions does NOT auto-fallback: if no
-    # matching runner is online, the job queues until 24h expiry. Verify
-    # rasp-pi-04 shows Idle in repo Settings > Actions > Runners before
-    # merging changes to this `runs-on:` list.
+    # Self-hosted runner on pc-tower (Docker compose). GitHub Actions does NOT
+    # auto-fallback: if no matching runner is online, the job queues until 24h
+    # expiry. Verify pc-tower-runner shows Idle in repo Settings > Actions >
+    # Runners before merging changes. See ci/runner/README.md.
     runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
@@ -183,7 +183,7 @@ jobs:
   enforce-molecule-tests:
     name: Enforce Molecule Tests
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     steps:
       - name: Checkout Code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -207,7 +207,7 @@ jobs:
 
   molecule:
     name: "Ansible: Molecule Role Tests"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 30
     steps:
       - name: Checkout Code
@@ -245,7 +245,7 @@ jobs:
   shell-tests:
     name: "Shell: Unit Tests"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -275,7 +275,6 @@ jobs:
     # would silently neuter the staging-canary Velero gate in ci-deployment.yml.
     # `pytest --collect-only` is ~5s and catches that class of regression at PR time.
     name: "Python: Test Collection (import guard)"
-    # Self-hosted Pi-4 runner: 5s collect, no heavy compute.
     runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 5
     steps:
@@ -297,7 +296,7 @@ jobs:
   python-tests:
     name: "Python: Unit Tests + Coverage"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -339,7 +338,7 @@ jobs:
 
   arm64-validation:
     name: "ARM64: ${{ matrix.platform }}"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 45
     strategy:
       matrix:
@@ -384,7 +383,6 @@ jobs:
 
   sops-validation:
     name: "SOPS: Workflow Validation"
-    # Self-hosted Pi-4 runner: sops + age are mise-managed ARM64 binaries.
     runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
@@ -414,7 +412,6 @@ jobs:
 
   lint-workflows:
     name: "Workflows: actionlint + zizmor"
-    # Self-hosted Pi-4 runner: actionlint + zizmor are mise-managed Go binaries.
     runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 10
     steps:
@@ -439,7 +436,6 @@ jobs:
   shellcheck:
     name: ShellCheck
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    # Self-hosted Pi-4 runner: shellcheck is a mise-managed ARM64 binary.
     runs-on: [self-hosted, pc-homelab]
     steps:
       - name: Checkout Code
@@ -456,7 +452,7 @@ jobs:
     # Advisory job — LocalStack free tier has known limitations (no spot);
     # failures here flag drift but must not block PRs.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     continue-on-error: true
     steps:
@@ -503,7 +499,7 @@ jobs:
   security:
     name: Secret Scan
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 10
     steps:
       - name: Checkout Code
@@ -524,7 +520,7 @@ jobs:
 
   trivy-image-scan:
     name: "Security: Trivy Image Scan (strict, HIGH/CRITICAL blocks)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 15
     steps:
       - name: Checkout Code
@@ -570,7 +566,7 @@ jobs:
   disaster-recovery-tests:
     name: "Disaster Recovery: Readiness Tests"
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 15
     steps:
       - name: Checkout Code
@@ -584,7 +580,7 @@ jobs:
 
   disaster-recovery-execution:
     name: "Disaster Recovery: Real Execution (Molecule)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 25
     steps:
       - name: Checkout Code
@@ -608,7 +604,7 @@ jobs:
   policy-as-code-critical:
     name: "Security: Policy-as-Code Critical Gate"
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -636,7 +632,7 @@ jobs:
 
   k8s-dry-run:
     name: "Kubernetes: Dry-Run (kind)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -673,7 +669,7 @@ jobs:
       github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     steps:
       - name: Checkout Code
@@ -727,7 +723,7 @@ jobs:
 
   terraform-plan:
     name: "Terraform: Plan (OIDC)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     needs: [terraform]
     if: >
@@ -796,7 +792,7 @@ jobs:
 
   qa-audit-evidence:
     name: "QA: Sequential Audit Evidence"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 30
     steps:
       - name: Checkout Code
@@ -835,7 +831,7 @@ jobs:
 
   offline-required-profile:
     name: "QA: Offline Required Profile"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 45
     steps:
       - name: Checkout Code
@@ -862,7 +858,7 @@ jobs:
   nightly-e2e-live:
     name: "Nightly: Mandatory Live E2E"
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 40
     permissions:
       id-token: write
@@ -916,7 +912,7 @@ jobs:
 
   pipeline-gate-pr:
     name: Pipeline Gate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name != 'schedule'
     steps:
@@ -956,7 +952,7 @@ jobs:
 
   pipeline-gate-nightly:
     name: Pipeline Gate (Nightly)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name == 'schedule'
     steps:
