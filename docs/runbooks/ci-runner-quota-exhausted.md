@@ -50,6 +50,16 @@ Critical tell: a successful run at SHA `X` is followed by failures at the same S
 
 ## Recovery (pick one)
 
+### Known gaps in the self-hosted tier (as of 2026-06-06)
+
+After migrating all 24 `ci-validation` jobs to `[self-hosted, pc-homelab]`, two jobs are kept ADVISORY in `pipeline-gate-pr`'s required-success set instead of REQUIRED because they hit container/QEMU compatibility issues specific to the pc-tower Docker-in-Docker environment:
+
+1. **molecule** (`Ansible: Molecule Role Tests`) — the `rpi_optimization` role tries `sysctl_set net.netfilter.nf_conntrack_max` which returns "Invalid argument" in a sibling-container test target (the kernel module isn't loaded inside the unprivileged container). On GitHub-hosted runners the same role passed because those runners run with broader privileges. Fix scope: either gate the sysctl task on `ansible_virtualization_type != 'container'` in the role, or change the Molecule scenario's container to use `--privileged --cap-add=NET_ADMIN`.
+
+2. **arm64-validation** (`ARM64: linux/arm64` + `linux/arm/v7`) — QEMU-emulated containers fail at `ModuleNotFoundError: No module named 'apt'` because the slim ARM image lacks `python3-apt`. Fix scope: switch the Molecule platform image (in `ansible/roles/<role>/molecule/default/molecule.yml`) to one with `python3-apt` pre-installed, or add a pre-install task that runs `apt-get install -y python3-apt` before role tasks.
+
+Both fixes belong in separate PRs (role/test changes, not CI). Promote back to `required_success` once green.
+
 ### Option A — Docker compose runner on pc-tower (preferred, free, currently deployed)
 
 Lightest path when a host with Docker is available. The pc-tower (Bluefin / Fedora x86_64, 12c / 15G) hosts the runner as a long-lived container via `ci/runner/docker-compose.yml`; the `make runner-up` target reads the PAT from the SOPS-encrypted group_vars file and starts it. See [`ci/runner/README.md`](../../ci/runner/README.md).

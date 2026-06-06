@@ -916,39 +916,12 @@ jobs:
     needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name != 'schedule'
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Validate Required Job Outcomes
-        run: |
-          results='${{ toJSON(needs) }}'
-          echo "$results" | python3 -c "
-          import sys, json
-          needs = json.load(sys.stdin)
-          required_success = {
-            'k8s-dry-run',
-            'disaster-recovery-execution',
-            'molecule',
-            'policy-as-code-critical',
-            'trivy-image-scan',
-            'arm64-validation',
-            'sops-validation',
-            'qa-audit-evidence',
-            'offline-required-profile',
-            'python-tests-collect',
-          }
-
-          failed = []
-          for name, data in needs.items():
-            result = data['result']
-            if name in required_success:
-              if result != 'success':
-                failed.append(f'{name}={result}')
-            elif result not in ('success', 'skipped'):
-              failed.append(f'{name}={result}')
-
-          if failed:
-            print('[FAIL] Pipeline gate failed:', ', '.join(failed))
-            sys.exit(1)
-          print('[OK] Required jobs passed; optional jobs are success/skipped')
-          "
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: echo "$NEEDS_JSON" | python3 .github/scripts/pipeline_gate.py pr
 
   pipeline-gate-nightly:
     name: Pipeline Gate (Nightly)
@@ -956,45 +929,9 @@ jobs:
     needs: [terraform, terraform-plan, yaml-lint, k8s-dry-run, shellcheck, lint-workflows, security, trivy-image-scan, policy-as-code-critical, disaster-recovery-tests, disaster-recovery-execution, enforce-molecule-tests, molecule, shell-tests, python-tests, python-tests-collect, arm64-validation, sops-validation, qa-audit-evidence, offline-required-profile, nightly-e2e-live]
     if: always() && github.event_name == 'schedule'
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Validate Nightly Required Outcomes
-        run: |
-          results='${{ toJSON(needs) }}'
-          echo "$results" | python3 -c "
-          import sys, json
-          needs = json.load(sys.stdin)
-          required_success = {
-            'terraform',
-            'yaml-lint',
-            'k8s-dry-run',
-            'shellcheck',
-            'security',
-            'trivy-image-scan',
-            'policy-as-code-critical',
-            'disaster-recovery-tests',
-            'disaster-recovery-execution',
-            'enforce-molecule-tests',
-            'molecule',
-            'shell-tests',
-            'python-tests',
-            'arm64-validation',
-            'sops-validation',
-            'qa-audit-evidence',
-            'offline-required-profile',
-            'nightly-e2e-live',
-            'lint-workflows',
-          }
-
-          failed = []
-          for name, data in needs.items():
-            result = data['result']
-            if name in required_success:
-              if result != 'success':
-                failed.append(f'{name}={result}')
-            elif result not in ('success', 'skipped'):
-              failed.append(f'{name}={result}')
-
-          if failed:
-            print('[FAIL] Nightly pipeline gate failed:', ', '.join(failed))
-            sys.exit(1)
-          print('[OK] Nightly required jobs passed; optional jobs are success/skipped')
-          "
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: echo "$NEEDS_JSON" | python3 .github/scripts/pipeline_gate.py nightly

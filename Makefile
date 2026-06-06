@@ -250,10 +250,21 @@ setup-ci-deps-k3d: ## Install k3d (preferred over kind for GitOps convergence �
 	@echo "🔧 Setting up k3d for CI..."
 	@command -v mise >/dev/null && mise install k3d || true
 	@if ! command -v k3d >/dev/null 2>&1; then \
-		curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.8.3 bash; \
+		# k3d install.sh is hosted on raw.githubusercontent.com which returns intermittent \
+		# 504s; retry up to 5 times with exponential backoff. \
+		for attempt in 1 2 3 4 5; do \
+			if curl -fsSL --retry 3 --retry-delay 5 \
+				https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh \
+				| TAG=v5.8.3 bash; then \
+				break; \
+			fi; \
+			echo "  ⚠️  k3d install attempt $$attempt failed; sleeping then retrying..."; \
+			sleep $$((attempt * 5)); \
+		done; \
+		command -v k3d >/dev/null 2>&1 || (echo "❌ k3d install failed after 5 attempts"; exit 22); \
 	fi
 	@command -v kubectl >/dev/null || (echo "❌ kubectl missing; run setup-ci-deps-kubernetes first"; exit 1)
-	@kind version && echo "✅ kind installed"
+	@k3d version && echo "✅ k3d installed"
 
 setup-ci-deps-molecule: ## Install Molecule + Ansible tooling (for CI)
 	@echo "📦 Setting up Molecule + Ansible tooling for CI..."
@@ -1374,6 +1385,15 @@ validate-k8s-dry-run: ## Spin up a kind cluster and server-side dry-run all K8s 
 	@command -v kubectl >/dev/null 2>&1 || (echo "❌ kubectl not found"; exit 1)
 	@command -v kustomize >/dev/null 2>&1 || (echo "❌ kustomize not found"; exit 1)
 	@kind create cluster --name homelab-dryrun --wait 60s
+	@# Self-hosted runner inside a Docker container: the kubeconfig kind writes
+	@# points at 127.0.0.1:<random-port>, which from inside the runner container
+	@# is the runner's loopback, not the kind cluster. Rewrite to the kind
+	@# control-plane container's IP on the `kind` Docker network and join the
+	@# runner to that network so the API is reachable.
+	@if [ -f /.dockerenv ] && [ -n "$$HOSTNAME" ]; then \
+		docker network connect kind $$HOSTNAME 2>/dev/null || true; \
+		kind get kubeconfig --internal --name homelab-dryrun > "$$HOME/.kube/config"; \
+	fi
 	@( \
 		echo "✓ Preparing manifests (filtering SOPS and custom resources)..." && \
 		kustomize build k8s/apps \
@@ -1411,7 +1431,11 @@ validate-yaml-lint: ## Run yamllint across the entire repo (root .yamllint confi
 
 validate-shellcheck: ## Run shellcheck on all shell scripts (local equivalent of CI shellcheck action)
 	@echo "✓ Running shellcheck..."
-	@command -v shellcheck >/dev/null 2>&1 || (echo "❌ shellcheck not found. Install: apt install shellcheck"; exit 1)
+	@if ! command -v shellcheck >/dev/null 2>&1; then \
+		echo "  shellcheck missing — attempting on-demand install..."; \
+		$(MAKE) setup-ci-deps-shellcheck; \
+	fi
+	@command -v shellcheck >/dev/null 2>&1 || (echo "❌ shellcheck install failed"; exit 1)
 	@files=$$(find . -name "*.sh" -not -path "./.git/*" -not -path "./.terraform/*" -not -path "./docs/archive/*"); \
 	if [ -z "$$files" ]; then \
 	  echo "  ℹ️  No shell scripts found — all migrated to Python."; \
