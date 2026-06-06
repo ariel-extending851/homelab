@@ -1,46 +1,66 @@
 # GitHub Actions self-hosted runner — Docker Compose deployment.
 #
 # Target: a host with Docker available and sufficient capacity (pc-tower today:
-# Bluefin / Fedora x86_64, 12c / 15G). Runs as a long-lived container that
-# the Docker daemon keeps alive across DevPod / shell exits. The bind-mounted
-# `/var/run/docker.sock` lets workflow jobs (k3d, kind, Trivy, etc.) spawn
-# sibling containers without paying for nested-Docker overhead.
+# Bluefin / Fedora x86_64, 12c / 15G). Runs as long-lived ephemeral containers
+# that the Docker daemon keeps alive across DevPod / shell exits. The
+# bind-mounted `/var/run/docker.sock` lets workflow jobs (k3d, kind, Trivy,
+# etc.) spawn sibling containers without paying for nested-Docker overhead.
 #
-# Resource caps prevent the runner from saturating the host during heavy jobs.
+# Three runners in parallel keep the CI queue draining at a reasonable pace
+# (each container processes one job at a time; GitHub schedules N jobs onto
+# N online runners with matching labels). RUNNER_NAME_PREFIX lets the image
+# pick a unique random-suffix name per replica so registrations don't collide.
+#
+# Resource caps total ≤ host capacity:
+#   3 runners × cpus=3.5 = 10.5 of 12 cores
+#   3 runners × mem=4G   = 12 of 15 GB
+#   (leaves ≥ 1.5 cores + 3 GB for the desktop + DevContainer).
 #
 # Bootstrap: `make runner-up` (decrypts SOPS, exports ACCESS_TOKEN, starts).
 
+x-runner-base: &runner-base
+  image: myoung34/github-runner:ubuntu-noble
+  restart: unless-stopped
+  pull_policy: missing
+  environment:
+    REPO_URL: https://github.com/ariel-extending851/homelab
+    RUNNER_NAME_PREFIX: pc-tower-runner
+    LABELS: pc-homelab
+    RUNNER_WORKDIR: /tmp/runner/work
+    EPHEMERAL: "false"
+    ACCESS_TOKEN: ${ACCESS_TOKEN:?ACCESS_TOKEN must be set — run via make runner-up}
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  deploy:
+    resources:
+      limits:
+        cpus: '3.5'
+        memory: 4G
+
 services:
-  runner:
-    image: myoung34/github-runner:2.319.1
-    container_name: hl-github-runner
-    restart: unless-stopped
-    pull_policy: missing
-    environment:
-      REPO_URL: https://github.com/ariel-extending851/homelab
-      RUNNER_NAME: pc-tower-runner
-      LABELS: pc-homelab
-      RUNNER_WORKDIR: /tmp/runner/work
-      # Persistent runner: re-registers automatically on container restart,
-      # picks up the same identity. Set EPHEMERAL=true to throw it away
-      # after one job (slower but safer if jobs leave state behind).
-      EPHEMERAL: "false"
-      # Inject at runtime (never commit). `make runner-up` reads SOPS.
-      ACCESS_TOKEN: ${ACCESS_TOKEN:?ACCESS_TOKEN must be set — run via make runner-up}
+  runner-1:
+    <<: *runner-base
+    container_name: hl-github-runner-1
     volumes:
-      # Sibling-container access: jobs can `docker run` / `docker build` and
-      # those containers land on the host's daemon, not nested.
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist runner work tree so cached tool downloads survive restarts.
-      - runner-work:/tmp/runner/work
-    deploy:
-      resources:
-        limits:
-          # ~half the host's 12 cores; foreground work keeps a fair share.
-          cpus: '6.0'
-          # ~half the host's 15 GB; leaves headroom for desktop + DevContainer.
-          memory: 8G
+      - runner-work-1:/tmp/runner/work
+  runner-2:
+    <<: *runner-base
+    container_name: hl-github-runner-2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work-2:/tmp/runner/work
+  runner-3:
+    <<: *runner-base
+    container_name: hl-github-runner-3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work-3:/tmp/runner/work
 
 volumes:
-  runner-work:
-    name: hl-github-runner-work
+  runner-work-1:
+    name: hl-github-runner-work-1
+  runner-work-2:
+    name: hl-github-runner-work-2
+  runner-work-3:
+    name: hl-github-runner-work-3
