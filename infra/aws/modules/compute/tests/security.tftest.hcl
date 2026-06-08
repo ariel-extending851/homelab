@@ -102,10 +102,16 @@ run "s3_policy_least_privilege" {
 run "alloy_s3_policy_present_when_bucket_arn_set" {
   variables {
     observability_bucket_arn = "arn:aws:s3:::hl-observability-cold-storage-test"
+    # File-scoped variables (top of file) default localstack_test = "yes" so
+    # all other runs cover the LocalStack code path. Override here because the
+    # Alloy S3 policy is now gated on `localstack_test == "no"` (production
+    # mode), not on the bucket ARN — the original ARN gate referenced a
+    # "known after apply" value that terraform couldn't resolve at plan time.
+    localstack_test = "no"
   }
   assert {
     condition     = length(aws_iam_role_policy.k3s_node_observability_s3) == 1
-    error_message = "Alloy S3 policy must be created when observability_bucket_arn is non-empty"
+    error_message = "Alloy S3 policy must be created when localstack_test == no (production mode)"
   }
   assert {
     condition     = jsondecode(aws_iam_role_policy.k3s_node_observability_s3[0].policy).Statement[0].Sid == "AlloyColdStorageWrite"

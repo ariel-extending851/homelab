@@ -74,6 +74,17 @@
     - not (alloy_skip_download | default(false))
     - alloy_archive.changed or not alloy_existing_binary.stat.exists
 
+# Bug 18 of PR #114: the upstream zip ships the binary as
+# `alloy-linux-{arch}` (e.g. alloy-linux-arm64). The role's `creates:`
+# guard above and downstream `/usr/local/bin/alloy --version` both
+# expect the file to be named `alloy`.
+- name: Rename arch-suffixed binary to /usr/local/bin/alloy
+  ansible.builtin.command:
+    cmd: "mv /usr/local/bin/alloy-linux-{{ alloy_release_arch }} /usr/local/bin/alloy"
+    creates: /usr/local/bin/alloy
+  when:
+    - not (alloy_skip_download | default(false))
+
 - name: Verify Alloy reports the expected version
   ansible.builtin.command: /usr/local/bin/alloy --version
   register: alloy_version_check
