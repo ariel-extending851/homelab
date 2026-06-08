@@ -5,22 +5,22 @@
 #   ssm_activation_* — SSM break-glass; populate via `make ssm-activation-bootstrap`
 #                      from infra/aws-velero outputs, gated by ssm_breakglass_enabled.
 dockerhub_username: REPLACE_ME
-dockerhub_token: ENC[AES256_GCM,data:W9jRUSSCcxHNMQ==,iv:6YSTqoqnIyiyiyxG6v4i2nk9u/Ayi2+RB6c+Mkglp1E=,tag:THebDivuMjbV8cWE8EroCg==,type:str]
-ssm_activation_id: ENC[AES256_GCM,data:0EzwjrPEMhF0Dg==,iv:9XxHJTZFZ2L3ruGimjBeuooFi7r6aDJgnSe3MnUH7cQ=,tag:Vctl2VaELWPIUeAiTj9jlQ==,type:str]
-ssm_activation_code: ENC[AES256_GCM,data:S/wEN7WFgx0uUA==,iv:WEXQMFBSF8FVzR/qOgnlPvjbl38h0oQmdgBYKjLO1so=,tag:0o92AaHzq1TmZ1/TnUxxGA==,type:str]
+dockerhub_token: ENC[AES256_GCM,data:7tDTddpA1Fo5Aw==,iv:dygTuj9bP/6WlxNJsZVkTuJ3lS3Uam1vhXXSR5gVFnI=,tag:tSkRfRosnHyohZdKYykEsw==,type:str]
+ssm_activation_id: ENC[AES256_GCM,data:pmwqshLMNfXDVw==,iv:0IvwDLmWDycbDnvHG0EqznrPyEYS7vuj1+f3V1zVL4Y=,tag:e81e5YdCQcZ8TYsCle76iQ==,type:str]
+ssm_activation_code: ENC[AES256_GCM,data:RxTn3a5ZtRBxgg==,iv:X6UGXisEHJnwFrjfo82oGqqUPR6K0rEWx34xLmGb7KI=,tag:MQQelXY8nevhkz5EaYlv4g==,type:str]
 ssm_region: us-east-1
 sops:
     age:
-        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+        - recipient: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBTWVJNeWtjTkZPMUc0Y3dJ
-            WEF1T0JrUksyN0tZbGJuMno1eHZ3ZzBMaENvCnUzWFIwN1ZoN0ZNaEw5aHQrdUhv
-            bFFQV2hHSGRJZGdtc1VWWHZtQ1BMWkkKLS0tIHJiakRVN2pkck9sSTZmUkhVN0s0
-            RFRhSldYbDZTRUo4ajNuNmNzUnhyZ3cKUg530ZgEyk79zrNlyv8st5uGwWmjZt3M
-            cV0pD3HxKvGw3NggfNxO8gAQuZhA2Lo4Gvv/HelRyf5tMYUCqJYZsg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBXMFBCcFpWR1BwMWY4SGZs
+            QlE1LytYMS8wd3huajZzVTcrWjBTYWdSNjJnCmhEb1VjZlZ2RTR2bndKQlNxTHBk
+            Snl2VUExS0ZFVndsNlhrQi9FWVF1aHcKLS0tIE9yS0pEdEdQa1JubE1Ndm1wV0Vk
+            ZHdYZ2l1OHplTVd0enNTUGxkMXFPYUEKEP/dRr86rrHrWLFCZa56mjUxmadBCGJP
+            Q0Twn07mmZ4w++cDfNT6IEJZoaUaeon32LR3CQRdSgnURtAa+cxneA==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2026-06-05T17:31:51Z"
-    mac: ENC[AES256_GCM,data:DbRjv9hQ6uBr+b5Qo3cCtuwmwTvcX5/jc8qv9++UQ0L5ntdX5FrXXlzrkOdQB5FVZcU9jD3uEqE3mNNqlHYBR5uMEsEXKrBO8/yclBYusK86IVoSQZ0JXD9zOD4zZA6YNbhlBZnuo6TA5VhV84T8qP89AGdaCOyUBRLRB4rgxEc=,iv:70mVQO/O9NrBUL+69aa390Qt2V/g+I+h4d56GH9BjK8=,tag:/peimrPPtd1uNAkbU6xV4g==,type:str]
+    lastmodified: "2026-06-08T22:06:32Z"
+    mac: ENC[AES256_GCM,data:/ULq44JXaYN39e0vqeq7dDKMo6X/4+Sue6+Y628OOe67IU1gVtfbq/AWIrvFc55b9PDmTkqELsN7+lX3d1fLQxAwAccgcdbOiXaU0GAvVFox5mU7S2iU5HWo71BILZGzRd37tV7DPslenEzAFKM2OSIoipHSa89ueFdEoVLr2x8=,iv:zGCA3Tegoe/4a4f8UuUeU7wSNe+TH3KMh31Yvw/ajhs=,tag:cmWVD2ODlG+ixj0fnRf0FQ==,type:str]
     encrypted_regex: ^(dockerhub_token|ssm_activation_id|ssm_activation_code)$
     version: 3.10.2

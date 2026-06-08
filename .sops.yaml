@@ -40,7 +40,7 @@ creation_rules:
   # patterns below. Must precede the generic group_vars rule to take precedence.)
   - path_regex: ansible/group_vars/all\.sops\.ya?ml$
     encrypted_regex: ^(dockerhub_token|ssm_activation_id|ssm_activation_code)$
-    age: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+    age: age1pawume2qrtjj7zdypddpx26gn329c4k5tz7e22dh4kavmk590svs70rmp3
 
   # Encrypt Ansible router credentials in group_vars (catch-all for other files)
   - path_regex: ansible/group_vars/.*\.sops\.ya?ml$
