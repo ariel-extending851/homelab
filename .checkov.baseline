@@ -407,6 +407,20 @@
             ]
         },
         {
+            "file": "/k8s/apps/promtail/daemonset.yaml",
+            "findings": [
+                {
+                    "resource": "DaemonSet.promtail.promtail",
+                    "check_ids": [
+                        "CKV_K8S_15",
+                        "CKV_K8S_23",
+                        "CKV_K8S_35",
+                        "CKV_K8S_40"
+                    ]
+                }
+            ]
+        },
+        {
             "file": "/k8s/apps/storage-latency/cronjob.yaml",
             "findings": [
                 {

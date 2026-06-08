@@ -46,10 +46,13 @@ alloy_tier_label: "{{ 'cloud' if 'k3s_agent' in group_names and ansible_architec
 
 # ── Sink endpoints (placeholders — encrypt the real values in alloy.sops.yaml) ─
 
-alloy_grafana_cloud_prom_url: "https://prometheus-prod-13-prod-us-east-0.grafana.net/api/prom/push"
-alloy_grafana_cloud_loki_url: "https://logs-prod-006.grafana.net/loki/api/v1/push"
-alloy_grafana_cloud_user: ""
-alloy_grafana_cloud_token: ""
+# Bridge from group_vars/alloy_native.sops.yaml (which uses unprefixed keys).
+# Without this mapping the template renders empty strings (Bug 17 of PR #114).
+alloy_grafana_cloud_prom_url: "{{ grafana_cloud_prom_url | default('') }}"
+alloy_grafana_cloud_loki_url: "{{ grafana_cloud_loki_url | default('') }}"
+alloy_grafana_cloud_user: "{{ grafana_cloud_user | default('') }}"
+alloy_grafana_cloud_loki_user: "{{ grafana_cloud_loki_user | default('') }}"
+alloy_grafana_cloud_token: "{{ grafana_cloud_token | default('') }}"
 
 # ── S3 cold-storage exporter ────────────────────────────────────────────────
 # Bucket name is read from `terraform output -raw observability_bucket_id`
