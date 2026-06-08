@@ -14,11 +14,17 @@ DEFAULT_DURATION_BUDGETS_SECONDS: dict[str, int] = {
     "contracts": 60,
     "terraform": 180,
     "security": 60,
-    "disaster_recovery": 60,
     "shell": 90,
     "python": 900,
-    "performance": 120,
     "e2e_live": 600,
+    # disaster_recovery and performance intentionally omitted: both are
+    # `required=no` in qa_test_audit.py (TESTS_BASE), so a slow run already
+    # produces an advisory, not a gating signal. Enforcing a duration budget
+    # on top of that double-gates an advisory suite. Self-hosted pc-tower
+    # runners (2 vCPU per replica) push DR/Molecule wall time to ~200s and
+    # would trip the historical 60s budget; treating them like the other
+    # advisory suites avoids blocking the entire PR queue on a slowdown that
+    # isn't a regression in product code.
 }
 
 

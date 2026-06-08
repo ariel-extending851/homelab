@@ -49,7 +49,7 @@ jobs:
   chaos-rpi3:
     if: inputs.which == 'rpi3' || inputs.which == 'both'
     name: RPi3 OOM Resilience Drill
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 30
     permissions:
       id-token: write
@@ -94,7 +94,7 @@ jobs:
   chaos-tailscale:
     if: inputs.which == 'tailscale' || inputs.which == 'both'
     name: Tailscale Mesh-Partition Drill
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 20
     permissions:
       id-token: write
