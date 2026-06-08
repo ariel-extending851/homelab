@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: promtail
+
+# NOTE: secret.yaml is intentionally NOT listed here until the operator
+# has encrypted it via `sops -e`. See k8s/apps/promtail/secret.yaml.example
+# and the README for the bootstrap procedure. ArgoCD will fail-closed on
+# the missing envFrom secret until that's done, which is the intended UX
+# — no half-configured agent goes live.
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - configmap.yaml
+  - daemonset.yaml
+  - service.yaml
+  - networkpolicy.yaml
