@@ -27,6 +27,12 @@ spec:
           restartPolicy: Never
           serviceAccountName: k3s-snapshot
           automountServiceAccountToken: false
+          # Pod-level hardening. seccomp RuntimeDefault is free and applies to
+          # every container; runAsNonRoot can't be set here because the job must
+          # read the root-owned (0700) k3s datastore dir — see container ctx.
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           # Pin to the k3s control-plane node — the only node with
           # /var/lib/rancher/k3s/server/db/state.db. Using the control-plane
           # role label (Exists, value-agnostic) instead of a hostname keeps this
