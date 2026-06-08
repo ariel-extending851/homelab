@@ -14,7 +14,11 @@ DEFAULT_DURATION_BUDGETS_SECONDS: dict[str, int] = {
     "contracts": 60,
     "terraform": 180,
     "security": 60,
-    "disaster_recovery": 60,
+    # Bumped 60 → 240 on 2026-06-08 after migrating ci-validation to the
+    # self-hosted pc-tower runners (2 vCPU cap per replica, ~3× slower than
+    # GitHub-hosted ubuntu-latest). Reverse if the workload returns to the
+    # hosted tier or runner caps are restored.
+    "disaster_recovery": 240,
     "shell": 90,
     "python": 900,
     "performance": 120,
