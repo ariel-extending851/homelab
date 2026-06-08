@@ -27,7 +27,7 @@ concurrency:
 jobs:
   detect:
     name: Terraform Plan vs Live State
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 15
     permissions:
       id-token: write

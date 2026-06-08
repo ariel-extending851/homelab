@@ -53,7 +53,7 @@ jobs:
   # ============================================================================
   validate-gate:
     name: Wait for Validation Gate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     steps:
       - name: Validation Pipeline Status
         run: |
@@ -70,7 +70,7 @@ jobs:
   # ============================================================================
   terraform-plan-prod:
     name: "Prod: Generate Terraform Plan (for approval)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [validate-gate]
     permissions:
       id-token: write
@@ -132,7 +132,7 @@ jobs:
   # ============================================================================
   await-prod-approval:
     name: "Approval: Reviewer approves plan"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [terraform-plan-prod]
     environment: production-approval
     steps:
@@ -149,7 +149,7 @@ jobs:
   # ============================================================================
   terraform-apply:
     name: Apply Terraform
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [validate-gate, await-prod-approval]
     environment: production
     permissions:
