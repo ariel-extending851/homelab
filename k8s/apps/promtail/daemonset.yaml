@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: promtail
+  labels:
+    app: promtail
+    app.kubernetes.io/part-of: observability
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: promtail
+      annotations:
+        # Compliance: workloads classify themselves by class only.
+        homelab.io/class: low_priority_local_service
+    spec:
+      serviceAccountName: promtail
+      # Promtail reads logs from hostPath only — it never calls the K8s API,
+      # so the SA token does not need to be projected into the pod. Closes
+      # CKV_K8S_38 (mount SA tokens only where necessary).
+      automountServiceAccountToken: false
+
+      # Edge-tier only. When AWS Full is active, k8s/apps/alloy/ runs on
+      # the cloud worker (labelled homelab.io/tier=cloud) and handles
+      # logs+metrics+traces there. Promtail must NOT also run there or
+      # logs would double-ingest into Grafana Cloud Loki.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: homelab.io/tier
+                    operator: NotIn
+                    values: ["cloud"]
+                  - key: kubernetes.io/os
+                    operator: In
+                    values: ["linux"]
+
+      tolerations:
+        # DaemonSet should still run on the control-plane (rasp-pi-04)
+        # which is the only k3s-server node in Pi-only mode.
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+
+      # No hostPID, no hostNetwork — Promtail just opens local files.
+      # Default ClusterFirst DNS works fine.
+
+      priorityClassName: system-node-critical
+
+      securityContext:
+        runAsNonRoot: false  # Must be root to read /var/log/pods (owned by root)
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: promtail
+          # Pinned by tag only — operator runs `crane digest grafana/promtail:3.2.1`
+          # and appends @sha256:<digest> before merging to main, per the supply
+          # chain hygiene documented in docs/security/audit-history.md
+          # (2026-05-07 entry: "15 image refs missing @sha256: digest pin").
+          image: grafana/promtail:3.2.1
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - -config.file=/etc/promtail/promtail.yaml
+            - -config.expand-env=true   # enables ${GRAFANA_CLOUD_*} substitution
+
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            runAsUser: 0  # /var/log/pods is mode 0755, owned by root
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              # No add: file reads as root + readOnlyRootFilesystem cover us.
+
+          ports:
+            - name: http-metrics
+              containerPort: 3101
+              protocol: TCP
+
+          env:
+            # Surface the node name in promtail logs for easier debug
+            # without exposing it as a Loki label.
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          envFrom:
+            # SOPS-encrypted secret with Grafana Cloud Loki URL + creds.
+            # Apply order is enforced by argocd.argoproj.io/sync-wave=-1 on
+            # the secret itself.
+            - secretRef:
+                name: promtail-grafana-cloud
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+              readOnly: true
+            # /var/log/pods holds the K8s symlinks (one dir per pod).
+            - name: varlog-pods
+              mountPath: /var/log/pods
+              readOnly: true
+            # The symlinks resolve into containerd's storage. Without this
+            # bind mount Promtail would EROFS on follow.
+            - name: containerd-logs
+              mountPath: /var/lib/rancher/k3s/agent/containerd
+              readOnly: true
+            # Position file — survives pod restart so we don't re-ship
+            # everything from byte 0. emptyDir is fine: the worst case on
+            # pod recycle is one duplicate batch, well under the budget.
+            - name: positions
+              mountPath: /run/promtail
+            # /tmp for any scratch writes (config rewrite, etc.) given
+            # readOnlyRootFilesystem above.
+            - name: tmp
+              mountPath: /tmp
+
+          # Conservative envelope — measured Promtail RSS in file-mode
+          # is typically 25-40 Mi with no CPU pressure. Pi-03 has ~270 Mi
+          # free, this fits with headroom; Pi-04 has gigabytes free.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 30Mi
+            limits:
+              cpu: 100m
+              memory: 80Mi
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http-metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http-metrics
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+
+      volumes:
+        - name: config
+          configMap:
+            name: promtail
+            defaultMode: 0444
+        - name: varlog-pods
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: containerd-logs
+          hostPath:
+            path: /var/lib/rancher/k3s/agent/containerd
+            type: Directory
+        - name: positions
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

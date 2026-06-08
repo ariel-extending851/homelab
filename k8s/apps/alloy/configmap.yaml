@@ -62,10 +62,14 @@ data:
         source_labels = ["__meta_kubernetes_pod_node_name"]
         target_label  = "node"
       }
-      // Compliance: drop the pod and container name labels.
+      // Compliance: drop only post-resolution `pod` / `container` labels.
+      // We KEEP all `__meta_kubernetes_pod_*` labels because loki.source.kubernetes
+      // requires both __meta_kubernetes_pod_name AND __meta_kubernetes_pod_container_name
+      // to resolve log targets. Compliance enforcement happens at sink-time
+      // via cardinality_guard (metrics) and loki.process.normalize (logs).
       rule {
         action = "labeldrop"
-        regex  = "__meta_kubernetes_pod_name|__meta_kubernetes_pod_container_name|pod|container"
+        regex  = "^(pod|container)$"
       }
     }
 
@@ -82,18 +86,17 @@ data:
 
     // eBPF zero-instrumentation: HTTP/HTTPS/gRPC/TCP RED metrics.
     // Selects by namespace + port range only — names forbidden by compliance.
+    //
+    // beyla.ebpf outputs OTLP (otelcol.Consumer). prometheus.relabel.receiver
+    // expects native Prometheus (storage.Appendable). Bridge via
+    // otelcol.exporter.prometheus below.
     beyla.ebpf "red" {
       output {
-        metrics = [prometheus.relabel.cardinality_guard.receiver]
+        metrics = [otelcol.exporter.prometheus.beyla_bridge.input]
       }
 
-      attributes {
-        select {
-          attr   = "url.path"
-          action = "exclude"
-          values = ["/-/healthy", "/-/ready", "/metrics", "/healthz", "/livez"]
-        }
-      }
+      // TODO: re-add URL path exclusion via `routes { ignored_patterns = [...] }`
+      // (the original `attributes.select` block was invalid for Alloy v1.5.1).
 
       discovery {
         services {
@@ -102,6 +105,11 @@ data:
           }
         }
       }
+    }
+
+    // Bridge: OTLP (beyla.ebpf) → native Prometheus (cardinality_guard).
+    otelcol.exporter.prometheus "beyla_bridge" {
+      forward_to = [prometheus.relabel.cardinality_guard.receiver]
     }
 
     prometheus.scrape "self" {
@@ -190,7 +198,10 @@ data:
 
     loki.source.journal "system" {
       forward_to = [loki.process.normalize.receiver]
-      matches    = "_SYSTEMD_UNIT=k3s.service|_SYSTEMD_UNIT=k3s-agent.service|_SYSTEMD_UNIT=docker.service"
+      // TODO: re-add systemd unit filter. Alloy `matches` is space-AND, use `+`
+      // for OR per systemd journal native syntax:
+      //   matches = "_SYSTEMD_UNIT=k3s.service + _SYSTEMD_UNIT=k3s-agent.service + _SYSTEMD_UNIT=docker.service"
+      // For now, ingest all journal entries — downstream loki.process can drop.
     }
 
     loki.process "normalize" {
@@ -233,7 +244,11 @@ data:
       endpoint {
         url = sys.env("GRAFANA_CLOUD_LOKI_URL")
         basic_auth {
-          username = sys.env("GRAFANA_CLOUD_USER")
+          // Grafana Cloud assigns separate Instance IDs per service.
+          // Prom user lives in GRAFANA_CLOUD_USER (Hosted Metrics card),
+          // Loki user lives in GRAFANA_CLOUD_LOKI_USER (Hosted Logs card).
+          // The token (Access Policy) is shared across services.
+          username = sys.env("GRAFANA_CLOUD_LOKI_USER")
           password = sys.env("GRAFANA_CLOUD_TOKEN")
         }
       }
@@ -293,9 +308,7 @@ data:
         type = "otlp_proto"
       }
 
-      sending_queue {
-        enabled       = true
-        num_consumers = 2
-        queue_size    = 5000
-      }
+      // sending_queue block was added in Alloy >= 1.6 (per upstream changelog);
+      // not supported in v1.5.1 pinned in daemonset.yaml. Default internal
+      // queue is sufficient for homelab volume.
     }

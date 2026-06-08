@@ -38,6 +38,7 @@ MemoryHigh={{ alloy_memory_max }}
 ExecStart=/usr/local/bin/alloy run \
     --server.http.listen-addr=0.0.0.0:{{ alloy_http_port }} \
     --storage.path=/var/lib/alloy \
+    --stability.level=experimental \
     /etc/alloy/config.alloy
 
 Restart=on-failure

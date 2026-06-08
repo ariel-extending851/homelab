@@ -25,8 +25,12 @@ resource "aws_s3_bucket" "cold_storage" {
   force_destroy = false # logs are evidentiary; opt-out of accidental deletion
 
   tags = {
-    Name    = "${var.bucket_name_prefix}*"
-    Purpose = "Alloy cold-storage log archive (otelcol.exporter.awss3)"
+    # AWS S3 tag values charset is restricted to letters, digits, spaces,
+    # and _.:/=+-@. The original `${prefix}*` (wildcard) and the `()`
+    # parens in Purpose both violated the rule and produced InvalidTag
+    # on PutBucketTagging.
+    Name    = var.bucket_name_prefix
+    Purpose = "Alloy cold-storage log archive via otelcol.exporter.awss3"
   }
 }
 
@@ -99,25 +103,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "cold_storage" {
 
 # Bucket policy: belt-and-braces denial of insecure writes. The IAM role on
 # the EC2 instance is already write-only, but a misconfigured client (or a
-# future read role) cannot bypass TLS or omit SSE because the bucket rejects
-# the request at S3-edge before AWS evaluates the IAM policy.
+# future read role) cannot bypass TLS because the bucket rejects the
+# request at S3-edge before AWS evaluates the IAM policy.
+#
+# Note on encryption: the original PR shipped a `DenyUnencryptedPut`
+# statement that required the `s3:x-amz-server-side-encryption=AES256`
+# request header. Alloy's `otelcol.exporter.awss3` (v1.5.1) does not send
+# that header, so the deny triggered on every PUT (403 AccessDenied) and
+# the cold-storage pipeline never worked. Default encryption is enforced
+# by `aws_s3_bucket_server_side_encryption_configuration.cold_storage`
+# above — objects land AES256 regardless of header. The deny statement
+# was dropped because it duplicated the at-rest control while breaking
+# the only client.
 data "aws_iam_policy_document" "cold_storage" {
-  statement {
-    sid     = "DenyUnencryptedPut"
-    effect  = "Deny"
-    actions = ["s3:PutObject"]
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
-    resources = ["${aws_s3_bucket.cold_storage.arn}/*"]
-    condition {
-      test     = "StringNotEquals"
-      variable = "s3:x-amz-server-side-encryption"
-      values   = ["AES256"]
-    }
-  }
-
   statement {
     sid     = "DenyInsecureTransport"
     effect  = "Deny"

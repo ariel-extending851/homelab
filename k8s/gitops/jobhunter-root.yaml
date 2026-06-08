@@ -5,9 +5,12 @@
 #   - repoURL points at the jobhunter repo (NOT homelab).
 #   - targetRevision: main  (jobhunter is "main" — homelab is "develop").
 #   - path: k8s/apps/jobhunter (single app, not the apps tree).
-#   - no `plugin: sops-kustomize` — jobhunter's k8s/apps/jobhunter does not
-#     yet ship SOPS-encrypted secrets in-repo (placeholders are .example
-#     files). When real secrets land, enable the plugin same as apps-root.
+#   - `plugin: sops-kustomize` — required as soon as the jobhunter repo
+#     ships its first SOPS-encrypted Secret. Enabled preemptively to avoid
+#     the CrashLoop trap of pushing encrypted blobs to an Application that
+#     can't decrypt them. With no encrypted Secrets yet, the plugin still
+#     builds the kustomization correctly (it only acts on `sops`-marked
+#     files).
 #
 # Prerequisites (one-time, NOT handled by this manifest):
 #   1. Generate a deploy key for the jobhunter repo:
@@ -45,6 +48,8 @@ spec:
     repoURL: git@github.com:ariel-extending851/jobhunter.git
     targetRevision: main
     path: k8s/apps/jobhunter
+    plugin:
+      name: sops-kustomize
 
   destination:
     server: https://kubernetes.default.svc

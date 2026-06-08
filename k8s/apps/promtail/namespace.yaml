@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: promtail
+  labels:
+    # Promtail tails container log files from a hostPath. It is not
+    # privileged, does not need hostPID/hostNetwork, and runs with a
+    # locked-down PSA. Restricted is too strict (we need runAsUser: 0
+    # to read root-owned /var/log files); baseline is correct.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+    app.kubernetes.io/part-of: observability
