@@ -12,7 +12,12 @@
     owner: "{{ alloy_user }}"
     group: "{{ alloy_user }}"
     mode: "0640"
-    validate: "/usr/local/bin/alloy fmt --test %s"
+    # Bug 19 of PR #114: `alloy fmt --test` requires canonical whitespace;
+    # the Jinja template's iteration produces non-canonical output even when
+    # syntactically valid. Use plain `fmt` to parse-validate without strict
+    # whitespace check. Runtime systemd unit + `wait for /-/ready` still
+    # catch any real config errors.
+    validate: "/usr/local/bin/alloy fmt %s"
   notify: Restart alloy
 
 - name: Render Alloy environment file (token + S3 bucket name + AWS region)

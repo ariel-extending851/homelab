@@ -36,6 +36,18 @@
     mode: "0644"
   notify: Restart k3s
 
+# Authenticated Docker Hub pulls — zero-cost rate-limit fix (see template).
+# Gated off by default; enable with k3s_dockerhub_auth_enabled + the SOPS
+# dockerhub_username/dockerhub_token vars in group_vars/all.sops.yml.
+- name: Configure authenticated Docker Hub registry (k3s registries.yaml)
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: "{{ k3s_config_dir }}/registries.yaml"
+    mode: "0600" # contains a Docker Hub token
+  no_log: true
+  when: k3s_dockerhub_auth_enabled | default(false) | bool
+  notify: Restart k3s
+
 - name: Download and install k3s server # noqa: command-instead-of-module
   ansible.builtin.shell: |
     curl -sfL {{ k3s_install_url | quote }} | \

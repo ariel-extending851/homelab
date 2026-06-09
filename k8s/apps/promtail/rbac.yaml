@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: promtail
+# NOTE: No ClusterRole / ClusterRoleBinding by design.
+# Promtail uses file-based discovery (static_configs + __path__ glob)
+# instead of kubernetes_sd_config. That removes the apiserver chatter
+# observed when Alloy edge ran on rasp-pi-04 (PR #114 → 2026-05-29
+# pivot — see docs/architecture/observability-alloy-ebpf.md §Edge
+# tier revision). The ServiceAccount exists only so the pod has an
+# identity for NetworkPolicy and audit, not so it can call the API.

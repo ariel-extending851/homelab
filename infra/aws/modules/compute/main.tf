@@ -101,11 +101,13 @@ resource "aws_iam_role_policy" "k3s_node_ssm_s3" {
 # design: no GetObject, no DeleteObject. Multipart actions are required
 # because Alloy's awss3 exporter uses multipart for batches > 5 MiB.
 #
-# Gated on observability_bucket_arn being non-empty so the module is still
-# applyable under LocalStack (where the observability module is skipped).
-# count = 0 in that case; count = 1 in production.
+# Gated on var.localstack_test (real AWS only) instead of the bucket ARN.
+# Original gate (observability_bucket_arn == "" ? 0 : 1) referenced a value
+# that's "known after apply", so terraform couldn't resolve count at plan
+# time. Same outcome (count=0 in LocalStack, count=1 in production) without
+# the cross-module data dependency.
 resource "aws_iam_role_policy" "k3s_node_observability_s3" {
-  count = var.observability_bucket_arn == "" ? 0 : 1
+  count = var.localstack_test == "no" ? 1 : 0
 
   name_prefix = "hl-alloy-s3-export-"
   role        = aws_iam_role.k3s_node.name
@@ -126,6 +128,43 @@ resource "aws_iam_role_policy" "k3s_node_observability_s3" {
           var.observability_bucket_arn,
           "${var.observability_bucket_arn}/*",
         ]
+      }
+    ]
+  })
+}
+
+# Inline ECR policy — lets the k3s_node role pull images from the private ECR
+# repos (modules/ecr) so the cluster avoids Docker Hub anonymous rate limits.
+# Read-only: GetAuthorizationToken (account-level, AWS mandates Resource "*")
+# plus the three pull actions scoped to the homelab repo ARNs.
+#
+# Gated on ecr_repository_arns being non-empty so the module still applies
+# under LocalStack (where the ECR module is skipped) — same idiom as the
+# observability-S3 policy above.
+resource "aws_iam_role_policy" "k3s_node_ecr_pull" {
+  count = length(var.ecr_repository_arns) > 0 ? 1 : 0
+
+  name_prefix = "hl-ecr-pull-"
+  role        = aws_iam_role.k3s_node.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ECRAuthToken"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECRPullHomelabRepos"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchCheckLayerAvailability",
+        ]
+        Resource = var.ecr_repository_arns
       }
     ]
   })
@@ -196,6 +235,9 @@ resource "aws_launch_template" "k3s_server" {
     resource_type = "volume"
     tags = {
       Name = "hl-k3s-server-ebs"
+      # Selector for the DLM snapshot policy (modules/backup-ebs). A single
+      # stable tag value across both volumes lets one DLM policy target them.
+      Snapshot = "hl-k3s"
     }
   }
 
@@ -259,6 +301,8 @@ resource "aws_launch_template" "k3s_agent" {
     resource_type = "volume"
     tags = {
       Name = "hl-k3s-agent-ebs"
+      # Selector for the DLM snapshot policy (modules/backup-ebs).
+      Snapshot = "hl-k3s"
     }
   }
 

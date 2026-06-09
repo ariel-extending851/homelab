@@ -10,6 +10,122 @@ This page is the historical record — entries here describe the state at the ti
 
 ---
 
+## 2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)
+
+Two zero/near-zero-cost adds for the Pi-only cluster: a free SSM break-glass path
+and authenticated Docker Hub pulls.
+
+### Scope
+
+- `infra/aws-velero/main.tf` — new IAM role `hl-ssm-hybrid-pi` (trust
+  `ssm.amazonaws.com`, `permissions_boundary` = principal boundary) + attach
+  AWS-managed `AmazonSSMManagedInstanceCore` + `aws_ssm_activation` (registration
+  limit 2). Outputs `ssm_activation_id`/`ssm_activation_code` are `sensitive`.
+- `infra/aws-oidc/main.tf` — apply role + boundary gain `ssm:CreateActivation`/
+  `DeleteActivation`/`DescribeActivations`/tags (Resource `*`; activations are
+  account-level). Role create/PassRole/policy-attach already covered by the
+  `role/hl-*` statements; `AmazonSSMManagedInstanceCore` is not in the
+  admin-attach denylist. Boundary remeasured ~3.4 KB (limit 6144).
+- `ansible/roles/ssm_agent/` — installs + idempotently registers the agent;
+  gated by `ssm_breakglass_enabled` (default false). Includes `molecule/default/`.
+- `ansible/roles/k3s/` — `registries.yaml.j2` for authenticated Docker Hub pulls
+  (`mode 0600`, `no_log`), gated by `k3s_dockerhub_auth_enabled` (default false).
+- `ansible/group_vars/all.sops.yml` (new, SOPS) — `dockerhub_token`,
+  `ssm_activation_id`, `ssm_activation_code` encrypted (dedicated `.sops.yaml`
+  rule); `dockerhub_username`/`ssm_region` plaintext (non-secret).
+
+### Decisions
+
+- **Standard tier only (Run Command), NOT advanced/Session Manager.** Interactive
+  on-prem SSM costs ~$5/instance/mo; Run Command is free and covers break-glass
+  (`tailscale up` without SSH). Documented in `tailscale-logged-out.md`.
+- **Authenticated Docker Hub over ECR pull-through.** For an on-prem Pi, ECR
+  pull-through adds egress (~$0.09/GB) + Secrets Manager ($0.40/mo); a free
+  Docker Hub PAT raises the pull limit at $0. Auth only, no mirror endpoint.
+- Both features ship **off by default** — opt-in via the gating vars.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 13 | SSM activation code/id are registration credentials in SOPS | secret-handling | @ariel-extending851 | 2026-09-01 | Both `sensitive` TF outputs + SOPS-encrypted in `all.sops.yml`; activation expires (AWS caps ≤30d) and managed instances persist after. registration_limit 2. |
+| 14 | hl-ssm-hybrid-pi role lets SSM run commands as root on the Pis | runtime-permission | @ariel-extending851 | 2026-09-01 | Standard tier, Run Command only; same blast radius as existing SSH-as-root. Role carries the principal boundary; off unless `ssm_breakglass_enabled`. |
+| 15 | Docker Hub PAT distributed to all k3s nodes in registries.yaml | secret-handling | @ariel-extending851 | 2026-09-01 | `mode 0600`, `no_log` task; read-only PAT recommended; SOPS-encrypted at rest. Worst case is Docker Hub pull abuse, not infra access. |
+
+---
+
+## 2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)
+
+Closes a real DR gap: with `cluster-init: false` the k3s etcd-snapshot config is
+inert (SQLite), so there was no automated control-plane backup — Velero covers
+only app namespaces + PVCs. Adds a write-only S3 uploader + a CronJob that
+snapshots `state.db` offsite.
+
+### Scope
+
+- `infra/aws-velero/main.tf` — new IAM user `hl-k3s-snapshot` at path `/system/`,
+  `permissions_boundary` = `homelab-principal-boundary`, **write-only** on the
+  `cluster-state/*` prefix (`s3:PutObject`/`AbortMultipartUpload`/`ListMultipart
+  UploadParts`); `ListBucket` is conditioned on `s3:prefix = cluster-state/*` so
+  it cannot enumerate Velero's backups. New lifecycle rule expiring
+  `cluster-state/` objects at 30d; the existing Velero rule is now scoped to the
+  `backups/` prefix.
+- `k8s/apps/k3s-snapshot/` — CronJob (every 12h) pinned via nodeAffinity to the
+  control-plane node, mounts `/var/lib/rancher/k3s/server/db` **read-only**, runs
+  `sqlite3 .backup` → gzip → `aws s3 cp`. SOPS secret holds the uploader creds.
+- `ansible/roles/k3s/templates/server-config.yaml.j2` — suppress the inert
+  `etcd-snapshot-*` lines under SQLite and emit an explanatory comment.
+
+### Decisions
+
+- **SQLite `.backup`, not etcd migration.** etcd on an SD card is a write-
+  amplification anti-pattern; keep SQLite + offsite snapshots.
+- **Write-only uploader.** A compromised Pi pod can append a snapshot but cannot
+  read or delete backup history. Restore is a human action with admin creds.
+- **Reused the storage-latency debian digest** (already Trivy-allowlisted) — no
+  new image to vet.
+- **Pinned to the control-plane role** (Exists, value-agnostic), not a hostname,
+  so it follows the control plane in both pi-only (pi-04) and hybrid (EC2) modes.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 11 | CronJob runs as root with a hostPath mount of the k3s db dir | runtime-permission | @ariel-extending851 | 2026-09-01 | hostPath is **read-only** and scoped to `/var/lib/rancher/k3s/server/db` (not `/`); `allowPrivilegeEscalation: false` + `drop: [ALL]`; pinned to the control-plane node; same posture already accepted for `storage-latency`. Root is required to read the 0700 root-owned datastore dir. |
+| 12 | Snapshot contains full cluster state (secrets, tokens) in S3 | data-at-rest | @ariel-extending851 | 2026-09-01 | Bucket is AES256-SSE, public-access-blocked, versioned; uploader is write-only; 30-day expiry. Same bucket/posture as Velero backups, which already contain Secrets. |
+
+---
+
+## 2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)
+
+Adds free/near-free AWS capabilities: cost alerting (Budgets + Cost Anomaly Detection + billing alarm), IAM Access Analyzer, EBS snapshot lifecycle (DLM), and a private ECR registry. Recorded ahead of merge so the new IAM grants and the widened `hl-k3s-node` surface are visible to future reviewers.
+
+### Scope
+
+- `infra/aws/modules/finops/` — new: SNS topic `hl-cost-alerts` (+ topic policy scoped to `aws:SourceAccount`), `aws_budgets_budget`, Cost Anomaly Detection monitor/subscription, CloudWatch billing alarm, `aws_accessanalyzer_analyzer` (ACCOUNT/external-access), and an EventBridge rule fanning GuardDuty + Access Analyzer findings to the topic.
+- `infra/aws/modules/backup-ebs/` — new: `aws_dlm_lifecycle_policy` + a DLM service role `hl-dlm-lifecycle-*` carrying the `homelab-principal-boundary`, attached to the AWS-managed `AWSDataLifecycleManagerServiceRole`.
+- `infra/aws/modules/ecr/` — new: private repos (default `hl-apps`) with `IMMUTABLE` tags, free basic `scan_on_push`, AES256, and a lifecycle policy capping retained images.
+- `infra/aws/modules/compute/main.tf` — appended inline policy `hl-ecr-pull-*` on the existing `hl-k3s-node-*` role: `ecr:GetAuthorizationToken` (Resource `*`, AWS-mandated) + `ecr:BatchGetImage` / `GetDownloadUrlForLayer` / `BatchCheckLayerAvailability` scoped to the `hl-*` repo ARNs. Added `Snapshot = hl-k3s` volume tag (DLM selector).
+- `infra/aws-oidc/main.tf` — extended the apply role's inline policy and boundary with `budgets:*`, `ce:*`, `dlm:*`, `access-analyzer:*`, `sns:*` (scoped to `hl-cost-alerts`), scoped `cloudwatch` alarm actions, and `ecr:*` (scoped to `repository/hl-*`). Boundary measured at 3428 bytes (limit 6144).
+
+### Decisions
+
+- **Access Analyzer + findings fan-out live in `finops`, not `audit`.** The audit module's contract explicitly scopes out EventBridge fan-out (`modules/audit/main.tf:15-16`); the rule belongs next to the SNS topic it publishes to.
+- **ACCOUNT-type Access Analyzer only.** The external-access analyzer is free; the unused-access tier is paid and deliberately not created.
+- **ECR tags are `IMMUTABLE` + scan-on-push.** Reproducible deploys; enhanced/Inspector scanning (paid) is NOT enabled.
+- **DLM role carries the principal boundary** like every other `hl-` role. `AWSDataLifecycleManagerServiceRole` is not in the boundary's admin-attach denylist, so it attaches under the cap.
+- **`alert_email` is a plain variable, not SOPS.** It is an alert destination, not a credential; the SOPS catch-all (`*Token`/`*Key`/`*Secret`) does not match it and encrypting it adds friction with no security benefit.
+
+### Residual risks
+
+| # | Risk | Class | Owner | Review-by | Notes |
+|---|---|---|---|---|---|
+| 8 | `hl-k3s-node` role widened with ECR pull (`BatchGetImage` etc.) | runtime-permission | @ariel-extending851 | 2026-09-01 | Read-only, scoped to `arn:aws:ecr:*:*:repository/hl-*`; `GetAuthorizationToken` requires Resource `*` (AWS limitation) but only mints a pull token for repos the other statement already scopes. No push/delete. |
+| 9 | `alert_email` stored as plaintext in tfvars / state | secret-handling | @ariel-extending851 | 2026-09-01 | Intentional — non-secret alert destination, not a credential. Worst case is a leaked email address. |
+| 10 | SNS topic `hl-cost-alerts` can be published to by AWS services | exposure | @ariel-extending851 | 2026-09-01 | Topic policy restricts `SNS:Publish` to the four service principals with an `aws:SourceAccount` condition; no cross-account publish. |
+
+---
+
 ## 2026-05-23 — Alloy + eBPF observability pipeline (planned change)
 
 Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a write-only IAM policy on the existing `hl-k3s-node` role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.

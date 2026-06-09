@@ -1,0 +1,56 @@
+# Default-deny + a narrow allow for the snapshot job: egress to S3 (443) and DNS
+# only. No ingress (the job serves nothing).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: k3s-snapshot
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    policy-type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-k3s-snapshot
+  namespace: k3s-snapshot
+  labels:
+    app.kubernetes.io/part-of: homelab-security
+    app.kubernetes.io/name: k3s-snapshot
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: k3s-snapshot
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # S3 + the apt mirror over HTTPS — anything outside cluster + LAN.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - { protocol: TCP, port: 443 }
+        # Debian apt mirrors are served over plain HTTP (deb.debian.org).
+        - { protocol: TCP, port: 80 }
+    # DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }

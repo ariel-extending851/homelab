@@ -1,0 +1,15 @@
+# k3s/containerd registry configuration
+# Managed by Ansible — ansible/roles/k3s/templates/registries.yaml.j2
+#
+# Authenticated Docker Hub pulls. Anonymous pulls are rate-limited per source IP
+# (100/6h); an authenticated free account raises this to 200/6h per *account*
+# and is not shared with the rest of the home IP. This is the zero-cost fix for
+# the Docker Hub rate-limit pain on the Pi cluster (no ECR / egress cost).
+#
+# Only auth is configured — NOT a mirror endpoint — so images keep pulling from
+# Docker Hub directly, just authenticated.
+configs:
+  "registry-1.docker.io":
+    auth:
+      username: "{{ dockerhub_username }}"
+      password: "{{ dockerhub_token }}"

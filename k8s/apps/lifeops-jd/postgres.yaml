@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lifeops-jd-db
+  labels: { app: lifeops-jd-db }
+spec:
+  clusterIP: None
+  selector: { app: lifeops-jd-db }
+  ports:
+    - { name: pg, port: 5432, targetPort: 5432 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lifeops-jd-db
+spec:
+  serviceName: lifeops-jd-db
+  replicas: 1
+  selector: { matchLabels: { app: lifeops-jd-db } }
+  template:
+    metadata:
+      labels: { app: lifeops-jd-db }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - { name: pg, containerPort: 5432 }
+          env:
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: db-name } }
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: username } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: password } }
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "$(POSTGRES_USER)"] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 2Gi } }

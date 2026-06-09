@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: ssm_agent
+  author: ariel-extending851
+  description: >-
+    Registers a node as an AWS SSM managed instance via hybrid activation
+    (standard tier — Run Command). Zero-cost break-glass for the Raspberry Pi
+    cluster: run recovery commands (e.g. `tailscale up`) without SSH when the
+    tailnet is down.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - aws
+    - ssm
+    - breakglass
+    - recovery
+
+dependencies: []

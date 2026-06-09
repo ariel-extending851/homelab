@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lifeops-jd-tick
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 60
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: tick
+              image: ghcr.io/ariel-extending851/lifeops-jd:0.1.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: QUARKUS_PROFILE
+                  value: prod
+                - name: QUARKUS_DATASOURCE_JDBC_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: lifeops-jd-db
+                      key: jdbc-url
+                - name: QUARKUS_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: lifeops-jd-db
+                      key: username
+                - name: QUARKUS_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: lifeops-jd-db
+                      key: password
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: anthropic-key
+                      key: api-key
+                - name: GOOGLE_TOKEN_PATH
+                  value: /var/run/secrets/google/token.json
+                - name: GOOGLE_CLIENT_SECRET_PATH
+                  value: /var/run/secrets/google/credentials.json
+                - name: TAXONOMY_PATH
+                  value: /etc/lifeops/taxonomy/taxonomy.yaml
+              # JVM-profile limits — Phase 4 default. Native cuts these ~3× (see Kustomize patch).
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: google-token
+                  mountPath: /var/run/secrets/google
+                  readOnly: true
+                - name: taxonomy
+                  mountPath: /etc/lifeops/taxonomy
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: google-token
+              secret:
+                secretName: oauth-google
+            - name: taxonomy
+              configMap:
+                name: taxonomy-yaml
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi

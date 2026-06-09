@@ -31,16 +31,35 @@ Approximate, US-East-1, spot pricing as of April 2026:
 | t3.medium spot (server) | ~330 | ~$0.0125/hr | ~$4.13 |
 | t3.small spot (agent)   | ~330 | ~$0.0062/hr | ~$2.05 |
 | EBS gp3 30 GB × 2       | always | $0.08/GB-month | ~$4.80 |
-| EBS snapshots (low) | — | — | ~$0.50 |
+| EBS snapshots (DLM, 7 daily, incremental) | — | ~$0.05/GB-month | ~$1–3 |
 | Lambda invocations (scheduler) | 60/mo | free tier | ~$0.00 |
-| EventBridge rules | 2 | free tier | ~$0.00 |
+| EventBridge rules | 3 | free tier | ~$0.00 |
 | S3 (state + SSM transfer) | low traffic | — | ~$0.50 |
+| ECR private registry | ≤500 MB | free tier (12 mo) | ~$0.00 |
+| SNS / Budgets / Cost Anomaly / Access Analyzer | — | free | ~$0.00 |
+| CloudWatch billing alarm | 1 | first 10 free | ~$0.00 |
 | Data transfer (intra-AZ + Tailscale outbound) | varies | — | ~$2.00 |
 | **NAT/IGW** | **none** | **(default VPC, no NAT)** | **$0.00** |
 | Slack for over-provisioning | — | — | ~$10.00 |
-| **Total** | | | **~$24** |
+| **Total** | | | **~$25–27** |
 
-The $10 slack covers spot price spikes, EBS snapshot growth, and a margin for occasional 24/7 runs.
+The $10 slack covers spot price spikes, EBS snapshot growth, and a margin for occasional 24/7 runs. The new guardrails (below) are free; the only new run-rate is incremental EBS snapshot storage from DLM (~$1–3/month).
+
+---
+
+## Cost & security guardrails (free)
+
+Created by [`infra/aws/modules/finops`](../../infra/aws/modules/finops) and [`infra/aws/modules/backup-ebs`](../../infra/aws/modules/backup-ebs). Until these existed, the only cost signal was the Infracost PR gate — nothing watched **actual** account spend.
+
+| Guardrail | What it does | Cost |
+|---|---|---|
+| AWS Budgets (`hl-monthly-cost`) | Alerts at 80% / 100% actual + 100% forecasted of `monthly_budget_usd` (default $30) | Free (first 2 budgets) |
+| Cost Anomaly Detection | ML alert on a single runaway service (e.g. spot spike), impact ≥ `anomaly_impact_threshold_usd` ($10) | Free |
+| CloudWatch billing alarm | Backstop when `EstimatedCharges` > `billing_alarm_usd` (default $35) | Free (first 10 alarms) |
+| IAM Access Analyzer | Flags any S3 bucket / IAM role reachable from outside the account | Free (ACCOUNT type) |
+| EBS snapshot lifecycle (DLM) | Daily snapshots of both k3s volumes, retain `snapshot_retain_count` (default 7) | DLM free; storage ~$0.05/GB-month |
+
+All alerts (cost + GuardDuty/Access Analyzer findings) fan out through one SNS topic `hl-cost-alerts`. Set `alert_email` to receive them and **confirm the subscription** — see [`cost-controls.md`](cost-controls.md).
 
 ---
 

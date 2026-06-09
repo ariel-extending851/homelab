@@ -32,7 +32,7 @@ permissions:
 jobs:
   build:
     name: "Build mkdocs site"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 10
     permissions:
       contents: write  # gh-pages deploy needs to push

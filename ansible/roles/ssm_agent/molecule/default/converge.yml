@@ -1,0 +1,17 @@
+---
+# Converge ssm_agent inside the Docker sandbox with the AWS-touching steps
+# skipped (see molecule.yml host_vars). Dummy activation creds satisfy the
+# role's assert without contacting AWS.
+
+- name: Converge ssm_agent role
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    ssm_activation_id: "molecule-activation-id"
+    ssm_activation_code: "molecule-activation-code-not-real"
+    ssm_region: "us-east-1"
+
+  roles:
+    - role: ssm_agent
