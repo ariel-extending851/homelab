@@ -340,8 +340,42 @@ jobs:
           COVERAGE=$(python3 -c "import xml.etree.ElementTree as ET; root = ET.parse('coverage.xml').getroot(); print(f\"{float(root.attrib['line-rate'])*100:.1f}%\")" 2>/dev/null || echo "N/A")
           echo "## Python Test Coverage: ${COVERAGE}" >> "$GITHUB_STEP_SUMMARY"
 
+  arm64-paths-detect:
+    name: "ARM64: paths detect"
+    runs-on: [self-hosted, pc-homelab]
+    timeout-minutes: 2
+    outputs:
+      arm_changed: ${{ steps.filter.outputs.arm }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - name: Detect ARM-relevant changes
+        id: filter
+        # QEMU emulation of the Molecule suite costs ~30 min per matrix entry.
+        # Only worth it when ARM-targeted code or the workflow itself moves.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            echo "arm=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch origin "$BASE_REF" --depth=1 >/dev/null 2>&1 || true
+          if git diff --name-only "origin/$BASE_REF"...HEAD \
+              | grep -qE '^(ansible/roles/|\.github/workflows/ci-validation\.yml$)'; then
+            echo "arm=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "arm=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No ARM-relevant changes (ansible/roles/** or this workflow); skipping QEMU matrix."
+          fi
+
   arm64-validation:
     name: "ARM64: ${{ matrix.platform }}"
+    needs: arm64-paths-detect
+    if: needs.arm64-paths-detect.outputs.arm_changed == 'true'
     runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 45
     strategy:
