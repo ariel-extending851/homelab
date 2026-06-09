@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: lifeops-jd-tick
+  namespace: lifeops-jd
 spec:
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
@@ -15,6 +16,7 @@ spec:
       template:
         spec:
           restartPolicy: Never
+          automountServiceAccountToken: false
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -25,7 +27,7 @@ spec:
           containers:
             - name: tick
               image: ghcr.io/ariel-extending851/lifeops-jd:0.1.0
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               env:
                 - name: QUARKUS_PROFILE
                   value: prod
