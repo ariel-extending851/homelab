@@ -18,6 +18,7 @@ The table below is auto-generated from `k8s/apps/<app>/` by `bin/generate_servic
 | GoLink | [golink.md](golink.md) | `golink` | <https://golink.tail57bf10.ts.net> | @ariel-extending851 | `any` |
 | Grafana | [grafana.md](grafana.md) | `grafana` | <https://grafana.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
 | hl-kyverno | — | `—` | — | @ariel-extending851 | `any` |
+| k3s-snapshot | — | `k3s-snapshot` | — | @ariel-extending851 | `any` |
 | kube-state-metrics | [monitoring-stack.md](monitoring-stack.md#kube-state-metrics) | `kube-state-metrics` | — | @ariel-extending851 | `any` |
 | lifeops-jd | [lifeops-jd.md](lifeops-jd.md) | `lifeops-jd` | — | @ariel-extending851 | `any` |
 | Loki | [loki.md](loki.md) | `loki` | <https://loki.tail57bf10.ts.net> | @ariel-extending851 | `rpi4-or-ec2` |
@@ -52,6 +53,7 @@ graph LR
   falco
   golink
   hl-kyverno
+  k3s-snapshot
   lifeops-jd
   priority-classes
   promtail

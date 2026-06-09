@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: taxonomy-yaml
+  namespace: lifeops-jd
 data:
   taxonomy.yaml: |
     # See src/main/resources/taxonomy.yaml in the lifeops-jd repo for the canonical source.

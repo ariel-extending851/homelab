@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: k3s-snapshot
+  description: CronJob that takes a daily etcd snapshot of the k3s control plane and stores it on S3 (Velero side-channel; complements the cluster-level Velero backups).
+  annotations:
+    homelab.io/runbook: docs/runbooks/disaster-recovery.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  tier: any
+  dependsOn: []
+  providesApis: []
