@@ -1213,6 +1213,28 @@ velero-bootstrap-secret: ## Inject Velero AWS credentials from terraform outputs
 	@echo "    git commit -S -m 'chore(velero): bootstrap AWS creds'"
 	@echo "    git push"
 
+k3s-snapshot-bootstrap-secret: ## Inject hl-k3s-snapshot AWS creds from infra/aws-velero outputs into the SOPS secret (idempotent)
+	@echo "🔐 Bootstrapping k3s-snapshot AWS credentials from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/velero_bootstrap_secret.py \
+		--tf-dir infra/aws-velero \
+		--secret k8s/apps/k3s-snapshot/secret.yaml \
+		--access-key-output k3s_snapshot_aws_access_key_id \
+		--secret-key-output k3s_snapshot_aws_secret_access_key
+	@echo "  ✓ k3s-snapshot secret updated. Commit + push to trigger ArgoCD sync:"
+	@echo "    git add k8s/apps/k3s-snapshot/secret.yaml"
+	@echo "    git commit -S -m 'chore(k3s-snapshot): bootstrap AWS creds'"
+	@echo "    git push"
+
+ssm-activation-bootstrap: ## Inject SSM activation id/code from infra/aws-velero outputs into group_vars/all.sops.yml
+	@echo "🔐 Bootstrapping SSM activation creds from terraform outputs..."
+	@command -v sops >/dev/null 2>&1 || (echo "❌ sops not found"; exit 1)
+	@command -v terraform >/dev/null 2>&1 || (echo "❌ terraform not found"; exit 1)
+	@python3 bin/ssm_activation_bootstrap.py
+	@echo "  ✓ SSM activation creds updated in ansible/group_vars/all.sops.yml."
+	@echo "    Then register the Pis: ansible-playbook ... (ssm_breakglass_enabled=true)"
+
 test-dr: test-dr-execution ## Alias: DR test runs Molecule scenario
 
 test-dr-execution: ## Run disaster recovery role as real execution in Molecule test environment

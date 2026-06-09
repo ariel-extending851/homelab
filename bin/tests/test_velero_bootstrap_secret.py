@@ -244,6 +244,60 @@ def test_bootstrap_happy_path(tmp_path):
     assert "OLD_PLACEHOLDER" not in patched_plaintext
 
 
+def test_bootstrap_reads_custom_output_names(tmp_path):
+    """The k3s-snapshot uploader reuses bootstrap() with different TF output names."""
+    secret_path = tmp_path / "secret.yaml"
+    secret_path.write_text("encrypted-stub")
+
+    tf_outputs = {
+        "k3s_snapshot_aws_access_key_id": "AK2",
+        "k3s_snapshot_aws_secret_access_key": "SK2",
+    }
+    requested: list[str] = []
+
+    def fake_output(name, _):
+        requested.append(name)
+        return tf_outputs[name]
+
+    with patch.object(
+        bootstrap, "get_terraform_output", side_effect=fake_output
+    ), patch.object(
+        bootstrap, "decrypt_secret", return_value=PLAINTEXT_SECRET
+    ), patch.object(
+        bootstrap, "encrypt_secret_in_place"
+    ) as mock_encrypt:
+        bootstrap.bootstrap(
+            Path("infra/aws-velero"),
+            secret_path,
+            access_key_output="k3s_snapshot_aws_access_key_id",
+            secret_key_output="k3s_snapshot_aws_secret_access_key",
+        )
+
+    assert requested == [
+        "k3s_snapshot_aws_access_key_id",
+        "k3s_snapshot_aws_secret_access_key",
+    ]
+    _, patched_plaintext = mock_encrypt.call_args[0]
+    assert "aws_access_key_id = AK2" in patched_plaintext
+    assert "aws_secret_access_key = SK2" in patched_plaintext
+
+
+def test_main_passes_output_name_flags_through():
+    with patch.object(bootstrap, "bootstrap") as mock_bootstrap:
+        rc = bootstrap.main(
+            [
+                "--tf-dir", "infra/aws-velero",
+                "--secret", "k8s/apps/k3s-snapshot/secret.yaml",
+                "--access-key-output", "k3s_snapshot_aws_access_key_id",
+                "--secret-key-output", "k3s_snapshot_aws_secret_access_key",
+            ]
+        )
+    assert rc == 0
+    _, kwargs = mock_bootstrap.call_args
+    assert kwargs["access_key_output"] == "k3s_snapshot_aws_access_key_id"
+    assert kwargs["secret_key_output"] == "k3s_snapshot_aws_secret_access_key"
+
+
 def test_main_returns_zero_on_success(tmp_path):
     with patch.object(bootstrap, "bootstrap"):
         rc = bootstrap.main(

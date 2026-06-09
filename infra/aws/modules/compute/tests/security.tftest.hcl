@@ -47,7 +47,7 @@ run "imds_hardened" {
 
 run "ebs_encrypted" {
   assert {
-      condition     = try(aws_launch_template.k3s_server.block_device_mappings[0].ebs[0].encrypted, false) == true || try(aws_launch_template.k3s_server.block_device_mappings[0].ebs[0].encrypted, false) == "true"
+    condition     = try(aws_launch_template.k3s_server.block_device_mappings[0].ebs[0].encrypted, false) == true || try(aws_launch_template.k3s_server.block_device_mappings[0].ebs[0].encrypted, false) == "true"
     error_message = "Server EBS volume must be encrypted at rest"
   }
   assert {
@@ -55,7 +55,7 @@ run "ebs_encrypted" {
     error_message = "Server EBS volume must use gp3 for cost/performance"
   }
   assert {
-      condition     = try(aws_launch_template.k3s_agent.block_device_mappings[0].ebs[0].encrypted, false) == true || try(aws_launch_template.k3s_agent.block_device_mappings[0].ebs[0].encrypted, false) == "true"
+    condition     = try(aws_launch_template.k3s_agent.block_device_mappings[0].ebs[0].encrypted, false) == true || try(aws_launch_template.k3s_agent.block_device_mappings[0].ebs[0].encrypted, false) == "true"
     error_message = "Agent EBS volume must be encrypted at rest"
   }
   assert {

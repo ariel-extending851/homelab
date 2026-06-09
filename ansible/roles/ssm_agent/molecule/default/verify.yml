@@ -1,0 +1,26 @@
+---
+# Verify the ssm_agent role honoured the skip gates in the sandbox: with
+# ssm_skip_install: true the agent package must NOT have been downloaded.
+
+- name: Verify ssm_agent role gating
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Stat the agent .deb download target
+      ansible.builtin.stat:
+        path: /tmp/amazon-ssm-agent.deb
+      register: _deb
+
+    - name: Assert install was skipped (no package downloaded)
+      ansible.builtin.assert:
+        that:
+          - not _deb.stat.exists
+        fail_msg: "ssm_skip_install was set but the agent .deb was downloaded"
+
+    - name: Assert amazon-ssm-agent was NOT installed
+      ansible.builtin.command: dpkg -s amazon-ssm-agent
+      register: _pkg
+      changed_when: false
+      failed_when: _pkg.rc == 0

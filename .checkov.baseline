@@ -89,6 +89,18 @@
                     "check_ids": [
                         "CKV_AWS_300"
                     ]
+                },
+                {
+                    "resource": "aws_iam_user.k3s_snapshot",
+                    "check_ids": [
+                        "CKV_AWS_273"
+                    ]
+                },
+                {
+                    "resource": "aws_iam_user_policy.k3s_snapshot_access",
+                    "check_ids": [
+                        "CKV_AWS_40"
+                    ]
                 }
             ]
         },
@@ -527,6 +539,41 @@
                         "CKV_K8S_40",
                         "CKV_K8S_8",
                         "CKV_K8S_9"
+                    ]
+                }
+            ]
+        },
+        {
+            "file": "/infra/aws/modules/finops/main.tf",
+            "findings": [
+                {
+                    "resource": "module.finops[0].aws_sns_topic.cost_alerts",
+                    "check_ids": [
+                        "CKV_AWS_26"
+                    ]
+                }
+            ]
+        },
+        {
+            "file": "/infra/aws/modules/ecr/main.tf",
+            "findings": [
+                {
+                    "resource": "module.ecr[0].aws_ecr_repository.repos[\"hl-apps\"]",
+                    "check_ids": [
+                        "CKV_AWS_136"
+                    ]
+                }
+            ]
+        },
+        {
+            "file": "/k8s/apps/k3s-snapshot/cronjob.yaml",
+            "findings": [
+                {
+                    "resource": "CronJob.k3s-snapshot.k3s-snapshot",
+                    "check_ids": [
+                        "CKV_K8S_22",
+                        "CKV_K8S_23",
+                        "CKV_K8S_40"
                     ]
                 }
             ]

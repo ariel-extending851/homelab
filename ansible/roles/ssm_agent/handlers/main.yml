@@ -1,0 +1,9 @@
+---
+# ansible/roles/ssm_agent/handlers/main.yml
+
+- name: Restart amazon-ssm-agent
+  ansible.builtin.systemd:
+    name: amazon-ssm-agent
+    state: restarted
+    daemon_reload: true
+  when: not (ssm_skip_service | default(false) | bool)

@@ -1,0 +1,18 @@
+---
+# ansible/roles/ssm_agent/defaults/main.yml
+
+# Master switch — the role is only run from the play when this is true
+# (see ansible/playbooks/site.yml). Off by default.
+ssm_breakglass_enabled: false
+
+# SSM hybrid-activation credentials. Populated from infra/aws-velero outputs by
+# `make ssm-activation-bootstrap` into group_vars/all.sops.yml (id + code are
+# SOPS-encrypted). Region is the activation's region.
+ssm_activation_id: ""
+ssm_activation_code: ""
+ssm_region: "us-east-1"
+
+# Test/escape hatches — set true in Molecule (no real AWS, no systemd-to-AWS).
+ssm_skip_install: false
+ssm_skip_register: false
+ssm_skip_service: false

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k3s-snapshot
+  labels:
+    app.kubernetes.io/name: k3s-snapshot
+    app.kubernetes.io/component: backup

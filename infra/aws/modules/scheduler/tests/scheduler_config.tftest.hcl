@@ -23,8 +23,8 @@ mock_provider "aws" {
 mock_provider "archive" {}
 
 variables {
-  server_instance_id = "i-0server123456789"
-  agent_instance_id  = "i-0agent123456789a"
+  server_instance_id  = "i-0server123456789"
+  agent_instance_id   = "i-0agent123456789a"
   schedule_start_hour = 10
   schedule_stop_hour  = 21
 }

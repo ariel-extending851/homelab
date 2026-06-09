@@ -32,8 +32,8 @@ variables {
 
 run "default_window_10am_9pm_brt" {
   variables {
-    schedule_start_hour = 10  # BRT 10:00 → UTC 13:00
-    schedule_stop_hour  = 21  # BRT 21:00 → UTC 24 mod 24 = 00:00
+    schedule_start_hour = 10 # BRT 10:00 → UTC 13:00
+    schedule_stop_hour  = 21 # BRT 21:00 → UTC 24 mod 24 = 00:00
   }
   assert {
     condition     = aws_cloudwatch_event_rule.start_instances.schedule_expression == "cron(0 13 * * ? *)"
@@ -49,8 +49,8 @@ run "default_window_10am_9pm_brt" {
 
 run "midnight_start_0am_brt" {
   variables {
-    schedule_start_hour = 0   # BRT 00:00 → UTC 03:00
-    schedule_stop_hour  = 23  # BRT 23:00 → UTC 26 mod 24 = 02:00
+    schedule_start_hour = 0  # BRT 00:00 → UTC 03:00
+    schedule_stop_hour  = 23 # BRT 23:00 → UTC 26 mod 24 = 02:00
   }
   assert {
     condition     = aws_cloudwatch_event_rule.start_instances.schedule_expression == "cron(0 3 * * ? *)"
@@ -66,8 +66,8 @@ run "midnight_start_0am_brt" {
 
 run "late_stop_22_brt" {
   variables {
-    schedule_start_hour = 8   # BRT 08:00 → UTC 11:00
-    schedule_stop_hour  = 22  # BRT 22:00 → UTC 25 mod 24 = 01:00
+    schedule_start_hour = 8  # BRT 08:00 → UTC 11:00
+    schedule_stop_hour  = 22 # BRT 22:00 → UTC 25 mod 24 = 01:00
   }
   assert {
     condition     = aws_cloudwatch_event_rule.start_instances.schedule_expression == "cron(0 11 * * ? *)"

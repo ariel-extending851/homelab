@@ -141,3 +141,62 @@ variable "localstack_test" {
     error_message = "localstack_test must be 'yes' or 'no'."
   }
 }
+
+# ==============================================================================
+# FinOps Guardrails (free) — see modules/finops
+# ==============================================================================
+variable "alert_email" {
+  description = "Email for cost + security alerts via the hl-cost-alerts SNS topic. Non-secret destination (not a credential), so plain variable, not SOPS. Empty disables the email subscription. Confirming requires a one-time manual click."
+  type        = string
+  default     = ""
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly AWS cost budget in USD. Notifies at 80%/100% actual + 100% forecasted. Default sits above the ~$24.59/month scheduled run-rate."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.monthly_budget_usd > 0
+    error_message = "monthly_budget_usd must be greater than 0."
+  }
+}
+
+variable "billing_alarm_usd" {
+  description = "CloudWatch billing alarm threshold in USD. Backstop above the budget."
+  type        = number
+  default     = 35
+
+  validation {
+    condition     = var.billing_alarm_usd > 0
+    error_message = "billing_alarm_usd must be greater than 0."
+  }
+}
+
+# ==============================================================================
+# EBS Snapshot Lifecycle (near-free) — see modules/backup-ebs
+# ==============================================================================
+variable "snapshot_retain_count" {
+  description = "Number of daily DLM snapshots to retain per k3s EBS volume. Snapshots are incremental; storage grows slowly."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.snapshot_retain_count >= 1 && var.snapshot_retain_count <= 14
+    error_message = "snapshot_retain_count must be between 1 and 14."
+  }
+}
+
+# ==============================================================================
+# ECR Private Registry (free tier) — see modules/ecr
+# ==============================================================================
+variable "ecr_repository_names" {
+  description = "Private ECR repository names to create (hl- prefix + kebab-case). The k3s_node role gets scoped pull access to these."
+  type        = list(string)
+  default     = ["hl-apps"]
+
+  validation {
+    condition     = alltrue([for n in var.ecr_repository_names : can(regex("^hl-[a-z0-9-]+$", n))])
+    error_message = "Every ECR repository name must start with 'hl-' and be lowercase kebab-case."
+  }
+}

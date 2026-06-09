@@ -28,6 +28,7 @@ kind: Kustomization
 resources:
   - ../../adguard               # hostNetwork :53 on rasp-pi-03 (nodeSelector pinned)
   - ../../storage-latency       # CronJob on rasp-pi-04 (nodeSelector pinned)
+  - ../../k3s-snapshot          # CronJob on rasp-pi-04 — SQLite control-plane backup → S3
   - ../../node-exporter         # DaemonSet — runs on every Linux node
   - ../../promtail              # DaemonSet — edge log shipper, replaces Alloy edge (2026-05-29)
   - ../../velero                # AWS Lite — backups always on (S3 + IAM in infra/aws-velero/)
