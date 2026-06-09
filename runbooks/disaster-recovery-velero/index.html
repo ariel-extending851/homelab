@@ -1,0 +1,2594 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/runbooks/disaster-recovery-velero/">
+      
+      
+        <link rel="prev" href="../control-plane-recovery/">
+      
+      
+        <link rel="next" href="../rpi-oom-mitigation/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Disaster recovery (Velero) - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#runbook-disaster-recovery-velero" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Disaster recovery (Velero)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-operational-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Operational Standard
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-preconditions-run-before-any-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Preconditions (run before any restore)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-monthly-backup-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Monthly Backup Verification
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-quarterly-restore-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Quarterly Restore Drill
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Quarterly Restore Drill">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-drill-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1 Drill procedure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-drill-teardown-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.2 Drill teardown (mandatory)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-record-the-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.3 Record the drill
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-full-cluster-restore-catastrophic-loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Full-Cluster Restore (catastrophic loss)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Full-Cluster Restore (catastrophic loss)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-restore-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Restore command
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-post-restore-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.3 Post-restore verification
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Rollback
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-failure-modes-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Failure Modes and Recovery
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-related" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-operational-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Operational Standard
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-preconditions-run-before-any-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Preconditions (run before any restore)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-monthly-backup-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Monthly Backup Verification
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-quarterly-restore-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Quarterly Restore Drill
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Quarterly Restore Drill">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-drill-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1 Drill procedure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-drill-teardown-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.2 Drill teardown (mandatory)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-record-the-drill" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.3 Record the drill
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-full-cluster-restore-catastrophic-loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Full-Cluster Restore (catastrophic loss)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Full-Cluster Restore (catastrophic loss)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-restore-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Restore command
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-post-restore-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.3 Post-restore verification
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Rollback
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-failure-modes-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Failure Modes and Recovery
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-related" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/runbooks/disaster-recovery-velero.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="runbook-disaster-recovery-velero">Runbook: Disaster Recovery (Velero)<a class="headerlink" href="#runbook-disaster-recovery-velero" title="Permanent link">&para;</a></h1>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Severity</strong></td>
+<td style="text-align: left;">🔴 Critical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Status</strong></td>
+<td style="text-align: left;">✅ Reviewed</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Last Tested</strong></td>
+<td style="text-align: left;">2026-05-12</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Owner</strong></td>
+<td style="text-align: left;">@ariel-extending851</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RPO</strong></td>
+<td style="text-align: left;">24 h (one nightly backup)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RTO</strong></td>
+<td style="text-align: left;">≤ 30 min for a single namespace · ≤ 90 min for a full-cluster restore</td>
+</tr>
+</tbody>
+</table>
+<p>This runbook covers three procedures with increasing blast radius: the <strong>monthly backup verification</strong>, the <strong>quarterly restore drill</strong> into an isolated namespace, and the <strong>full-cluster restore</strong> after catastrophic loss. Run them in that order — the drill validates the assumptions the full restore relies on.</p>
+<hr />
+<h2 id="1-operational-standard">1. Operational Standard<a class="headerlink" href="#1-operational-standard" title="Permanent link">&para;</a></h2>
+<p>Velero is deployed as a DaemonSet in the <code>velero</code> namespace (<a href="../../k8s/apps/velero/"><code>k8s/apps/velero/</code></a>). The schedule <a href="../../k8s/apps/velero/schedule.yaml"><code>k8s/apps/velero/schedule.yaml</code></a>:</p>
+<ul>
+<li>Runs daily at <strong>14:00 UTC</strong> (<code>0 14 * * *</code>) — chosen to fire after the AWS scheduler boots the cluster at 10:00 BRT and before the 21:00 BRT shutdown.</li>
+<li>Includes the platform namespaces: <code>adguard</code>, <code>argocd</code>, <code>golink</code>, <code>grafana</code>, <code>kube-system</code>, <code>loki</code>, <code>monitoring</code>, <code>otel-collector</code>, <code>prometheus</code>, <code>tailscale</code>, <code>velero</code>.</li>
+<li>Retention: <code>336h0m0s</code> — <strong>14 days</strong>.</li>
+<li>Storage location: <code>default</code> (S3 bucket provisioned by <a href="../../infra/aws/"><code>infra/aws/</code></a>, IAM user <code>velero_backup_user</code>).</li>
+<li><code>snapshotMoveData: false</code> — metadata-only at the schedule level; PVC data uses the CSI snapshot path when restored.</li>
+</ul>
+<p>Bootstrap of the Velero credentials Secret is handled by <a href="../../bin/velero_bootstrap_secret.py"><code>bin/velero_bootstrap_secret.py</code></a>, driven by the Terraform-emitted IAM access key.</p>
+<div class="admonition abstract">
+<p class="admonition-title">Decision: 24 h RPO, 14 d retention</p>
+<p>The cluster is a single-operator homelab. Sub-hourly backups would burn S3 dollars on a data set that does not change at sub-hourly cadence; longer than 14 d retention would store states whose application versions have already moved on. The 14 d window covers "I broke something last week and didn't notice."</p>
+</div>
+<hr />
+<h2 id="2-preconditions-run-before-any-restore">2. Preconditions (run before any restore)<a class="headerlink" href="#2-preconditions-run-before-any-restore" title="Permanent link">&para;</a></h2>
+<p>Before <em>any</em> restore procedure, confirm the green-state baseline:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Velero is healthy</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>velero<span class="w"> </span>get<span class="w"> </span>deploy/velero<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.conditions[?(@.type==&quot;Available&quot;)].status}&#39;</span>
+<span class="c1"># expect: True</span>
+
+<span class="c1"># 2. The S3 backup location is reachable</span>
+velero<span class="w"> </span>backup-location<span class="w"> </span>get
+<span class="c1"># expect: default · Phase: Available</span>
+
+<span class="c1"># 3. There is a recent successful backup</span>
+velero<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-5
+<span class="c1"># expect: most-recent entry&#39;s STATUS = Completed, AGE ≤ 24 h</span>
+
+<span class="c1"># 4. SOPS decrypt still works (sanity for post-restore secrets)</span>
+sops<span class="w"> </span>-d<span class="w"> </span>k8s/apps/velero/secret.yaml<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>OK
+</code></pre></div>
+<p>If any of these fail, <strong>do not attempt a restore.</strong> Resolve the precondition first; restoring against a broken Velero install creates partial state that is harder to recover than the original loss.</p>
+<hr />
+<h2 id="3-monthly-backup-verification">3. Monthly Backup Verification<a class="headerlink" href="#3-monthly-backup-verification" title="Permanent link">&para;</a></h2>
+<p>Goal: prove a recent backup exists, contains the expected resources, and is restorable in principle. <strong>No restore is performed.</strong> ~5 minutes.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 3.1 List the last 5 backups</span>
+velero<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-6
+
+<span class="c1"># 3.2 Inspect the most recent backup</span>
+<span class="nv">BACKUP</span><span class="o">=</span><span class="k">$(</span>velero<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>-o<span class="w"> </span>name<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">&#39;/&#39;</span><span class="w"> </span>-f2<span class="k">)</span>
+velero<span class="w"> </span>backup<span class="w"> </span>describe<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP</span><span class="s2">&quot;</span><span class="w"> </span>--details
+
+<span class="c1"># 3.3 Confirm expected namespaces are present</span>
+velero<span class="w"> </span>backup<span class="w"> </span>describe<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP</span><span class="s2">&quot;</span><span class="w"> </span>--details<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;/Namespaces:/,/^$/&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;(adguard|argocd|grafana|prometheus|tailscale|velero)&#39;</span>
+
+<span class="c1"># 3.4 Confirm zero errors / warnings</span>
+velero<span class="w"> </span>backup<span class="w"> </span>describe<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP</span><span class="s2">&quot;</span><span class="w"> </span>--details<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(Errors|Warnings):&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;no errors/warnings reported&quot;</span>
+</code></pre></div>
+<p>Record the result in your monthly ops log (a one-line entry; do not open a runbook entry unless a verification fails).</p>
+<hr />
+<h2 id="4-quarterly-restore-drill">4. Quarterly Restore Drill<a class="headerlink" href="#4-quarterly-restore-drill" title="Permanent link">&para;</a></h2>
+<p>Goal: prove the restore path actually works against a known-good backup, into an <strong>isolated namespace</strong> so the live cluster is not touched. ~15–30 min depending on namespace size.</p>
+<div class="admonition warning">
+<p class="admonition-title">Pick a non-critical namespace</p>
+<p><code>grafana</code> and <code>golink</code> are good drill targets. Avoid <code>argocd</code> (will fight live reconciliation) and <code>tailscale</code> (touches mesh state).</p>
+</div>
+<h3 id="41-drill-procedure">4.1 Drill procedure<a class="headerlink" href="#41-drill-procedure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Choose target backup + target namespace</span>
+<span class="nv">BACKUP</span><span class="o">=</span><span class="k">$(</span>velero<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>-o<span class="w"> </span>name<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">&#39;/&#39;</span><span class="w"> </span>-f2<span class="k">)</span>
+<span class="nv">SRC_NS</span><span class="o">=</span><span class="s2">&quot;grafana&quot;</span>
+<span class="nv">DR_NS</span><span class="o">=</span><span class="s2">&quot;dr-test-grafana-</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span><span class="s2">&quot;</span>
+
+<span class="c1"># 4.1.1 Create the restore, remapping the source namespace to the drill namespace</span>
+velero<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-backup<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BACKUP</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-namespaces<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SRC_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace-mappings<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SRC_NS</span><span class="si">}</span><span class="s2">:</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--restore-volumes<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wait
+
+<span class="c1"># 4.1.2 Verify</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>get<span class="w"> </span>all
+velero<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--details
+</code></pre></div>
+<p>Pass criteria:</p>
+<ul>
+<li><code>velero restore describe</code> shows <code>Phase: Completed</code>, zero errors.</li>
+<li>Expected Deployment/Service/ConfigMap counts match the source namespace.</li>
+<li>No leftover <code>Pending</code> resources after 5 min.</li>
+</ul>
+<h3 id="42-drill-teardown-mandatory">4.2 Drill teardown (mandatory)<a class="headerlink" href="#42-drill-teardown-mandatory" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>delete<span class="w"> </span>ns<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DR_NS</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>--wait<span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p>The drill namespace must be deleted within 24 h. A lingering <code>dr-test-*</code> namespace is itself a finding — log it in <a href="../../security/audit-history/"><code>../security/audit-history.md</code></a>.</p>
+<h3 id="43-record-the-drill">4.3 Record the drill<a class="headerlink" href="#43-record-the-drill" title="Permanent link">&para;</a></h3>
+<p>Append one line to the runbook ledger (<code>docs/runbooks/README.md</code>):</p>
+<div class="highlight"><pre><span></span><code>| 2026-MM-DD | DR drill | grafana → dr-test-grafana-YYYYMMDD | Pass | &lt;operator&gt; |
+</code></pre></div>
+<hr />
+<h2 id="5-full-cluster-restore-catastrophic-loss">5. Full-Cluster Restore (catastrophic loss)<a class="headerlink" href="#5-full-cluster-restore-catastrophic-loss" title="Permanent link">&para;</a></h2>
+<p>Goal: rebuild the cluster from zero and restore application state from the most recent good backup. ~60–90 min total. This is the procedure to run after a <a href="../control-plane-recovery/">control plane recovery</a> attempt has been ruled out, or after the AWS account has lost the cluster entirely (instance termination + EBS gone).</p>
+<div class="admonition danger">
+<p class="admonition-title">This procedure rebuilds production. Confirm with the operator before proceeding.</p>
+<p>The cluster will be unreachable for the duration. The home LAN devices that depend on AdGuard DNS will fail over to fallback resolvers — confirm fallbacks are configured on the router.</p>
+</div>
+<h3 id="51-sequence">5.1 Sequence<a class="headerlink" href="#51-sequence" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Action</th>
+<th>Verify</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>make deploy</code> (Terraform + Ansible + ArgoCD baseline)</td>
+<td><code>kubectl get nodes -o wide</code> shows every node <code>Ready</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Wait for ArgoCD App-of-Apps to reach <code>Synced</code> (excluding stateful apps)</td>
+<td><code>make validate-argocd-synced</code> returns 0</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Confirm Velero is healthy (see §2)</td>
+<td><code>velero backup get</code> lists all retained backups</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Identify target backup</td>
+<td><code>velero backup get \| head -3</code> — choose the latest <code>Completed</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Restore platform namespaces</td>
+<td>see §5.2 below</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Verify each app's contract</td>
+<td><code>make smoke-test</code> returns 0</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Re-enable schedules / external triggers</td>
+<td>scheduler Lambda, drift-detection workflow</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-restore-command">5.2 Restore command<a class="headerlink" href="#52-restore-command" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">BACKUP</span><span class="o">=</span><span class="k">$(</span>velero<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>-o<span class="w"> </span>name<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">&#39;/&#39;</span><span class="w"> </span>-f2<span class="k">)</span>
+
+velero<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span><span class="s2">&quot;full-restore-</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d-%H%M<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-backup<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">BACKUP</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--existing-resource-policy<span class="o">=</span>update<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wait
+</code></pre></div>
+<ul>
+<li><code>--existing-resource-policy=update</code>: update the resources ArgoCD has already created from git with backup-side data (Secrets, ConfigMaps, PVCs). This is safe because the <em>desired state</em> (manifests) is in git; only the <em>observed state</em> (PV data, generated tokens) is being restored.</li>
+<li><strong>Do not use <code>--existing-resource-policy=none</code> against a live namespace.</strong> That flag overwrites without merging and will destroy any newer state ArgoCD just reconciled.</li>
+</ul>
+<h3 id="53-post-restore-verification">5.3 Post-restore verification<a class="headerlink" href="#53-post-restore-verification" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Every restored namespace&#39;s resource counts match the backup</span>
+velero<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>velero<span class="w"> </span>restore<span class="w"> </span>get<span class="w"> </span>-o<span class="w"> </span>name<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="s1">&#39;/&#39;</span><span class="w"> </span>-f2<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>--details
+
+<span class="c1"># 2. App-of-Apps reaches Synced + Healthy</span>
+make<span class="w"> </span>validate-argocd-synced
+
+<span class="c1"># 3. Smoke tests pass</span>
+make<span class="w"> </span>smoke-test
+
+<span class="c1"># 4. Observability gate (no OOMKilled, no CrashLoopBackOff)</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>-n<span class="w"> </span>prometheus<span class="w"> </span>svc/prometheus<span class="w"> </span><span class="m">9090</span>:9090<span class="w"> </span><span class="p">&amp;</span>
+<span class="nv">PROMETHEUS_URL</span><span class="o">=</span>http://localhost:9090<span class="w"> </span><span class="nv">OBSERVATION_WINDOW</span><span class="o">=</span><span class="m">600</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>python3<span class="w"> </span>bin/post_deploy_observability_gate.py
+
+<span class="c1"># 5. SOPS canary</span>
+sops<span class="w"> </span>-d<span class="w"> </span>k8s/apps/argocd/secret.yaml<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;SOPS OK&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="6-rollback">6. Rollback<a class="headerlink" href="#6-rollback" title="Permanent link">&para;</a></h2>
+<p>There is <strong>no rollback for a restore that ran successfully</strong> — the cluster is now in the post-restore state by definition. If the restore <em>fails partway</em>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Identify the failed restore</span>
+velero<span class="w"> </span>restore<span class="w"> </span>get<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;PartiallyFailed\|Failed&#39;</span>
+
+<span class="c1"># Read the failure log</span>
+velero<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;name&gt;
+
+<span class="c1"># Decide: re-run vs. manual repair</span>
+<span class="c1"># Re-run only after the cause of failure has been fixed (e.g., bumped CRD,</span>
+<span class="c1"># missing namespace label). Never re-run blindly — Velero is not idempotent</span>
+<span class="c1"># on PartiallyFailed restores; resources already restored will be re-attempted</span>
+<span class="c1"># and may conflict.</span>
+</code></pre></div>
+<p>If the failed restore has left the cluster in a worse state than before, the recovery is a fresh <code>make deploy</code> from a healthy backup, <strong>not</strong> a second <code>velero restore</code> over the partial state.</p>
+<hr />
+<h2 id="7-failure-modes-and-recovery">7. Failure Modes and Recovery<a class="headerlink" href="#7-failure-modes-and-recovery" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>First check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>velero backup get</code> empty</td>
+<td>IAM user lost S3 permissions, or schedule deleted</td>
+<td><code>kubectl -n velero logs deploy/velero \| tail -50</code> for <code>AccessDenied</code>; check <a href="../../infra/aws/"><code>infra/aws/</code></a> Velero IAM block</td>
+</tr>
+<tr>
+<td>Latest backup <code>PartiallyFailed</code></td>
+<td>A CRD changed between backup runs; Velero can't snapshot the new shape</td>
+<td><code>velero backup logs &lt;name&gt;</code>; add the CRD to the schedule's <code>includedResources</code> or accept the gap until the next run</td>
+</tr>
+<tr>
+<td>Restore stuck <code>InProgress</code> for &gt;30 min</td>
+<td>Cluster has no scheduling capacity for the restored pods</td>
+<td><code>kubectl get events -A \| grep -i pending</code>; relieve scheduling pressure (see <a href="../rpi-oom-mitigation/"><code>rpi-oom-mitigation.md</code></a>)</td>
+</tr>
+<tr>
+<td>Restored Secrets fail to decrypt</td>
+<td>Restoring across a SOPS key rotation boundary</td>
+<td>Rotate the cluster's age key back to the boundary's recipient; see <a href="../sops-key-rotation/"><code>sops-key-rotation.md</code></a></td>
+</tr>
+<tr>
+<td>S3 bucket lifecycle reaped a backup we wanted</td>
+<td>Retention misalignment between bucket lifecycle and Velero schedule</td>
+<td>Lifecycle is authoritative; treat the loss as final. Re-align in <a href="../../infra/aws/"><code>infra/aws/</code></a> and document in <a href="../../security/audit-history/"><code>../security/audit-history.md</code></a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-related">8. Related<a class="headerlink" href="#8-related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Velero service catalog page:</strong> <a href="../../services/velero/"><code>../services/velero.md</code></a></li>
+<li><strong>Backup/restore mechanics (broader):</strong> <a href="../../operations/backup-and-restore/"><code>../operations/backup-and-restore.md</code></a></li>
+<li><strong>Control plane unresponsive (before invoking DR):</strong> <a href="../control-plane-recovery/"><code>control-plane-recovery.md</code></a></li>
+<li><strong>SOPS key rotation:</strong> <a href="../sops-key-rotation/"><code>sops-key-rotation.md</code></a></li>
+<li><strong>RPi OOM mitigation (often unblocks a stuck restore):</strong> <a href="../rpi-oom-mitigation/"><code>rpi-oom-mitigation.md</code></a></li>
+<li><strong>Resource limits (capacity ceilings):</strong> <a href="../../operations/resource-limits/"><code>../operations/resource-limits.md</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

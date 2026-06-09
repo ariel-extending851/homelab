@@ -1,0 +1,2895 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/operations/terraform/">
+      
+      
+        <link rel="prev" href="../ansible/">
+      
+      
+        <link rel="next" href="../backup-and-restore/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Terraform - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#terraform-operations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Terraform
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      TL;DR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-time-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      One-Time Bootstrap
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="One-Time Bootstrap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-state-backend-infraaws-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. State backend (infra/aws-backend)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sops-age-key-workstation" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. SOPS age key (workstation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sops-encrypted-secrets-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. SOPS-encrypted secrets file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-github-actions-oidc-infraaws-oidc-required-for-ci-deploys" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. GitHub Actions OIDC (infra/aws-oidc) — required for CI deploys
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#daily-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily Workflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Daily Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plan-a-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan a change
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspect outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-state-without-changing-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh state without changing anything
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variable-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variable Overrides
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-vs-operator-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI vs operator responsibilities
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#localstack-offline-plan-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      LocalStack (Offline Plan Validation)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#destroying-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Destroying Infrastructure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Operations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#view-state-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      View state list
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-a-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspect a resource
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#move-a-resource-rare" class="md-nav__link">
+    <span class="md-ellipsis">
+      Move a resource (rare)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pull-push-state-very-rare-backups-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pull / push state (very rare — backups only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cheat Sheet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-sops-data-found-in-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      no SOPS data found in file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-could-not-decrypt-data-key-with-any-master-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: could not decrypt data key with any master key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-spot-instance-request-status-capacity-not-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: spot instance request status: capacity-not-available
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-vpcidnotspecified" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: VPCIdNotSpecified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terraform-plan-shows-the-ssm-bucket-recreating-every-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      terraform plan shows the SSM bucket recreating every time
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terraform-plan-hangs-on-datasops_filesecrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      terraform plan hangs on data.sops_file.secrets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      TL;DR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-time-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      One-Time Bootstrap
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="One-Time Bootstrap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-state-backend-infraaws-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. State backend (infra/aws-backend)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sops-age-key-workstation" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. SOPS age key (workstation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sops-encrypted-secrets-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. SOPS-encrypted secrets file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-github-actions-oidc-infraaws-oidc-required-for-ci-deploys" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. GitHub Actions OIDC (infra/aws-oidc) — required for CI deploys
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#daily-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily Workflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Daily Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plan-a-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plan a change
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspect outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-state-without-changing-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh state without changing anything
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variable-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variable Overrides
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-vs-operator-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI vs operator responsibilities
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#localstack-offline-plan-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      LocalStack (Offline Plan Validation)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#destroying-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Destroying Infrastructure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Operations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#view-state-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      View state list
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspect-a-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspect a resource
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#move-a-resource-rare" class="md-nav__link">
+    <span class="md-ellipsis">
+      Move a resource (rare)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pull-push-state-very-rare-backups-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pull / push state (very rare — backups only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cheat-sheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cheat Sheet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-sops-data-found-in-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      no SOPS data found in file
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-could-not-decrypt-data-key-with-any-master-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: could not decrypt data key with any master key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-spot-instance-request-status-capacity-not-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: spot instance request status: capacity-not-available
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-vpcidnotspecified" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error: VPCIdNotSpecified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terraform-plan-shows-the-ssm-bucket-recreating-every-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      terraform plan shows the SSM bucket recreating every time
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terraform-plan-hangs-on-datasops_filesecrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      terraform plan hangs on data.sops_file.secrets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ci-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI Integration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/operations/terraform.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="terraform-operations">Terraform Operations<a class="headerlink" href="#terraform-operations" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Active
+<strong>Last reviewed:</strong> 2026-04-23
+<strong>Owner:</strong> @ariel-extending851</p>
+</blockquote>
+<p>How to plan, apply, and tear down the AWS infrastructure. Architecture and module-level details live in <a href="../../architecture/aws-infrastructure/"><code>../architecture/aws-infrastructure.md</code></a>. Cost details live in <a href="../cost-and-scheduling/"><code>cost-and-scheduling.md</code></a>.</p>
+<hr />
+<h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>terraform-init<span class="w">      </span><span class="c1"># one-time per machine</span>
+make<span class="w"> </span>terraform-plan<span class="w">      </span><span class="c1"># review changes</span>
+make<span class="w"> </span>terraform-apply<span class="w">     </span><span class="c1"># provision (or update)</span>
+make<span class="w"> </span>terraform-output<span class="w">    </span><span class="c1"># IPs, kubeconfig command, scheduler URL</span>
+</code></pre></div>
+<p>All targets are defined in the root <a href="../../Makefile"><code>Makefile</code></a> and ultimately invoke <code>terraform</code> in <a href="../../infra/aws/"><code>infra/aws/</code></a> with the right <code>AWS_PROFILE</code> and <code>SOPS_AGE_KEY_FILE</code> from <a href="../../.mise.toml"><code>.mise.toml</code></a>.</p>
+<hr />
+<h2 id="one-time-bootstrap">One-Time Bootstrap<a class="headerlink" href="#one-time-bootstrap" title="Permanent link">&para;</a></h2>
+<p>The first deployment ever needs three things created <strong>once</strong>, in order:</p>
+<h3 id="1-state-backend-infraaws-backend">1. State backend (<code>infra/aws-backend</code>)<a class="headerlink" href="#1-state-backend-infraaws-backend" title="Permanent link">&para;</a></h3>
+<p>Creates the S3 bucket <code>homelab-terraform-state-kkuhocyv</code> with versioning + encryption. Uses <strong>local state</strong> (intentional — bootstrapping the bucket that holds remote state).</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>infra/aws-backend
+terraform<span class="w"> </span>init
+terraform<span class="w"> </span>apply
+</code></pre></div>
+<p>After it completes, the main <code>infra/aws/main.tf</code> backend block points at the new bucket.</p>
+<h3 id="2-sops-age-key-workstation">2. SOPS age key (workstation)<a class="headerlink" href="#2-sops-age-key-workstation" title="Permanent link">&para;</a></h3>
+<p>See <a href="../sops-setup/"><code>sops-setup.md</code></a>. Without this, <code>terraform plan</code> fails with <code>no SOPS data found</code>.</p>
+<h3 id="3-sops-encrypted-secrets-file">3. SOPS-encrypted secrets file<a class="headerlink" href="#3-sops-encrypted-secrets-file" title="Permanent link">&para;</a></h3>
+<p><code>infra/aws/terraform.tfvars.sops.yaml</code> must exist and contain three keys: <code>ssh_public_key</code>, <code>k3s_token</code>, <code>tailscale_auth_key</code>. The catch-all rule in <a href="../../.sops.yaml"><code>.sops.yaml</code></a> auto-encrypts on save.</p>
+<h3 id="4-github-actions-oidc-infraaws-oidc-required-for-ci-deploys">4. GitHub Actions OIDC (<code>infra/aws-oidc</code>) — required for CI deploys<a class="headerlink" href="#4-github-actions-oidc-infraaws-oidc-required-for-ci-deploys" title="Permanent link">&para;</a></h3>
+<p>Provisions two IAM roles assumed by CI workflows via OIDC:</p>
+<ul>
+<li><code>github-actions-terraform-plan</code> — read-only, used by <code>ci-validation.yml</code> for plan-only PR checks.</li>
+<li><code>github-actions-terraform-apply</code> — Environment-pinned (<code>staging-deploy</code> / <code>production</code> / <code>production-approval</code> only), used by <code>ci-deployment.yml</code> and <code>rollback.yml</code>. Trust policy is locked to those Environments specifically — fork-PR runs cannot assume this role even though the repo is public.</li>
+</ul>
+<p>Run once locally with operator credentials:</p>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>oidc-init
+make<span class="w"> </span>oidc-plan
+make<span class="w"> </span>oidc-apply
+make<span class="w"> </span>oidc-output<span class="w">     </span><span class="c1"># prints both role ARNs + AWS account ID</span>
+</code></pre></div>
+<p>Then set the GitHub repo variable so workflows can compose the role ARN:</p>
+<div class="highlight"><pre><span></span><code>gh<span class="w"> </span>variable<span class="w"> </span><span class="nb">set</span><span class="w"> </span>AWS_ACCOUNT_ID<span class="w"> </span>--body<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>terraform<span class="w"> </span>-chdir<span class="o">=</span>infra/aws-oidc<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>aws_account_id<span class="k">)</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Without <code>AWS_ACCOUNT_ID</code>, the role ARN expands to <code>arn:aws:iam:::role/...</code> and the OIDC <code>AssumeRoleWithWebIdentity</code> call fails with <code>Request ARN is invalid</code>.</p>
+<hr />
+<h2 id="daily-workflow">Daily Workflow<a class="headerlink" href="#daily-workflow" title="Permanent link">&para;</a></h2>
+<h3 id="plan-a-change">Plan a change<a class="headerlink" href="#plan-a-change" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>terraform-plan
+</code></pre></div>
+<p>This runs <code>terraform plan</code> from <code>infra/aws/</code>. The plan is captured to <code>tfplan.binary</code> for <code>make terraform-apply</code> to consume.</p>
+<h3 id="apply">Apply<a class="headerlink" href="#apply" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>terraform-apply
+</code></pre></div>
+<p>Applies <code>tfplan.binary</code> if present (no extra prompt), otherwise re-plans and applies. Spot instances may take 1–2 min to come up; total apply time is usually 3–5 min.</p>
+<h3 id="inspect-outputs">Inspect outputs<a class="headerlink" href="#inspect-outputs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>terraform-output
+</code></pre></div>
+<p>Useful outputs:</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>k3s_server_public_ip</code> / <code>k3s_server_private_ip</code></td>
+<td>EC2 IPs (use Tailscale instead, but useful for SSM)</td>
+</tr>
+<tr>
+<td><code>k3s_server_instance_id</code></td>
+<td>Pass to <code>aws ssm start-session --target &lt;id&gt;</code></td>
+</tr>
+<tr>
+<td><code>kubeconfig_command</code></td>
+<td><code>scp</code> command to grab the k3s kubeconfig</td>
+</tr>
+<tr>
+<td><code>scheduler_function_url</code></td>
+<td>Manual start/stop endpoint</td>
+</tr>
+<tr>
+<td><code>manual_start_command</code> / <code>manual_stop_command</code></td>
+<td>Pre-baked AWS CLI commands</td>
+</tr>
+<tr>
+<td><code>estimated_monthly_cost_usd</code></td>
+<td>The official cost figure</td>
+</tr>
+</tbody>
+</table>
+<h3 id="refresh-state-without-changing-anything">Refresh state without changing anything<a class="headerlink" href="#refresh-state-without-changing-anything" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>terraform-state<span class="w">    </span><span class="c1"># equivalent to: terraform refresh + terraform state list</span>
+</code></pre></div>
+<hr />
+<h2 id="variable-overrides">Variable Overrides<a class="headerlink" href="#variable-overrides" title="Permanent link">&para;</a></h2>
+<p>Defaults live in <a href="../../infra/aws/variables.tf"><code>infra/aws/variables.tf</code></a>. To override locally, create <code>infra/aws/terraform.tfvars</code> (gitignored):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># infra/aws/terraform.tfvars</span>
+<span class="na">server_instance_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;t3.small&quot;</span><span class="c1">     # downsize for testing</span>
+<span class="na">ebs_volume_size</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="m">50</span>
+<span class="na">enable_scheduling</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="no">false</span><span class="c1">           # 24/7 mode</span>
+<span class="na">schedule_start_hour</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="m">8</span><span class="c1">               # earlier start</span>
+</code></pre></div>
+<p>For the full variable matrix see <a href="../../architecture/aws-infrastructure/#variables-defaults"><code>../architecture/aws-infrastructure.md#variables-defaults</code></a>.</p>
+<hr />
+<h2 id="ci-vs-operator-responsibilities">CI vs operator responsibilities<a class="headerlink" href="#ci-vs-operator-responsibilities" title="Permanent link">&para;</a></h2>
+<p>The <code>ci-deployment.yml</code> workflow does NOT run end-to-end deploys. It runs the
+<code>terraform-apply</code> step only, gated by an OIDC role + the <code>production-approval</code>
+GitHub Environment. The operator finishes the deployment from a workstation
+already on the tailnet.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Where it runs</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>terraform plan</code> (PR)</td>
+<td>CI, plan role via OIDC</td>
+<td>Read-only; no secrets needed</td>
+</tr>
+<tr>
+<td><code>terraform plan</code> (commit comment for approval)</td>
+<td>CI, plan role via OIDC</td>
+<td>Reviewer reads the plan before approving</td>
+</tr>
+<tr>
+<td><code>terraform apply</code></td>
+<td>CI, apply role via OIDC, gated by <code>production-approval</code> Environment</td>
+<td>Only mutating step that fits inside the OIDC perimeter</td>
+</tr>
+<tr>
+<td><code>make ansible-deploy</code></td>
+<td>Operator workstation on the tailnet</td>
+<td>k3s installs here; kubeconfig is generated here</td>
+</tr>
+<tr>
+<td><code>make smoke-test</code>, <code>make test-e2e-post-deploy</code>, <code>make test-velero-restore</code></td>
+<td>Operator workstation on the tailnet</td>
+<td>Need <code>kubectl</code> reachability to the k3s API</td>
+</tr>
+</tbody>
+</table>
+<p>Three constraints force this split:</p>
+<ol>
+<li><strong>Tailnet-only API server.</strong> The k3s API listens on the server's Tailscale
+   IP (CGNAT, <code>100.x.y.z</code>). A stock GitHub-hosted runner cannot reach it
+   without a long-lived <code>TS_AUTH_KEY</code> secret. Storing such a key on a public
+   repo is a tailnet-pivot risk we don't accept.</li>
+<li><strong>SSM connection scope.</strong> Ansible's <code>community.aws.aws_ssm</code> connection
+   plugin needs <code>ssm:StartSession</code>, an S3 transfer bucket, and related
+   permissions that are intentionally out of scope for the
+   <code>github-actions-terraform-apply</code> role and its permissions boundary.</li>
+<li><strong>Kubeconfig timing.</strong> The k3s kubeconfig is generated by Ansible (slurp
+   from <code>/etc/rancher/k3s/k3s.yaml</code> on the server, then rewrite the API
+   endpoint to the Tailscale IP). It cannot be exposed via a Terraform
+   output because k3s is not installed at the time <code>terraform apply</code>
+   finishes.</li>
+</ol>
+<p>Practical implication: after a CI deploy, the workflow ends with an "operator
+handoff notice." The operator runs the four <code>make</code> targets above. Failure of
+any one rolls back via <code>bin/rollback.py</code> (see
+<a href="rollback.md"><code>rollback.md</code></a>).</p>
+<hr />
+<h2 id="localstack-offline-plan-validation">LocalStack (Offline Plan Validation)<a class="headerlink" href="#localstack-offline-plan-validation" title="Permanent link">&para;</a></h2>
+<p>LocalStack lets you <code>terraform plan</code> without an AWS account. It validates module structure, variables, and resource dependencies — but <strong>not</strong> EC2 provisioning, IAM, or k3s installation.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>localstack<span class="w"> </span>-p<span class="w"> </span><span class="m">4566</span>:4566<span class="w"> </span>-e<span class="w"> </span><span class="nv">SERVICES</span><span class="o">=</span>ec2,iam,ssm<span class="w"> </span>localstack/localstack:3.8.1
+sleep<span class="w"> </span><span class="m">15</span>
+<span class="nb">cd</span><span class="w"> </span>infra/aws
+python3<span class="w"> </span>scripts/validate_localstack.py
+</code></pre></div>
+<p>The wrapper script swaps in <code>provider_override.tf</code>, runs <code>terraform init/validate/plan -var-file=terraform.tfvars.localstack</code>, and tears down. Full procedure: <a href="../testing/#localstack"><code>testing.md#localstack</code></a>.</p>
+<hr />
+<h2 id="destroying-infrastructure">Destroying Infrastructure<a class="headerlink" href="#destroying-infrastructure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>destroy
+</code></pre></div>
+<p>Interactive confirmation. After completion, three things remain:</p>
+<ul>
+<li>The S3 state bucket itself (run <code>infra/aws-backend</code> destroy to remove)</li>
+<li>The SSM transfer bucket (deleted by the destroy if <code>force_destroy = true</code> is set, which it is)</li>
+<li>Any leftover EBS snapshots from spot interruptions — clean these manually:
+  <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-snapshots<span class="w"> </span>--owner-ids<span class="w"> </span>self<span class="w"> </span>--query<span class="w"> </span><span class="s1">&#39;Snapshots[].SnapshotId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-n1<span class="w"> </span>aws<span class="w"> </span>ec2<span class="w"> </span>delete-snapshot<span class="w"> </span>--snapshot-id
+</code></pre></div></li>
+</ul>
+<p>For a more thorough teardown including orphaned resources, run <a href="../../infra/aws/scripts/clean_lab.py"><code>infra/aws/scripts/clean_lab.py</code></a> (uses <code>aws-nuke</code> patterns).</p>
+<hr />
+<h2 id="state-operations">State Operations<a class="headerlink" href="#state-operations" title="Permanent link">&para;</a></h2>
+<h3 id="view-state-list">View state list<a class="headerlink" href="#view-state-list" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>infra/aws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>state<span class="w"> </span>list
+</code></pre></div>
+<h3 id="inspect-a-resource">Inspect a resource<a class="headerlink" href="#inspect-a-resource" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>terraform<span class="w"> </span>state<span class="w"> </span>show<span class="w"> </span><span class="s1">&#39;module.k3s_cluster.aws_spot_instance_request.k3s_server&#39;</span>
+</code></pre></div>
+<h3 id="move-a-resource-rare">Move a resource (rare)<a class="headerlink" href="#move-a-resource-rare" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>terraform<span class="w"> </span>state<span class="w"> </span>mv<span class="w"> </span><span class="s1">&#39;module.old.&lt;resource&gt;&#39;</span><span class="w"> </span><span class="s1">&#39;module.new.&lt;resource&gt;&#39;</span>
+</code></pre></div>
+<h3 id="pull-push-state-very-rare-backups-only">Pull / push state (very rare — backups only)<a class="headerlink" href="#pull-push-state-very-rare-backups-only" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>terraform<span class="w"> </span>state<span class="w"> </span>pull<span class="w"> </span>&gt;<span class="w"> </span>backup.tfstate
+<span class="c1"># edit if necessary</span>
+terraform<span class="w"> </span>state<span class="w"> </span>push<span class="w"> </span>backup.tfstate
+</code></pre></div>
+<hr />
+<h2 id="cheat-sheet">Cheat Sheet<a class="headerlink" href="#cheat-sheet" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Health</span>
+make<span class="w"> </span>terraform-output<span class="w">                     </span><span class="c1"># dump all outputs</span>
+terraform<span class="w"> </span>output<span class="w"> </span>-json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w">               </span><span class="c1"># JSON-formatted outputs</span>
+
+<span class="c1"># Spot instance status</span>
+aws<span class="w"> </span>ec2<span class="w"> </span>describe-spot-instance-requests<span class="w"> </span>--filters<span class="w"> </span><span class="s2">&quot;Name=tag:Project,Values=Lab-DevOps-Pro&quot;</span>
+
+<span class="c1"># Force a fresh AMI lookup (e.g., new Amazon Linux 2023 release)</span>
+terraform<span class="w"> </span>apply<span class="w"> </span>-replace<span class="o">=</span><span class="s1">&#39;module.k3s_cluster.aws_launch_template.k3s&#39;</span>
+
+<span class="c1"># Run terraform plan that ignores SOPS (for CI)</span>
+terraform<span class="w"> </span>plan<span class="w"> </span>-var<span class="o">=</span><span class="s1">&#39;localstack_test=yes&#39;</span><span class="w"> </span>-var-file<span class="o">=</span>terraform.tfvars.localstack
+
+<span class="c1"># See what changed since last apply</span>
+terraform<span class="w"> </span>plan<span class="w"> </span>-refresh<span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="no-sops-data-found-in-file"><code>no SOPS data found in file</code><a class="headerlink" href="#no-sops-data-found-in-file" title="Permanent link">&para;</a></h3>
+<p>The secrets file isn't encrypted. See <a href="../sops-setup/"><code>sops-setup.md</code></a>.</p>
+<h3 id="error-could-not-decrypt-data-key-with-any-master-key"><code>Error: could not decrypt data key with any master key</code><a class="headerlink" href="#error-could-not-decrypt-data-key-with-any-master-key" title="Permanent link">&para;</a></h3>
+<p><code>SOPS_AGE_KEY_FILE</code> not set or pointing at the wrong key. Check <code>mise env</code> shows <code>SOPS_AGE_KEY_FILE=/home/vscode/.config/sops/age/keys.txt</code>.</p>
+<h3 id="error-spot-instance-request-status-capacity-not-available"><code>Error: spot instance request status: capacity-not-available</code><a class="headerlink" href="#error-spot-instance-request-status-capacity-not-available" title="Permanent link">&para;</a></h3>
+<p>AWS doesn't have spot capacity for <code>t3.medium</code> in the AZ. Re-run <code>terraform apply</code> (the persistent spot request will retry), or temporarily switch to <code>t3.small</code> via <code>terraform.tfvars</code>.</p>
+<h3 id="error-vpcidnotspecified"><code>Error: VPCIdNotSpecified</code><a class="headerlink" href="#error-vpcidnotspecified" title="Permanent link">&para;</a></h3>
+<p>The default VPC was deleted. Recreate it (<code>aws ec2 create-default-vpc</code>) or pin a specific VPC ID by editing the network module.</p>
+<h3 id="terraform-plan-shows-the-ssm-bucket-recreating-every-time"><code>terraform plan</code> shows the SSM bucket recreating every time<a class="headerlink" href="#terraform-plan-shows-the-ssm-bucket-recreating-every-time" title="Permanent link">&para;</a></h3>
+<p>Confirm <code>force_destroy = true</code> is in <a href="../../infra/aws/main.tf"><code>infra/aws/main.tf:116</code></a> and that nothing else is mutating the bucket out-of-band.</p>
+<h3 id="terraform-plan-hangs-on-datasops_filesecrets"><code>terraform plan</code> hangs on <code>data.sops_file.secrets</code><a class="headerlink" href="#terraform-plan-hangs-on-datasops_filesecrets" title="Permanent link">&para;</a></h3>
+<p>Network problem reaching the encrypted file? Run <code>sops -d infra/aws/terraform.tfvars.sops.yaml | head -3</code> to confirm decryption works at all.</p>
+<hr />
+<h2 id="ci-integration">CI Integration<a class="headerlink" href="#ci-integration" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../.github/workflows/ci-validation.yml"><code>.github/workflows/ci-validation.yml</code></a></td>
+<td><code>terraform fmt -check</code>, <code>terraform validate</code>, <code>tflint</code>, <code>terraform plan</code> (against LocalStack), Conftest policy checks</td>
+</tr>
+<tr>
+<td><a href="../../.github/workflows/ci-deployment.yml"><code>.github/workflows/ci-deployment.yml</code></a></td>
+<td>Real <code>terraform apply</code> on <code>main</code> push (gated, OIDC-authenticated)</td>
+</tr>
+</tbody>
+</table>
+<p>CI never has the SOPS age key. It plans with <code>localstack_test=yes</code> so the SOPS data source is bypassed.</p>
+<hr />
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Architecture:</strong> <a href="../../architecture/aws-infrastructure/"><code>../architecture/aws-infrastructure.md</code></a></li>
+<li><strong>Cost &amp; scheduler:</strong> <a href="../cost-and-scheduling/"><code>cost-and-scheduling.md</code></a></li>
+<li><strong>Secrets workflow:</strong> <a href="../sops-setup/"><code>sops-setup.md</code></a></li>
+<li><strong>Test the modules without spending money:</strong> <a href="../testing/"><code>testing.md</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

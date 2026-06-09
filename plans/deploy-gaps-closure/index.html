@@ -1,0 +1,2571 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/plans/deploy-gaps-closure/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Deploy Gaps Closure - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deploy-gaps-closure" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Deploy Gaps Closure
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-5-gaps-from-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      The 5 Gaps (from analysis)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-days-1-5-foundational-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 (Days 1-5): Foundational Safety
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1 (Days 1-5): Foundational Safety">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objectives
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deliverables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Criteria
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-days-6-12-cli-promotion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 (Days 6-12): CLI Promotion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 (Days 6-12): CLI Promotion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#objectives_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objectives
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deliverables_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deliverables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-tasks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-criteria_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Criteria
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-goals-for-this-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      Non-goals for this phase
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-days-13-18-resilience-and-recoverability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 (Days 13-18): Resilience and Recoverability
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 (Days 13-18): Resilience and Recoverability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#objectives_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objectives
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deliverables_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deliverables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-tasks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-criteria_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Criteria
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-days-19-21-test-and-gate-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 (Days 19-21): Test and Gate Hardening
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4 (Days 19-21): Test and Gate Hardening">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#objectives_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objectives
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deliverables_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deliverables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-tasks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation Tasks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exit-criteria_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exit Criteria
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-for-this-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Out of Scope for This Plan
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-cutting-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-cutting Verification
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tracking
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/plans/deploy-gaps-closure.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="deploy-gaps-closure">Deploy Gaps Closure<a class="headerlink" href="#deploy-gaps-closure" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Active
+<strong>Created:</strong> 2026-05-02
+<strong>Owner:</strong> @ariel-extending851
+<strong>Horizon:</strong> ~3 weeks</p>
+</blockquote>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>A prior analysis of the deploy flow (<code>bin/deploy_aws_homelab.py</code> + <code>Makefile</code> + <code>.github/workflows/ci-deployment.yml</code>) identified 5 concrete gaps where the deploy can silently degrade, asymmetrically behave between local and CI, or destroy debug evidence on failure. This plan closes those gaps and uses the same work to promote <code>bin/homelab.py</code> from a diagnostic wrapper to the canonical CLI for human-driven operations.</p>
+<p>Language decision: stay in Python. The repo already has ~6k LOC of Python automation, mise toolchain, pytest, and 21 entry points using argparse. Go would mean rewriting working code for zero operational gain — there is no Go anywhere in the repo and no distribution requirement that demands a static binary.</p>
+<hr />
+<h2 id="the-5-gaps-from-analysis">The 5 Gaps (from analysis)<a class="headerlink" href="#the-5-gaps-from-analysis" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Gap</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>make deploy</code> local does not auto-invoke <code>preflight.py</code> — gates bypassable</td>
+<td><code>Makefile:74-80</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>SOPS validation only canaries <code>adguard/secret.yaml</code>; other broken secrets fail 15min into deploy</td>
+<td><code>bin/deploy_aws_homelab.py:188-199</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Ansible failure mid-deploy has no resume — partial state forces full rebuild</td>
+<td><code>bin/deploy_aws_homelab.py:589-591</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>CI rollback destroys infra immediately on phase 1-3 failure — no halt-and-investigate</td>
+<td><code>ci-deployment.yml:925-1001</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>velero_pre_deploy_backup.py</code> silently no-ops if cluster unreachable — no warning</td>
+<td><code>bin/velero_pre_deploy_backup.py:12-16</code></td>
+</tr>
+</tbody>
+</table>
+<p>Bonus secondary gaps (folded into Phase 4):</p>
+<ul>
+<li>Observability gate runs in parallel with smoke tests — possible race window (<code>ci-deployment.yml:711-815</code>)</li>
+<li>Plan binary in <code>terraform-plan-prod</code> may be stale by the time <code>terraform-apply</code> runs (<code>ci-deployment.yml:373-377</code>)</li>
+<li>No isolated unit test for <code>deploy_aws_homelab.py</code> orchestration logic — only validated via live staging canary</li>
+<li><code>pyproject.toml</code> measures branch coverage but does not enforce a <code>fail_under</code> threshold</li>
+</ul>
+<hr />
+<h2 id="phase-1-days-1-5-foundational-safety">Phase 1 (Days 1-5): Foundational Safety<a class="headerlink" href="#phase-1-days-1-5-foundational-safety" title="Permanent link">&para;</a></h2>
+<h3 id="objectives">Objectives<a class="headerlink" href="#objectives" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Make preflight non-bypassable on <code>make deploy</code></li>
+<li>Make SOPS validation comprehensive</li>
+<li>Make pre-deploy backup status loud, not silent</li>
+</ol>
+<h3 id="deliverables">Deliverables<a class="headerlink" href="#deliverables" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>bin/preflight.py</code> invoked unconditionally by <code>Makefile:deploy</code> target</li>
+<li>SOPS validation iterates over <strong>every</strong> <code>k8s/**/secret.yaml</code> and reports per-file decrypt status</li>
+<li><code>bin/velero_pre_deploy_backup.py</code> emits a clear warning + sets exit code 2 (not 0) when skipping; CI surfaces this as a yellow gate</li>
+</ol>
+<h3 id="implementation-tasks">Implementation Tasks<a class="headerlink" href="#implementation-tasks" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Preflight integration</strong> (<code>Makefile</code>, ~10 lines):</li>
+<li>Add <code>preflight</code> as a prerequisite to <code>deploy</code> target</li>
+<li>Add <code>--skip-preflight</code> opt-out with stdin confirmation prompt (refuse <code>--yes</code> flag)</li>
+<li><strong>SOPS deep validation</strong> (<code>bin/deploy_aws_homelab.py:188-199</code>):</li>
+<li>Replace single-canary check with <code>Path("k8s").rglob("secret.yaml")</code> loop</li>
+<li>Report aggregated success/failure; fail fast if <strong>any</strong> file fails</li>
+<li>Add unit test in <code>bin/tests/test_deploy_aws_homelab.py</code> mocking <code>subprocess.run</code> for <code>sops -d</code></li>
+<li><strong>Velero backup loudness</strong> (<code>bin/velero_pre_deploy_backup.py:12-16</code>):</li>
+<li>Replace silent <code>sys.exit(0)</code> with stderr warning + <code>sys.exit(2)</code> when cluster unreachable</li>
+<li>Update CI step to treat exit 2 as <code>continue-on-error: true</code> but surface annotation</li>
+<li>Add unit test for the unreachable-cluster path</li>
+</ol>
+<h3 id="exit-criteria">Exit Criteria<a class="headerlink" href="#exit-criteria" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>make deploy</code> cannot succeed without preflight passing (verified by integration test)</li>
+<li>Corrupting any <code>k8s/**/secret.yaml</code> makes <code>make deploy</code> fail in &lt;30s instead of 15min</li>
+<li>CI run on a fresh AWS account shows velero-backup yellow annotation, not green</li>
+</ol>
+<hr />
+<h2 id="phase-2-days-6-12-cli-promotion">Phase 2 (Days 6-12): CLI Promotion<a class="headerlink" href="#phase-2-days-6-12-cli-promotion" title="Permanent link">&para;</a></h2>
+<h3 id="objectives_1">Objectives<a class="headerlink" href="#objectives_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Promote <code>bin/homelab.py</code> to the canonical human-facing CLI</li>
+<li>Replace ad-hoc <code>python3 bin/X.py</code> patterns with <code>homelab &lt;cmd&gt;</code></li>
+<li>Cover the gap in test coverage (<code>homelab.py</code> currently has no tests)</li>
+</ol>
+<h3 id="deliverables_1">Deliverables<a class="headerlink" href="#deliverables_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>homelab</code> registered as a <code>console_scripts</code> entry point in <code>pyproject.toml</code></li>
+<li>New subcommands wired to existing modules:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Backed by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>homelab deploy</code></td>
+<td><code>bin/deploy_aws_homelab.py</code></td>
+</tr>
+<tr>
+<td><code>homelab preflight</code></td>
+<td><code>bin/preflight.py</code></td>
+</tr>
+<tr>
+<td><code>homelab smoke</code></td>
+<td><code>bin/smoke_test.py</code></td>
+</tr>
+<tr>
+<td><code>homelab rollback</code></td>
+<td><code>bin/verify_aws_rollback.py</code></td>
+</tr>
+<tr>
+<td><code>homelab backup pre</code></td>
+<td><code>bin/velero_pre_deploy_backup.py</code></td>
+</tr>
+<tr>
+<td><code>homelab backup verify</code></td>
+<td>calls <code>make test-velero-restore</code></td>
+</tr>
+<tr>
+<td><code>homelab drift [--fix]</code></td>
+<td><code>bin/drift.py</code></td>
+</tr>
+<tr>
+<td><code>homelab argocd ...</code></td>
+<td>already present</td>
+</tr>
+<tr>
+<td><code>homelab k3s ...</code></td>
+<td>already present</td>
+</tr>
+<tr>
+<td><code>homelab tf ...</code></td>
+<td>already present</td>
+</tr>
+<tr>
+<td>3. Unit tests for <code>homelab.py</code> subcommand dispatch + arg parsing in <code>bin/tests/test_homelab.py</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="implementation-tasks_1">Implementation Tasks<a class="headerlink" href="#implementation-tasks_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add <code>[project.scripts]</code> section to <code>pyproject.toml</code>:
+   <div class="highlight"><pre><span></span><code><span class="k">[project.scripts]</span>
+<span class="n">homelab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;bin.homelab:main&quot;</span>
+</code></pre></div></li>
+<li>Add new subcommand groups in <code>bin/homelab.py</code> following the existing argparse pattern (no library swap — argparse is already idiomatic here)</li>
+<li>Each new subcommand imports the existing module's <code>main()</code> (or relevant <code>run_*()</code>) — no logic duplication</li>
+<li>Update Makefile help text to point to <code>homelab &lt;cmd&gt;</code> as the recommended invocation; keep <code>make</code> targets as thin shims (CI continues to call <code>make</code>, humans use CLI)</li>
+<li>Add <code>bin/tests/test_homelab.py</code> covering: subcommand dispatch table, argv passthrough, exit code propagation, <code>--help</code> output for each subcommand</li>
+</ol>
+<h3 id="exit-criteria_1">Exit Criteria<a class="headerlink" href="#exit-criteria_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>pip install -e .</code> makes <code>homelab</code> available globally</li>
+<li><code>homelab --help</code> lists all subcommands; each subcommand has working <code>--help</code></li>
+<li><code>bin/tests/test_homelab.py</code> covers ≥80% of <code>homelab.py</code> lines</li>
+<li><code>docs/CONVENTIONS.md</code> updated: humans → CLI, CI → make targets</li>
+</ol>
+<h3 id="non-goals-for-this-phase">Non-goals for this phase<a class="headerlink" href="#non-goals-for-this-phase" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Migrating away from argparse (Typer/Click is a future cosmetic upgrade, not a gate)</li>
+<li>Removing Makefile targets (they remain the CI entry point)</li>
+</ul>
+<hr />
+<h2 id="phase-3-days-13-18-resilience-and-recoverability">Phase 3 (Days 13-18): Resilience and Recoverability<a class="headerlink" href="#phase-3-days-13-18-resilience-and-recoverability" title="Permanent link">&para;</a></h2>
+<h3 id="objectives_2">Objectives<a class="headerlink" href="#objectives_2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Make Ansible-stage failures resumable instead of forcing full rebuild</li>
+<li>Replace immediate destroy-on-failure with a halt-and-investigate state in CI</li>
+<li>Close the asymmetry between local and CI failure paths</li>
+</ol>
+<h3 id="deliverables_2">Deliverables<a class="headerlink" href="#deliverables_2" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>homelab deploy --resume-from=&lt;stage&gt;</code> flag that skips already-completed stages by reading a deploy state file</li>
+<li>CI failure mode toggle: <code>HALT_ON_DEPLOY_FAILURE</code> env var (default: halt). When set, CI tags infra <code>do-not-destroy=true</code>, opens a GitHub issue with the failure context, and parks the workflow until manual <code>workflow_dispatch</code> of <code>rollback.yml</code></li>
+<li>Standalone <code>rollback.yml</code> workflow that runs <code>terraform destroy</code> + <code>homelab rollback</code> on demand</li>
+</ol>
+<h3 id="implementation-tasks_2">Implementation Tasks<a class="headerlink" href="#implementation-tasks_2" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>State file for resume</strong> (<code>bin/deploy_aws_homelab.py</code>):</li>
+<li>On each stage completion, write <code>.deploy-state.json</code> to project root with <code>{stage: completed_at}</code> map</li>
+<li>On <code>--resume-from=ansible</code>, skip terraform/preflight/SOPS phases if state shows them complete and not stale (&gt;2h triggers re-validation)</li>
+<li>Add <code>homelab deploy reset-state</code> to clear the file</li>
+<li><strong>Halt-on-failure</strong> (<code>ci-deployment.yml:925-1001</code>):</li>
+<li>Replace direct destroy job with conditional logic: if <code>HALT_ON_DEPLOY_FAILURE</code> true (default), tag instances and open issue; else fall through to existing destroy</li>
+<li>Use <code>gh issue create --label deploy-failure</code> with run URL, failed step, and link to logs</li>
+<li><strong>rollback.yml workflow</strong>:</li>
+<li>Manual <code>workflow_dispatch</code> trigger only</li>
+<li>Inputs: <code>confirmation</code> (must literally be <code>ROLLBACK</code>), <code>reason</code> (free text for audit log)</li>
+<li>Runs <code>terraform destroy</code> + <code>verify_aws_rollback.py</code></li>
+<li>Tests:</li>
+<li>Unit test for resume logic (mock state file scenarios)</li>
+<li>Tests for both halt and direct-destroy paths in <code>ci-deployment.yml</code></li>
+</ol>
+<h3 id="exit-criteria_2">Exit Criteria<a class="headerlink" href="#exit-criteria_2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Killing Ansible mid-run, then <code>homelab deploy --resume-from=ansible</code> completes without re-running terraform</li>
+<li>Forcing CI deploy failure with <code>HALT_ON_DEPLOY_FAILURE=true</code> leaves infra alive and creates a GitHub issue</li>
+<li>Manual <code>rollback.yml</code> dispatch successfully tears down halted infra</li>
+<li>Local <code>homelab deploy</code> failure leaves a parseable state file for re-runs</li>
+</ol>
+<hr />
+<h2 id="phase-4-days-19-21-test-and-gate-hardening">Phase 4 (Days 19-21): Test and Gate Hardening<a class="headerlink" href="#phase-4-days-19-21-test-and-gate-hardening" title="Permanent link">&para;</a></h2>
+<h3 id="objectives_3">Objectives<a class="headerlink" href="#objectives_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Cover <code>deploy_aws_homelab.py</code> orchestration with isolated unit tests</li>
+<li>Enforce coverage threshold in <code>pyproject.toml</code></li>
+<li>Sequence post-deploy gates correctly (no race between observability and smoke)</li>
+<li>Add <code>tflint</code> to terraform validation</li>
+</ol>
+<h3 id="deliverables_3">Deliverables<a class="headerlink" href="#deliverables_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>bin/tests/test_deploy_aws_homelab_orchestration.py</code> testing stage ordering, error propagation, rollback triggers — fully mocked, no AWS</li>
+<li><code>pyproject.toml</code> enforces <code>--cov-fail-under=80</code> (current: 90% coverage; threshold of 80 prevents regression with margin)</li>
+<li><code>ci-deployment.yml</code> runs <code>post_deploy_observability_gate.py</code> <strong>before</strong> smoke + e2e (sequential, not parallel)</li>
+<li><code>tflint</code> added to <code>.mise.toml</code> and run via <code>make validate-terraform-all</code> (tflint config already mentioned in memory but never wired)</li>
+</ol>
+<h3 id="implementation-tasks_3">Implementation Tasks<a class="headerlink" href="#implementation-tasks_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Orchestration tests: parameterize over stage failure points (terraform fails / ansible fails / argocd fails) and assert correct error messages, exit codes, and side effects</li>
+<li>Add <code>fail_under = 80</code> to <code>[tool.coverage.report]</code> in <code>pyproject.toml</code>; bump CI runner to use <code>--cov-fail-under=80</code></li>
+<li>Restructure <code>ci-deployment.yml</code> job graph: <code>argocd-wait</code> → <code>observability-gate</code> → <code>smoke-test</code> → <code>e2e-tests</code> → <code>velero-restore-test</code></li>
+<li>Wire <code>tflint</code>:</li>
+<li>Add <code>tflint = "0.55.1"</code> to <code>.mise.toml</code></li>
+<li>Create <code>.tflint.hcl</code> at repo root with conservative rules</li>
+<li>Add <code>tflint --recursive infra/aws/</code> to <code>Makefile:validate-terraform-all</code></li>
+<li>Address terraform plan-staleness: add <code>terraform plan -detailed-exitcode</code> re-check immediately before <code>terraform apply</code> in <code>ci-deployment.yml:373-377</code> and fail if plan changed</li>
+</ol>
+<h3 id="exit-criteria_3">Exit Criteria<a class="headerlink" href="#exit-criteria_3" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>make test-python</code> passes with <code>--cov-fail-under=80</code> enforced</li>
+<li><code>bin/tests/test_deploy_aws_homelab_orchestration.py</code> covers all 4 main stages with mocked subprocess</li>
+<li>CI deploy job graph is sequential through gates; demonstrated by introducing a fake CrashLoopBackOff and confirming smoke test does NOT run</li>
+<li><code>tflint</code> flags at least one finding on first run (or explicitly green if clean)</li>
+</ol>
+<hr />
+<h2 id="out-of-scope-for-this-plan">Out of Scope for This Plan<a class="headerlink" href="#out-of-scope-for-this-plan" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Migrating argparse → Typer/Click (cosmetic; revisit after Phase 4 ships)</li>
+<li>Replacing Makefile entirely (CI keeps using it; humans switch to CLI)</li>
+<li>Building a new policy framework (existing OPA/conftest is sufficient)</li>
+<li>Distribution as a static binary (Python install is fine for this team)</li>
+<li>Migrating <code>.bats</code> tests to Python (already analyzed — keep as-is)</li>
+</ol>
+<h2 id="cross-cutting-verification">Cross-cutting Verification<a class="headerlink" href="#cross-cutting-verification" title="Permanent link">&para;</a></h2>
+<p>After all phases ship, the following should hold end-to-end:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. CLI is the canonical human entry point</span>
+homelab<span class="w"> </span>--help<span class="w">                       </span><span class="c1"># lists 9+ subcommands</span>
+
+<span class="c1"># 2. Preflight cannot be silently bypassed</span>
+make<span class="w"> </span>deploy<span class="w">                          </span><span class="c1"># auto-runs preflight; refuses --yes for skip</span>
+
+<span class="c1"># 3. Resume works</span>
+homelab<span class="w"> </span>deploy<span class="w">                       </span><span class="c1"># interrupt during ansible</span>
+homelab<span class="w"> </span>deploy<span class="w"> </span>--resume-from<span class="o">=</span>ansible<span class="w"> </span><span class="c1"># skips terraform, picks up at ansible</span>
+
+<span class="c1"># 4. Halt-on-failure works in CI</span>
+gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span>ci-deployment.yml<span class="w"> </span>-f<span class="w"> </span><span class="nv">force_failure</span><span class="o">=</span>ansible
+<span class="c1"># → infra alive, issue opened, no auto-destroy</span>
+
+<span class="c1"># 5. Coverage enforced</span>
+make<span class="w"> </span>test-python<span class="w">                     </span><span class="c1"># fails if any PR drops coverage below 80%</span>
+
+<span class="c1"># 6. Sequential gates</span>
+<span class="c1"># Forced CrashLoopBackOff after argocd-wait → observability-gate fails BEFORE smoke runs</span>
+</code></pre></div>
+<h2 id="tracking">Tracking<a class="headerlink" href="#tracking" title="Permanent link">&para;</a></h2>
+<p>Each phase ships as one PR (or 2 if size warrants). Update the status table at the top as phases complete:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Status</th>
+<th>PR</th>
+<th>Completed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Foundational Safety</td>
+<td>✅ Done (local)</td>
+<td>—</td>
+<td>2026-05-02</td>
+</tr>
+<tr>
+<td>2 — CLI Promotion</td>
+<td>✅ Done (local)</td>
+<td>—</td>
+<td>2026-05-02</td>
+</tr>
+<tr>
+<td>3 — Resilience</td>
+<td>✅ Done (local)</td>
+<td>—</td>
+<td>2026-05-02</td>
+</tr>
+<tr>
+<td>4 — Test &amp; Gate Hardening</td>
+<td>✅ Done (local)</td>
+<td>—</td>
+<td>2026-05-02</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

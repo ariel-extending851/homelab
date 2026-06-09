@@ -1,0 +1,2433 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/runbooks/image-upgrade-sprint-2026-q3/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Image Upgrade Sprint — 2026 Q3 - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#image-upgrade-sprint-2026-q3" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Image Upgrade Sprint — 2026 Q3
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#phase-1-outcome-go-stdlib-pattern-read-before-starting-future-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 outcome — Go-stdlib pattern (read before starting future phases)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategy-do-nothing-brave" class="md-nav__link">
+    <span class="md-ellipsis">
+      Strategy: do nothing brave
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-flight-checklist-run-before-every-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-flight checklist (run before EVERY phase)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phases
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-patch-level-batch-1-pr-30-min-effort-manifest-changes-done-2026-05-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — Patch-level batch (1 PR, ≈30 min effort) — manifest changes done 2026-05-02
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-velero-v115-1-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Velero v1.15+ (1 PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-prometheus-255-1-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — Prometheus 2.55+ (1 PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-otel-collector-0115-1-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — OTel Collector 0.115+ (1 PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-loki-3x-1-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — Loki 3.x (1 PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-6-grafana-11-lts-1-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 6 — Grafana 11 LTS (1 PR)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#universal-rollback-playbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      Universal rollback playbook
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sign-off-criteria-per-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sign-off criteria (per phase)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tracking
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/runbooks/image-upgrade-sprint-2026-q3.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="image-upgrade-sprint-2026-q3">Image Upgrade Sprint — 2026 Q3<a class="headerlink" href="#image-upgrade-sprint-2026-q3" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Owner:</strong> @ariel-extending851
+<strong>Target completion:</strong> 2026-07-30 (matches <code>.trivy-image-allowlist.txt</code> review-by date)
+<strong>Status:</strong> Phase 1 manifest changes done (2026-05-02); awaiting deploy + soak</p>
+</blockquote>
+<h2 id="phase-1-outcome-go-stdlib-pattern-read-before-starting-future-phases">Phase 1 outcome — Go-stdlib pattern (read before starting future phases)<a class="headerlink" href="#phase-1-outcome-go-stdlib-pattern-read-before-starting-future-phases" title="Permanent link">&para;</a></h2>
+<p>When Phase 1 ran (2026-05-02), 4 of 5 bumped images <strong>still tripped Trivy strict</strong> despite jumping to the latest upstream stable tag. Every remaining HIGH/CRITICAL was a <strong>Go stdlib or Go library CVE</strong> (<code>stdlib</code>, <code>google.golang.org/grpc</code>, <code>go.opentelemetry.io/otel/sdk</code>, <code>opencontainers/selinux</code>) baked into the upstream's static binary. We can't fix these without an upstream rebuild against a newer Go toolchain.</p>
+<p><strong>Implication for the remaining phases:</strong> when bumping Prometheus / OTel / Loki / Grafana / Velero, expect the same pattern — getting to <strong>zero CVEs</strong> is not always possible at PR time. Acceptance criteria for those phases is <strong>CVE count meaningfully reduced</strong> plus all functional tests green, NOT necessarily a clean trivy-strict exit. Where residual CVEs persist, re-allowlist with a 90-day review-by and document that we're waiting on upstream rebuild.</p>
+<p>Concrete numbers, Phase 1 (HIGH+CRITICAL fixable counts):</p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Before</th>
+<th>After</th>
+<th>Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AdGuard</td>
+<td>11</td>
+<td><strong>0</strong> (clean ✅)</td>
+<td>-11</td>
+</tr>
+<tr>
+<td>Blackbox</td>
+<td>22</td>
+<td>8</td>
+<td>-14</td>
+</tr>
+<tr>
+<td>Node-exporter</td>
+<td>17</td>
+<td>11</td>
+<td>-6</td>
+</tr>
+<tr>
+<td>kube-state-metrics</td>
+<td>20</td>
+<td>10</td>
+<td>-10</td>
+</tr>
+<tr>
+<td>Golink</td>
+<td>(re-pinned)</td>
+<td>4</td>
+<td>n/a</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why">Why<a class="headerlink" href="#why" title="Permanent link">&para;</a></h2>
+<p>10 of 13 deployed images carry HIGH/CRITICAL CVEs that are currently allowlisted in <a href="../../.trivy-image-allowlist.txt"><code>.trivy-image-allowlist.txt</code></a>. The allowlist is <strong>suppression, not mitigation</strong> — every entry expires 2026-07-30. This runbook sequences the upgrades from lowest to highest blast radius so we land them with the most rollback room.</p>
+<h2 id="strategy-do-nothing-brave">Strategy: do nothing brave<a class="headerlink" href="#strategy-do-nothing-brave" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>One PR per phase</strong> (Phase 1 batches patch bumps; Phases 2-6 are single-app).</li>
+<li><strong>Each PR removes its entries from the allowlist</strong> as part of the change — Trivy strict gate proves the bump worked.</li>
+<li><strong>Velero backup before each phase</strong> — non-negotiable; the file ID becomes the rollback restore point.</li>
+<li><strong>Soak time between phases</strong> — bugs surface under real traffic. Don't compress.</li>
+<li><strong>Stop on first failure</strong> — investigate before queueing the next phase.</li>
+</ul>
+<h2 id="pre-flight-checklist-run-before-every-phase">Pre-flight checklist (run before EVERY phase)<a class="headerlink" href="#pre-flight-checklist-run-before-every-phase" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Local validation gate</span>
+make<span class="w"> </span>test-offline-required<span class="w">          </span><span class="c1"># all ~13 offline suites must pass</span>
+
+<span class="c1"># 2. Cluster baseline</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>apps<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w">          </span><span class="c1"># all Synced + Healthy</span>
+make<span class="w"> </span>smoke-test<span class="w">                     </span><span class="c1"># 20+ checks across cluster</span>
+
+<span class="c1"># 3. Backup gate</span>
+velero<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>pre-upgrade-<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d-%H%M<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-namespaces<span class="w"> </span>grafana,loki,prometheus,otel-collector,velero,adguard,golink,kube-state-metrics,node-exporter,blackbox<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--wait
+velero<span class="w"> </span>backup<span class="w"> </span>describe<span class="w"> </span>&lt;backup-name&gt;<span class="w">   </span><span class="c1"># confirm Phase=Completed, no errors</span>
+
+<span class="c1"># 4. Metrics baseline (informational — saves grief during regression hunt)</span>
+<span class="c1"># Snapshot the Grafana &quot;Homelab K3s Overview&quot; dashboard panel-by-panel</span>
+<span class="c1"># Save as PNG attached to the PR description</span>
+</code></pre></div>
+<h2 id="phases">Phases<a class="headerlink" href="#phases" title="Permanent link">&para;</a></h2>
+<p>Ordered by risk, lowest → highest. Soak before promoting to next phase.</p>
+<h3 id="phase-1-patch-level-batch-1-pr-30-min-effort-manifest-changes-done-2026-05-02">Phase 1 — Patch-level batch (1 PR, ≈30 min effort) — manifest changes done 2026-05-02<a class="headerlink" href="#phase-1-patch-level-batch-1-pr-30-min-effort-manifest-changes-done-2026-05-02" title="Permanent link">&para;</a></h3>
+<p>Five patch/minor bumps with no documented breaking changes. Group into a single PR for shared backup window.</p>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Current</th>
+<th>Target</th>
+<th>Outcome</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AdGuard Home</td>
+<td><code>v0.107.71</code></td>
+<td><code>v0.107.74</code></td>
+<td>clean ✅</td>
+<td><code>k8s/apps/adguard/deployment.yaml</code></td>
+</tr>
+<tr>
+<td>Blackbox Exporter</td>
+<td><code>v0.24.0</code></td>
+<td><code>v0.28.0</code></td>
+<td>-14 CVEs, allowlisted</td>
+<td><code>k8s/apps/blackbox/deployment.yaml</code></td>
+</tr>
+<tr>
+<td>Node Exporter</td>
+<td><code>v1.7.0</code></td>
+<td><code>v1.9.1</code></td>
+<td>-6 CVEs, allowlisted</td>
+<td><code>k8s/apps/node-exporter/daemonset.yaml</code></td>
+</tr>
+<tr>
+<td>kube-state-metrics</td>
+<td><code>v2.9.2</code></td>
+<td><code>v2.18.0</code></td>
+<td>-10 CVEs, allowlisted</td>
+<td><code>k8s/apps/kube-state-metrics/deployment.yaml</code></td>
+</tr>
+<tr>
+<td>Golink</td>
+<td><code>main@sha256:ba53…</code></td>
+<td><code>main@sha256:011e6a…</code></td>
+<td>re-pinned to current <code>:main</code></td>
+<td><code>k8s/apps/golink/deployment.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>test-trivy-strict<span class="w">              </span><span class="c1"># confirm bumped images pass without allowlist</span>
+make<span class="w"> </span>test-k8s-policies-critical<span class="w">     </span><span class="c1"># OPA still green</span>
+kustomize<span class="w"> </span>build<span class="w"> </span>k8s/apps<span class="w"> </span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="c1"># renders cleanly</span>
+<span class="c1"># Push PR; after merge + ArgoCD sync:</span>
+make<span class="w"> </span>smoke-test
+make<span class="w"> </span>test-e2e-post-deploy
+</code></pre></div></p>
+<p><strong>Rollback:</strong> <code>git revert &lt;sha&gt;</code> → ArgoCD reverts. PVCs untouched.
+<strong>Soak:</strong> 24h before Phase 2.</p>
+<h3 id="phase-2-velero-v115-1-pr">Phase 2 — Velero v1.15+ (1 PR)<a class="headerlink" href="#phase-2-velero-v115-1-pr" title="Permanent link">&para;</a></h3>
+<p>Standalone; no in-cluster consumers. Velero CRDs are backwards-compatible per upstream changelog; existing schedules + backups remain valid.</p>
+<p><strong>Files:</strong> <code>k8s/apps/velero/deployment.yaml</code>, <code>k8s/apps/velero/daemonset.yaml</code></p>
+<p><strong>Pre-checks specific to this phase:</strong>
+- Read <a href="https://github.com/vmware-tanzu/velero/releases">Velero v1.15 release notes</a> — call out any deprecated flags in our <code>args:</code> list
+- Confirm CSI snapshot driver compat (we use restic uploader — <code>--uploader-type=restic</code> still supported in v1.15+)</p>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>test-dr<span class="w">                        </span><span class="c1"># Molecule scenario re-runs the role logic</span>
+<span class="c1"># Post-deploy:</span>
+velero<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>test-post-upgrade<span class="w"> </span>--wait
+velero<span class="w"> </span>backup<span class="w"> </span>describe<span class="w"> </span>test-post-upgrade<span class="w">   </span><span class="c1"># Phase=Completed</span>
+velero<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>test-post-upgrade<span class="w"> </span>--dry-run<span class="w">  </span><span class="c1"># validate</span>
+</code></pre></div></p>
+<p><strong>Rollback:</strong> revert PR; if backup CRD schema diverged, restore from <code>pre-upgrade-*</code> Velero backup of <code>velero</code> namespace.
+<strong>Soak:</strong> 48h. Wait for at least one scheduled backup cycle.</p>
+<h3 id="phase-3-prometheus-255-1-pr">Phase 3 — Prometheus 2.55+ (1 PR)<a class="headerlink" href="#phase-3-prometheus-255-1-pr" title="Permanent link">&para;</a></h3>
+<p>Minor version. TSDB format is stable across 2.45 → 2.55 (verified per upstream).</p>
+<p><strong>File:</strong> <code>k8s/apps/prometheus/deployment.yaml</code></p>
+<p><strong>Pre-checks:</strong>
+- Read <a href="https://github.com/prometheus/prometheus/blob/main/CHANGELOG.md">Prometheus 2.46-2.55 changelogs</a> — flag any flag deprecations (e.g., <code>--storage.tsdb.retention</code> was already replaced by <code>.time</code> in 2.30+, but double-check)
+- Snapshot TSDB before bump:
+  <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>prometheus<span class="w"> </span>deploy/prometheus<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>promtool<span class="w"> </span>tsdb<span class="w"> </span>create-blocks-from<span class="w"> </span>snapshot<span class="w"> </span>/prometheus
+</code></pre></div>
+- Velero backup of <code>prometheus</code> namespace (already in pre-flight)</p>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># After ArgoCD sync:</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://prometheus.lan:9090/-/ready<span class="w">              </span><span class="c1"># 200</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://prometheus.lan:9090/api/v1/targets<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.data.activeTargets | length&#39;</span><span class="w">  </span><span class="c1"># baseline</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://prometheus.lan:9090/api/v1/rules<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.data.groups | length&#39;</span><span class="w">           </span><span class="c1"># rules loaded</span>
+<span class="c1"># Sanity query</span>
+curl<span class="w"> </span>-sG<span class="w"> </span>http://prometheus.lan:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=sum(up)&#39;</span>
+</code></pre></div></p>
+<p><strong>Rollback:</strong> revert PR. PVC contents stay valid (TSDB is forward+backward compatible across minor versions).
+<strong>Soak:</strong> 48h. Watch for scrape errors, alert evaluation lag.</p>
+<h3 id="phase-4-otel-collector-0115-1-pr">Phase 4 — OTel Collector 0.115+ (1 PR)<a class="headerlink" href="#phase-4-otel-collector-0115-1-pr" title="Permanent link">&para;</a></h3>
+<p>⚠️ <strong>Config breaking changes</strong> between 0.102 and 0.115. Plan carefully.</p>
+<p><strong>File:</strong> <code>k8s/apps/otel-collector/daemonset.yaml</code> + <code>configmap.yaml</code></p>
+<p><strong>Pre-checks (mandatory):</strong>
+- Read <a href="https://github.com/open-telemetry/opentelemetry-collector/blob/main/CHANGELOG.md">OTel Collector breaking-changes log</a> for every release between 0.102 and target
+- Common breaks: <code>service::pipelines::*::processors</code> ordering rules, <code>loki</code> exporter renamed to <code>lokiexporter</code>, hostmetrics scraper config keys
+- Validate new config locally <strong>before</strong> the PR:
+  <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span><span class="nv">$PWD</span>/k8s/apps/otel-collector/configmap.yaml:/etc/otel/config.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>otel/opentelemetry-collector-contrib:0.115.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="o">=</span>/etc/otel/config.yaml<span class="w"> </span>--dry-run
+</code></pre></div></p>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># After ArgoCD sync:</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>otel-collector<span class="w"> </span>ds/otel-collector<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span><span class="w">  </span><span class="c1"># no schema errors</span>
+<span class="c1"># Confirm log shipping</span>
+logcli<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="s1">&#39;{namespace=&quot;otel-collector&quot;}&#39;</span>
+<span class="c1"># Confirm metrics are flowing</span>
+curl<span class="w"> </span>-sG<span class="w"> </span>http://prometheus.lan:9090/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">&#39;query=otelcol_exporter_sent_logs_records&#39;</span>
+</code></pre></div></p>
+<p><strong>Rollback:</strong> revert PR. otel-collector is stateless — no data loss on rollback.
+<strong>Soak:</strong> 24h. Watch for receiver/exporter accepted/refused metrics.</p>
+<h3 id="phase-5-loki-3x-1-pr">Phase 5 — Loki 3.x (1 PR)<a class="headerlink" href="#phase-5-loki-3x-1-pr" title="Permanent link">&para;</a></h3>
+<p>⚠️ <strong>Schema migration.</strong> This is the riskiest of the chain.</p>
+<p><strong>Files:</strong> <code>k8s/apps/loki/deployment.yaml</code>, <code>k8s/apps/loki/configmap.yaml</code></p>
+<p><strong>Migration approach:</strong> add new schema starting from a future date; keep old schema accessible for historical queries. From <a href="https://grafana.com/docs/loki/latest/setup/upgrade/">Loki upgrade docs</a>, the v12 → v13 schema change is forward-compatible — Loki reads old blocks via the legacy schema entry and writes new blocks under the new schema.</p>
+<p><strong>Pre-checks (mandatory):</strong>
+- Velero backup of <code>loki</code> namespace + PVC (covered in pre-flight)
+- Add new schema entry in <code>loki.yaml</code> config <strong>before</strong> bumping image:
+  <div class="highlight"><pre><span></span><code><span class="nt">schema_config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">configs</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2022-01-01</span><span class="w">           </span><span class="c1"># existing</span>
+<span class="w">      </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">boltdb-shipper</span>
+<span class="w">      </span><span class="nt">object_store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">filesystem</span>
+<span class="w">      </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v12</span>
+<span class="w">      </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> prefix</span><span class="p">:</span><span class="w"> </span><span class="nv">index_</span><span class="p p-Indicator">,</span><span class="nt"> period</span><span class="p">:</span><span class="w"> </span><span class="nv">24h</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-07-01</span><span class="w">           </span><span class="c1"># new — date must be in the future at PR open</span>
+<span class="w">      </span><span class="nt">store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsdb</span>
+<span class="w">      </span><span class="nt">object_store</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">filesystem</span>
+<span class="w">      </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v13</span>
+<span class="w">      </span><span class="nt">index</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> prefix</span><span class="p">:</span><span class="w"> </span><span class="nv">index_v13_</span><span class="p p-Indicator">,</span><span class="nt"> period</span><span class="p">:</span><span class="w"> </span><span class="nv">24h</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+- Push the schema-only change first; let it soak 24h; <strong>then</strong> bump the image in a follow-up PR</p>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># After ArgoCD sync (image bump):</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>loki<span class="w"> </span>deploy/loki<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;schema|panic|fatal&quot;</span><span class="w">  </span><span class="c1"># nothing fatal</span>
+<span class="c1"># Old logs still queryable</span>
+logcli<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="s1">&#39;{namespace=&quot;grafana&quot;}&#39;</span><span class="w"> </span>--from<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;7 days ago&#39;</span><span class="w"> </span>--iso-8601<span class="o">=</span>s<span class="k">)</span>
+<span class="c1"># New logs ingesting</span>
+logcli<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="s1">&#39;{namespace=&quot;grafana&quot;}&#39;</span><span class="w"> </span>--since<span class="o">=</span>5m
+</code></pre></div></p>
+<p><strong>Rollback:</strong> revert image bump PR (config can stay — it's additive). If chunks corrupted, restore PVC from Velero.
+<strong>Soak:</strong> 72h — logs accumulate; verify query patterns over multi-day windows.</p>
+<h3 id="phase-6-grafana-11-lts-1-pr">Phase 6 — Grafana 11 LTS (1 PR)<a class="headerlink" href="#phase-6-grafana-11-lts-1-pr" title="Permanent link">&para;</a></h3>
+<p>⚠️ <strong>Dashboard regression risk.</strong> Highest user-visible blast radius.</p>
+<p><strong>File:</strong> <code>k8s/apps/grafana/deployment.yaml</code></p>
+<p><strong>Pre-checks (mandatory):</strong>
+- Read <a href="https://grafana.com/docs/grafana/latest/upgrade-guide/upgrade-v11.0/">Grafana 11 LTS migration guide</a> end-to-end
+- Common breaks: Angular plugins removed (check installed plugins), <code>transformations</code> API changes, <code>query.refId</code> mandatory, alerting v1 → v2 if not already migrated
+- Export every dashboard JSON via API as a backup:
+  <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>grafana<span class="w"> </span>deploy/grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>grafana-cli<span class="w"> </span>admin<span class="w"> </span>export-dashboard<span class="w"> </span>&gt;<span class="w"> </span>/tmp/dashboards-pre-upgrade.json
+<span class="c1"># OR via API per-folder</span>
+</code></pre></div>
+- If feasible: spin up a separate Grafana 11 pod against the same data sources in a dev namespace; load dashboards; verify panels render</p>
+<p><strong>Verification:</strong>
+<div class="highlight"><pre><span></span><code><span class="c1"># After ArgoCD sync:</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>grafana<span class="w"> </span>deploy/grafana<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-iE<span class="w"> </span><span class="s2">&quot;error|panic|migration&quot;</span>
+<span class="c1"># Health check</span>
+curl<span class="w"> </span>-s<span class="w"> </span>http://grafana.lan:3000/api/health
+<span class="c1"># Data source health (per source)</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>http://grafana.lan:3000/api/datasources<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.[] | &quot;\(.name) \(.type)&quot;&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>name<span class="w"> </span>type<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Testing </span><span class="nv">$name</span><span class="s2">...&quot;</span>
+<span class="w">    </span><span class="c1"># Manually load each dashboard in the UI; can&#39;t fully automate panel render</span>
+<span class="w">  </span><span class="k">done</span>
+</code></pre></div></p>
+<p><strong>Manual gate:</strong> open every dashboard in the UI; confirm panels populate and time range works. Cannot be automated reliably.</p>
+<p><strong>Rollback:</strong> revert PR. PVC contents stay (Grafana 10 reads its own DB schema; 11 may upgrade DB schema irreversibly — the <strong>Velero backup is the recovery path</strong>).
+<strong>Soak:</strong> 1 week before declaring done.</p>
+<h2 id="universal-rollback-playbook">Universal rollback playbook<a class="headerlink" href="#universal-rollback-playbook" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Revert</span>
+git<span class="w"> </span>revert<span class="w"> </span>&lt;commit-sha&gt;
+git<span class="w"> </span>push
+
+<span class="c1"># 2. ArgoCD auto-syncs to the previous spec</span>
+argocd<span class="w"> </span>app<span class="w"> </span>sync<span class="w"> </span>&lt;app&gt;<span class="w">          </span><span class="c1"># force if auto-sync disabled</span>
+argocd<span class="w"> </span>app<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>&lt;app&gt;<span class="w"> </span>--sync<span class="w"> </span>--health
+
+<span class="c1"># 3. If data layer corrupted (PVC contents):</span>
+velero<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>pre-upgrade-&lt;TS&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-resources<span class="w"> </span>persistentvolumeclaims,persistentvolumes<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-namespaces<span class="w"> </span>&lt;ns&gt;
+
+<span class="c1"># 4. Validate recovery</span>
+make<span class="w"> </span>smoke-test
+make<span class="w"> </span>test-e2e-post-deploy
+</code></pre></div>
+<h2 id="sign-off-criteria-per-phase">Sign-off criteria (per phase)<a class="headerlink" href="#sign-off-criteria-per-phase" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] All smoke + e2e tests pass after deploy</li>
+<li>[ ] <code>make test-trivy-strict</code> passes (image is no longer allowlisted)</li>
+<li>[ ] No new alerts firing in Prometheus that aren't pre-existing</li>
+<li>[ ] Critical dashboards verified manually (Grafana phase only)</li>
+<li>[ ] Soak window completed without incidents</li>
+<li>[ ] Allowlist entry removed from <code>.trivy-image-allowlist.txt</code> in same PR</li>
+</ul>
+<h2 id="tracking">Tracking<a class="headerlink" href="#tracking" title="Permanent link">&para;</a></h2>
+<p>PR title format: <code>chore(upgrade): &lt;app&gt; &lt;oldVer&gt;→&lt;newVer&gt;</code></p>
+<p>PR description should include:
+- Pre-upgrade Velero backup name + timestamp
+- Verification command output (paste from runbook above)
+- Soak start/end timestamps
+- Any deviations from the runbook (be honest — future-you will thank past-you)</p>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../.trivy-image-allowlist.txt"><code>.trivy-image-allowlist.txt</code></a> — current suppressions</li>
+<li><a href="../trivy-exceptions/"><code>trivy-exceptions.md</code></a> — process for managing the allowlist</li>
+<li><a href="../observability-availability/"><code>observability-availability.md</code></a> — what's at stake when Grafana/Loki/Prom downtime hits</li>
+<li><a href="../../security/fixes-backlog/"><code>docs/security/fixes-backlog.md</code></a> — broader open security work</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2449 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/architecture/portfolio-observability-pipeline-README/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Unified Grafana Alloy + eBPF Observability Pipeline - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#unified-grafana-alloy-ebpf-observability-pipeline" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Unified Grafana Alloy + eBPF Observability Pipeline
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-grafana-alloy-and-not-three-separate-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Grafana Alloy, and not three separate agents?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-beyla-user-space-ebpf-and-not-cilium-hubble-kernel-cni" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Beyla (user-space eBPF), and not Cilium Hubble (kernel CNI)?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compliance-workload-labeling-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compliance — workload labeling taxonomy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-cold-storage-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      S3 cold-storage design
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trade-offs-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Trade-offs table
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify locally
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Roadmap
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-tier-iteration-2026-05-29" class="md-nav__link">
+    <span class="md-ellipsis">
+      Edge tier iteration (2026-05-29)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Edge tier iteration (2026-05-29)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-i-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      What I learned
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-i-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      What I changed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-matters-for-a-portfolio" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why this matters for a portfolio
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/architecture/portfolio-observability-pipeline-README.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="unified-grafana-alloy-ebpf-observability-pipeline">Unified Grafana Alloy + eBPF Observability Pipeline<a class="headerlink" href="#unified-grafana-alloy-ebpf-observability-pipeline" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Active — cloud tier as originally designed; edge tier iterated to Promtail after production validation (see § Edge tier iteration).
+<strong>Repository:</strong> This document is the portfolio-facing README for the Alloy + eBPF observability pipeline. It is derived from the engineering ADR at <a href="../observability-alloy-ebpf/"><code>./observability-alloy-ebpf.md</code></a> and is intended to be copied verbatim into the public portfolio repository alongside a sanitized excerpt of the configuration.</p>
+</blockquote>
+<p>This pipeline collapses three independent telemetry agents
+(Prometheus / Loki / OTel Collector) into a <strong>single Grafana Alloy binary</strong>,
+extends it with <strong>kernel-level eBPF instrumentation via Grafana Beyla</strong>, and
+fans the output to <strong>three independent sinks</strong>: Grafana Cloud (metrics +
+logs) and AWS S3 (compressed cold storage).</p>
+<p>The same agent runs in two very different envelopes:</p>
+<ol>
+<li><strong>Edge tier</strong> — Raspberry Pi 3 / 4 acting as <code>k3s-agent</code> nodes, joined over Tailscale to an AWS-hosted control plane. Resource-constrained: the Pi 3 has 1 GB of RAM total.</li>
+<li><strong>Cloud tier</strong> — AWS EC2 spot instances (Amazon Linux 2023, kernel ≥ 6.1) running the k3s server and a stateless worker.</li>
+</ol>
+<hr />
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    subgraph EDGE["Edge tier — k3s-agent (Tailscale)"]
+        RPI3["RPi 3 — 1 GB RAM&lt;br/&gt;Alloy (systemd)"]
+        RPI4["RPi 4 — 8 GB RAM&lt;br/&gt;Alloy (systemd)"]
+    end
+
+    subgraph CLOUD["Cloud tier — k3s-server + agent (EC2)"]
+        EC2["EC2 AL2023&lt;br/&gt;Alloy (DaemonSet, privileged)&lt;br/&gt;IAM Instance Profile"]
+    end
+
+    RPI3 -- "Tailscale 100.64/10" --&gt; GC_M
+    RPI4 -- "Tailscale 100.64/10" --&gt; GC_M
+    EC2 --&gt; GC_M
+
+    RPI3 --&gt; GC_L
+    RPI4 --&gt; GC_L
+    EC2 --&gt; GC_L
+
+    EC2 --&gt; S3
+
+    GC_M["Grafana Cloud Mimir&lt;br/&gt;(metrics, 13mo retention)"]
+    GC_L["Grafana Cloud Loki&lt;br/&gt;(logs, 14d hot window)"]
+    S3["AWS S3 — Deep Archive tier&lt;br/&gt;(gzip + minute partitions,&lt;br/&gt;730d retention)"]
+
+    style EDGE fill:#f0f8ff
+    style CLOUD fill:#fff5e6
+    style GC_M fill:#e6f7ff
+    style GC_L fill:#e6f7ff
+    style S3 fill:#fff0e6</code></pre>
+<p>The edge tier writes only to Grafana Cloud — Raspberry Pis hold no AWS
+credentials. The S3 cold-storage path is reserved for the EC2 Alloy,
+which authenticates via the IAM Instance Profile attached to the
+launch template. No access keys are stored in any manifest, env file, or
+container image.</p>
+<hr />
+<h2 id="why-grafana-alloy-and-not-three-separate-agents">Why Grafana Alloy, and not three separate agents?<a class="headerlink" href="#why-grafana-alloy-and-not-three-separate-agents" title="Permanent link">&para;</a></h2>
+<p>Running Prometheus + Loki + OTel Collector side-by-side on a 1 GB Raspberry
+Pi wastes resources on three supervised processes, three sets of
+configuration, three update cadences. Alloy collapses them into one binary
+with a single configuration language (River) and one process surface to
+monitor.</p>
+<p>Concrete savings observed on the Pi 4 during canary:
+- ~110 MiB RSS for the DaemonSet path vs ~40 MiB for the native systemd path on the same node — the <strong>edge tier intentionally chooses native systemd</strong> for the same reason.
+- One systemd unit to log-tail, one WAL to disk-budget, one binary to checksum-verify on install.</p>
+<hr />
+<h2 id="why-beyla-user-space-ebpf-and-not-cilium-hubble-kernel-cni">Why Beyla (user-space eBPF), and not Cilium Hubble (kernel CNI)?<a class="headerlink" href="#why-beyla-user-space-ebpf-and-not-cilium-hubble-kernel-cni" title="Permanent link">&para;</a></h2>
+<p>The brief is "kernel-level eBPF telemetry, zero application instrumentation".
+Two paths satisfy that:</p>
+<ol>
+<li><strong>Cilium Hubble</strong> — Cilium replaces the cluster CNI, and Hubble surfaces
+   flow / HTTP / DNS telemetry from the data-plane eBPF programs.</li>
+<li><strong>Grafana Beyla</strong> — runs as a user-space binary, attaches uprobes and
+   tracepoints on its own, emits RED metrics (Rate / Errors / Duration) +
+   service-graph spans, no CNI changes.</li>
+</ol>
+<p><strong>This homelab evaluated Cilium and deferred it</strong> (see
+<a href="../../ansible/playbooks/cilium-flip.yml"><code>../../ansible/playbooks/cilium-flip.yml</code></a>
+and <a href="../networking/"><code>./networking.md</code></a>). Replacing Flannel with Cilium
+during cluster bootstrap on a 2 GB control plane risks an unrecoverable
+state: kubectl + SSM both time out, and the only recovery is full
+re-deploy. The flip is staged for a quieter window, independent of this
+observability work.</p>
+<p>Beyla wins on <strong>what we can ship today</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Beyla</th>
+<th>Cilium Hubble</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CNI swap required</td>
+<td>No</td>
+<td>Yes (and risky on a 2 GB control plane)</td>
+</tr>
+<tr>
+<td>Kernel minimum</td>
+<td>5.4 (Pi-friendly)</td>
+<td>5.10+ for full feature set</td>
+</tr>
+<tr>
+<td>HTTP / gRPC RED metrics</td>
+<td>Yes, app-level</td>
+<td>Yes, via flow inspection</td>
+</tr>
+<tr>
+<td>Service-graph spans</td>
+<td>Yes, OTLP-native</td>
+<td>Yes, via Hubble UI</td>
+</tr>
+<tr>
+<td>Runs on Raspberry Pi OS Bookworm</td>
+<td>Yes</td>
+<td>Yes, but requires CNI flip</td>
+</tr>
+<tr>
+<td>Resource cost on RPi 3</td>
+<td>~40 MiB (capped at 300 MiB)</td>
+<td>Significant — Cilium agent alone is 200+ MiB</td>
+</tr>
+</tbody>
+</table>
+<p>Beyla is the right tool for <strong>edge observability</strong>. Cilium remains the
+right tool for <strong>cluster data-plane observability</strong> — and the two
+decisions are independent.</p>
+<hr />
+<h2 id="compliance-workload-labeling-taxonomy">Compliance — workload labeling taxonomy<a class="headerlink" href="#compliance-workload-labeling-taxonomy" title="Permanent link">&para;</a></h2>
+<p>The Raspberry Pis run containerized workloads that, by deliberate policy,
+must never be referred to by product name in any published telemetry,
+configuration, or documentation. The approved taxonomy is:</p>
+<table>
+<thead>
+<tr>
+<th><code>service_class</code> value</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>containerized_microservice</code></td>
+<td>Generic stateless service in a container</td>
+</tr>
+<tr>
+<td><code>media_streaming_daemon</code></td>
+<td>Workload whose primary I/O is bulk media or content streaming</td>
+</tr>
+<tr>
+<td><code>high_throughput_local_service</code></td>
+<td>LAN-facing data plane with sustained high request rate</td>
+</tr>
+</tbody>
+</table>
+<p>Three independent enforcement layers:</p>
+<ol>
+<li><strong>Source</strong> — <code>discovery.relabel</code> promotes the <code>homelab.io/class</code>
+   annotation, then <code>labeldrop</code> removes pod / container names so they
+   cannot reach the sink.</li>
+<li><strong>Sink</strong> — <code>prometheus.relabel.cardinality_guard</code> and
+   <code>loki.process.normalize</code> defensive drop-regex catches any label that
+   leaked the source rule.</li>
+<li><strong>Repo</strong> — a pytest contract test (<code>bin/tests/contracts/</code>) scans
+   <code>k8s/apps/alloy/</code>, <code>ansible/roles/alloy/</code>, and Alloy-touching docs at
+   commit time and fails CI on any forbidden product name outside an
+   explicit drop-regex declaration.</li>
+</ol>
+<hr />
+<h2 id="s3-cold-storage-design">S3 cold-storage design<a class="headerlink" href="#s3-cold-storage-design" title="Permanent link">&para;</a></h2>
+<p>The OTel <code>awss3</code> exporter receives the same log stream as the Grafana
+Cloud Loki sink. Logs are batched 5 minutes / 5 MiB, gzip-compressed,
+serialized as OTLP-proto, and uploaded under a <code>minute</code>-grain prefix
+(<code>alloy/year=2026/month=05/day=23/hour=22/minute=10/logs-...</code>).</p>
+<p>The bucket configuration is:</p>
+<ul>
+<li><strong>Naming:</strong> <code>hl-observability-cold-storage-&lt;random-suffix&gt;</code> (Terraform <code>bucket_prefix</code>).</li>
+<li><strong>Encryption:</strong> SSE-S3 (<code>AES256</code>). KMS rejected on cost grounds; the bucket policy denies any PUT without the SSE header.</li>
+<li><strong>Public access:</strong> all four block-public flags <code>true</code>.</li>
+<li><strong>Versioning:</strong> enabled — defends against an Alloy bug or operator error overwriting an in-progress upload.</li>
+<li><strong>Lifecycle:</strong> Standard → Standard-IA at 30 days → Deep Archive at 90 days → expire at 730 days.</li>
+<li><strong>Multipart hygiene:</strong> incomplete uploads abort at 7 days (prevents leaked storage charges from a daemon crash mid-upload).</li>
+<li><strong>TLS-only:</strong> bucket policy denies any request with <code>aws:SecureTransport == false</code>.</li>
+<li><strong>Force-destroy:</strong> disabled — archived logs are evidentiary.</li>
+<li><strong>Force-destroy is also disabled in IAM:</strong> the <code>k3s_node</code> role has <code>s3:PutObject</code> / <code>s3:AbortMultipartUpload</code> only. No <code>GetObject</code>, no <code>DeleteObject</code>. Cold reads happen out-of-band with a separate read-only IAM principal (future work).</li>
+</ul>
+<hr />
+<h2 id="trade-offs-table">Trade-offs table<a class="headerlink" href="#trade-offs-table" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Trade-off</th>
+<th>Cost</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RPi 3 RAM budget</td>
+<td>Alloy uses ~40 MiB; Beyla adds ~80 MiB</td>
+<td><code>MemoryMax=300M</code>; Beyla optional per host; preflight refuses install below 128 MiB free</td>
+</tr>
+<tr>
+<td><code>hostPID</code> + <code>CAP_SYS_ADMIN</code> on the cluster DaemonSet</td>
+<td>UID 0 with the explicit Beyla cap set (NOT <code>privileged: true</code>)</td>
+<td>Mirrors the Falco DaemonSet exactly — <code>privileged: false</code>, <code>allowPrivilegeEscalation: false</code>, <code>capabilities.drop: [ALL]</code> + explicit adds. Kyverno PolicyException scoped to ns <code>alloy</code> only; NetworkPolicy denies all egress except DNS / kube-apiserver / Grafana Cloud / S3 / IMDSv2</td>
+</tr>
+<tr>
+<td>Grafana Cloud free-tier 10k cap</td>
+<td>Cardinality drift causes ingest 429s</td>
+<td><code>prometheus.relabel.cardinality_guard</code> drops cAdvisor <code>id</code> / <code>name</code>; per-label drop rules in the runbook; alert at 9 k</td>
+</tr>
+<tr>
+<td>S3 PUT API cost (~$0.005 / 1k)</td>
+<td>12 puts / hour / node ≈ 8.6 k / month → ≈ $0.04 / month / node</td>
+<td>Acceptable; 5-min batching is the throttle</td>
+</tr>
+<tr>
+<td>IAM hop-limit raised 1 → 2</td>
+<td>Slightly larger SSRF surface</td>
+<td>2 is AWS's recommended pod-IMDSv2 ceiling; tested to block from-host SSRF</td>
+</tr>
+<tr>
+<td>Cilium evaluation deferred</td>
+<td>Cluster-flow visibility limited to Beyla's RED metrics</td>
+<td>Future PR — independent of this work; flip risk on 2 GB control plane is documented</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="verify-locally">Verify locally<a class="headerlink" href="#verify-locally" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Static validation (these run in CI on every PR)</span>
+pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
+make<span class="w"> </span>validate-terraform-all<span class="w">                    </span><span class="c1"># fmt + validate + tflint + .tftest.hcl</span>
+make<span class="w"> </span>validate-k8s-all<span class="w">                          </span><span class="c1"># kustomize build + kubeconform</span>
+make<span class="w"> </span>validate-k8s-policies-critical<span class="w">            </span><span class="c1"># OPA / conftest</span>
+make<span class="w"> </span>test-molecule-alloy<span class="w">                       </span><span class="c1"># role unit tests</span>
+make<span class="w"> </span>test-python<span class="w">                               </span><span class="c1"># contract test (no forbidden names)</span>
+
+<span class="c1"># Plan the Terraform diff (S3 bucket + IAM policy + hop-limit bump)</span>
+mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>terraform<span class="w"> </span>-chdir<span class="o">=</span>infra/aws<span class="w"> </span>plan
+
+<span class="c1"># Dry-run the edge role</span>
+mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>ansible-playbook<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-i<span class="w"> </span>ansible/inventory/production.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ansible/playbooks/deploy-alloy.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--tags<span class="w"> </span>alloy<span class="w"> </span>--check<span class="w"> </span>--diff
+</code></pre></div>
+<p>After deploy:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Post-deploy smoke — edge</span>
+ansible<span class="w"> </span>-i<span class="w"> </span>ansible/inventory/production.yml<span class="w"> </span>alloy_native<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-m<span class="w"> </span>shell<span class="w"> </span>-a<span class="w"> </span><span class="s1">&#39;systemctl status alloy --no-pager; \</span>
+<span class="s1">               journalctl -u alloy -n 50 --no-pager&#39;</span>
+
+<span class="c1"># Post-deploy smoke — cloud</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>alloy<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/alloy
+kubectl<span class="w"> </span>-n<span class="w"> </span>alloy<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>alloy<span class="w"> </span>--tail<span class="o">=</span><span class="m">200</span>
+
+<span class="c1"># S3 archival (5-min batches + flush — expect objects within ~6 min)</span>
+aws<span class="w"> </span>s3<span class="w"> </span>ls<span class="w"> </span><span class="s2">&quot;s3://</span><span class="k">$(</span>mise<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--<span class="w"> </span>terraform<span class="w"> </span>-chdir<span class="o">=</span>infra/aws<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>observability_bucket_id<span class="k">)</span><span class="s2">/alloy/&quot;</span><span class="w"> </span>--recursive<span class="w"> </span><span class="p">|</span><span class="w"> </span>head
+
+<span class="c1"># Grafana Cloud Explore</span>
+<span class="c1">#   Metrics:        up{cluster=&quot;homelab&quot;}</span>
+<span class="c1">#   Beyla RED:      http_server_request_duration_seconds_count{cluster=&quot;homelab&quot;, service_class=&quot;media_streaming_daemon&quot;}</span>
+<span class="c1">#   Logs:           {cluster=&quot;homelab&quot;} |= &quot;&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Follow-up PR — retire in-cluster Prometheus / Loki / OTel.</strong> Now that
+   Alloy carries the full telemetry surface to Grafana Cloud, the
+   in-cluster stack (<code>k8s/apps/prometheus</code>, <code>loki</code>, <code>otel-collector</code>,
+   <code>node-exporter</code>, <code>kube-state-metrics</code>) becomes redundant. Wait for 14
+   days of stable Alloy operation (matches GC Loki retention), then
+   delete in one focused PR.</li>
+<li><strong>Independent Cilium flip.</strong> Per <code>ansible/playbooks/cilium-flip.yml</code>.
+   Independent of this work.</li>
+<li><strong>Read-only S3 role for cold-read access.</strong> A separate IAM principal
+   with <code>s3:GetObject</code> only, used by an out-of-band cold-tier query tool.
+   Keeps the agent role write-only.</li>
+<li><strong>Profiling pipeline.</strong> Pyroscope (also part of the Grafana stack)
+   on the same Alloy binary, gated on RPi 3 memory headroom.</li>
+</ol>
+<hr />
+<h2 id="edge-tier-iteration-2026-05-29">Edge tier iteration (2026-05-29)<a class="headerlink" href="#edge-tier-iteration-2026-05-29" title="Permanent link">&para;</a></h2>
+<p>The original design placed a single Alloy template on both tiers — Ansible
+rendered it onto the Pis as a systemd unit, Kustomize rendered it onto the
+EC2 worker as a DaemonSet. Cloud tier worked as planned. <strong>Edge tier
+revealed a real-world contention that the design did not predict:</strong>
+co-locating Alloy with the media streaming daemon transcoding on the 8 GB Pi 4 degraded
+playback. Disabling Alloy restored it; the symptom was reproducible.</p>
+<h3 id="what-i-learned">What I learned<a class="headerlink" href="#what-i-learned" title="Permanent link">&para;</a></h3>
+<p>The bottleneck was not Alloy's resident set size. It was the <em>kind</em> of work
+Alloy does on an edge node that also serves the apiserver:</p>
+<ol>
+<li><code>discovery.kubernetes</code> polls the apiserver continuously to maintain pod
+   targets. On the Pi 4 the apiserver IS the k3s-server process — so the
+   discovery loop competed for CPU with k3s itself.</li>
+<li>The media streaming daemon transcoding is I/O heavy on the same SD-card-backed root
+   filesystem the k3s log endpoints serve from. Every Alloy → apiserver →
+   pod log round-trip added I/O queue pressure that the SD card could not
+   absorb under transcoding load.</li>
+</ol>
+<p>Memory headroom was never the issue (Pi 4 had ~3 GB free). The interaction
+between the discovery model and the apiserver-on-edge topology was.</p>
+<h3 id="what-i-changed">What I changed<a class="headerlink" href="#what-i-changed" title="Permanent link">&para;</a></h3>
+<p>The edge tier now runs <strong>Promtail with file-based discovery</strong>
+(<code>static_configs</code> + <code>__path__</code> glob) instead of Alloy. Promtail reads container
+log files directly via inotify, never calls the apiserver, and idles around
+25–40 MiB RSS. The invariant is enforced at the network layer too: the
+Promtail NetworkPolicy blocks egress to port 6443.</p>
+<p>The cloud tier — section 1 through "Implementation" above — is unchanged.
+Alloy + Beyla + the S3 cold archive still run as designed when AWS Full is
+active. Promtail's <code>nodeAffinity NotIn ["cloud"]</code> and Alloy's existing
+<code>nodeSelector: tier=cloud</code> keep the two off each other's nodes. No
+double-ingest.</p>
+<h3 id="why-this-matters-for-a-portfolio">Why this matters for a portfolio<a class="headerlink" href="#why-this-matters-for-a-portfolio" title="Permanent link">&para;</a></h3>
+<p>The original ADR captured my reasoning <em>before</em> operating the system. The
+revision section in <a href="../observability-alloy-ebpf/"><code>./observability-alloy-ebpf.md</code></a>
+captures what I learned <em>after</em>. Both stay in the repo. The lesson — <em>prefer
+file-based discovery on any node that also runs the apiserver</em> — is now an
+explicit design rule. If you are reviewing this for a role, the iteration is
+the artifact I want you to read: production validation found a defect the
+design missed, and the response was a surgical pivot with the cloud-side
+investment preserved.</p>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Architecture ADR (long-form):</strong> <a href="../observability-alloy-ebpf/"><code>./observability-alloy-ebpf.md</code></a></li>
+<li><strong>Operational runbook:</strong> <a href="../../runbooks/alloy-troubleshooting/"><code>../runbooks/alloy-troubleshooting.md</code></a></li>
+<li><strong>Security audit entry:</strong> <a href="../../security/audit-history/"><code>../security/audit-history.md</code></a> (2026-05-23)</li>
+<li><strong>Edge Promtail manifests:</strong> <a href="../../k8s/apps/promtail/"><code>../../k8s/apps/promtail/</code></a></li>
+<li><strong>Grafana Alloy docs:</strong> <a href="https://grafana.com/docs/alloy/">https://grafana.com/docs/alloy/</a></li>
+<li><strong>Grafana Promtail docs:</strong> <a href="https://grafana.com/docs/loki/latest/send-data/promtail/">https://grafana.com/docs/loki/latest/send-data/promtail/</a></li>
+<li><strong>Beyla docs:</strong> <a href="https://grafana.com/docs/beyla/">https://grafana.com/docs/beyla/</a></li>
+<li><strong>OTel <code>awss3</code> exporter:</strong> <a href="https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter">https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/awss3exporter</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2955 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/archive/aws-deployment-original/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>AWS Homelab - Complete Deployment Guide - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aws-homelab-complete-deployment-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AWS Homelab - Complete Deployment Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎯 What This Does
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      📋 Prerequisites
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📋 Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-required-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Install Required Tools
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-install-ansible-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Install Ansible Collections
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-install-python-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Install Python Dependencies
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-aws-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. AWS Credentials
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-ssh-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. SSH Key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-sops-age-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. SOPS Age Key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-github-deploy-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. GitHub Deploy Key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Quick Start
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚀 Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-using-the-deployment-script-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Using the Deployment Script (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-using-makefile" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: Using Makefile
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-manual-steps-educational" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 3: Manual Steps (Educational)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens-during-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      📊 What Happens During Deployment
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 What Happens During Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-terraform-3-5-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1: Terraform (3-5 minutes)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-wait-for-instances-2-5-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2: Wait for Instances (2-5 minutes)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-ansible-configuration-10-18-minutes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3: Ansible Configuration (10-18 minutes)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-verification-summary-1-minute" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4: Verification &amp; Summary (1 minute)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Verification
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-check-kubernetes-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Check Kubernetes Nodes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-check-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Check ArgoCD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-access-argocd-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Access ArgoCD UI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-check-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Check Applications
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#makefile-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠️ Makefile Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔄 Common Scenarios
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔄 Common Scenarios">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenario-1-first-time-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scenario 1: First-Time Deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-2-instances-were-terminated" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scenario 2: Instances Were Terminated
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-3-just-update-configuration-infrastructure-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scenario 3: Just Update Configuration (Infrastructure Exists)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-4-destroy-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scenario 4: Destroy Everything
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-5-check-status-without-making-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scenario 5: Check Status Without Making Changes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚠️ Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚠️ Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issue-1-terraform-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 1: "Terraform not found"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-2-ssh-connection-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 2: "SSH connection timeout"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-3-ansible-playbook-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 3: "Ansible playbook failed"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-4-argocd-apps-stuck-in-progressing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 4: "ArgoCD apps stuck in Progressing"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-5-ec2-instances-keep-getting-terminated" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 5: "EC2 instances keep getting terminated"
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#issue-6-deployment-script-fails-mid-way" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issue 6: "Deployment script fails mid-way"
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cost-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      💰 Cost Breakdown
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔐 Security Considerations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      SSH Keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sops-age-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      SOPS Age Key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS Credentials
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argocd-admin-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      ArgoCD Admin Password
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Additional Resources
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎯 Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/archive/aws-deployment-original.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="aws-homelab-complete-deployment-guide">AWS Homelab - Complete Deployment Guide<a class="headerlink" href="#aws-homelab-complete-deployment-guide" title="Permanent link">&para;</a></h1>
+<p><strong>Purpose:</strong> Deploy complete AWS infrastructure + k3s cluster + ArgoCD + applications with a single command.</p>
+<hr />
+<h2 id="what-this-does">🎯 What This Does<a class="headerlink" href="#what-this-does" title="Permanent link">&para;</a></h2>
+<p>Running the deployment script will:</p>
+<ol>
+<li><strong>Create AWS Infrastructure</strong> (Terraform)</li>
+<li>VPC, Security Groups, IAM roles</li>
+<li>2x EC2 Spot instances (t3.medium + t3.small)</li>
+<li>
+<p>Lambda scheduler (auto start/stop 10 AM - 9 PM BRT)</p>
+</li>
+<li>
+<p><strong>Wait for Instances</strong></p>
+</li>
+<li>Wait for EC2 instances to boot</li>
+<li>Wait for SSH to be available</li>
+<li>
+<p>Verify Tailscale connection</p>
+</li>
+<li>
+<p><strong>Configure Kubernetes</strong> (Ansible)</p>
+</li>
+<li>Deploy k3s cluster</li>
+<li>Optimize nodes</li>
+<li>Install ArgoCD with SOPS</li>
+<li>
+<p>Bootstrap all applications</p>
+</li>
+<li>
+<p><strong>Verify Deployment</strong></p>
+</li>
+<li>Retrieve kubeconfig</li>
+<li>Check cluster health</li>
+<li>Display access instructions</li>
+</ol>
+<p><strong>Total time:</strong> 15-25 minutes (unattended)</p>
+<hr />
+<h2 id="prerequisites">📋 Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h3 id="1-install-required-tools">1. Install Required Tools<a class="headerlink" href="#1-install-required-tools" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Terraform (if not installed)</span>
+<span class="c1"># macOS:</span>
+brew<span class="w"> </span>install<span class="w"> </span>terraform
+
+<span class="c1"># Ubuntu/Debian:</span>
+wget<span class="w"> </span>-O-<span class="w"> </span>https://apt.releases.hashicorp.com/gpg<span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>gpg<span class="w"> </span>--dearmor<span class="w"> </span>-o<span class="w"> </span>/usr/share/keyrings/hashicorp-archive-keyring.gpg
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com </span><span class="k">$(</span>lsb_release<span class="w"> </span>-cs<span class="k">)</span><span class="s2"> main&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>/etc/apt/sources.list.d/hashicorp.list
+sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>terraform
+
+<span class="c1"># Ansible (if not installed)</span>
+pip3<span class="w"> </span>install<span class="w"> </span>ansible
+
+<span class="c1"># Verify installations</span>
+terraform<span class="w"> </span>--version<span class="w">  </span><span class="c1"># Should be &gt;= 1.0</span>
+ansible<span class="w"> </span>--version<span class="w">    </span><span class="c1"># Should be &gt;= 2.10</span>
+</code></pre></div>
+<h3 id="2-install-ansible-collections">2. Install Ansible Collections<a class="headerlink" href="#2-install-ansible-collections" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>ansible
+ansible-galaxy<span class="w"> </span>collection<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.yml
+
+<span class="c1"># Verify</span>
+ansible-galaxy<span class="w"> </span>collection<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;(kubernetes|sops)&quot;</span>
+</code></pre></div>
+<h3 id="3-install-python-dependencies">3. Install Python Dependencies<a class="headerlink" href="#3-install-python-dependencies" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Kubernetes Python library</span>
+pip3<span class="w"> </span>install<span class="w"> </span>kubernetes
+
+<span class="c1"># Verify</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import kubernetes; print(&#39;OK&#39;)&quot;</span>
+</code></pre></div>
+<h3 id="4-aws-credentials">4. AWS Credentials<a class="headerlink" href="#4-aws-credentials" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Configure AWS CLI</span>
+aws<span class="w"> </span>configure
+
+<span class="c1"># Or set environment variables</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="s2">&quot;your-access-key&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="s2">&quot;your-secret-key&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_DEFAULT_REGION</span><span class="o">=</span><span class="s2">&quot;us-east-1&quot;</span>
+
+<span class="c1"># Verify</span>
+aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity
+</code></pre></div>
+<h3 id="5-ssh-key">5. SSH Key<a class="headerlink" href="#5-ssh-key" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate SSH key for EC2 instances</span>
+ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-f<span class="w"> </span>~/.ssh/homelab-aws<span class="w"> </span>-C<span class="w"> </span><span class="s2">&quot;homelab-ec2&quot;</span><span class="w"> </span>-N<span class="w"> </span><span class="s2">&quot;&quot;</span>
+
+<span class="c1"># Key should exist at:</span>
+ls<span class="w"> </span>~/.ssh/homelab-aws
+</code></pre></div>
+<h3 id="6-sops-age-key">6. SOPS Age Key<a class="headerlink" href="#6-sops-age-key" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Should already exist from Phase 2</span>
+ls<span class="w"> </span>~/.config/sops/age/keys.txt
+
+<span class="c1"># If not, see ansible/PHASE2-SETUP.md for instructions</span>
+</code></pre></div>
+<h3 id="7-github-deploy-key">7. GitHub Deploy Key<a class="headerlink" href="#7-github-deploy-key" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Should already exist from Phase 2</span>
+ls<span class="w"> </span>~/.ssh/homelab-deploy-key
+
+<span class="c1"># If not, see ansible/PHASE2-SETUP.md for instructions</span>
+</code></pre></div>
+<hr />
+<h2 id="quick-start">🚀 Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="option-1-using-the-deployment-script-recommended">Option 1: Using the Deployment Script (Recommended)<a class="headerlink" href="#option-1-using-the-deployment-script-recommended" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make script executable (first time only)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>bin/deploy_aws_homelab.py
+
+<span class="c1"># Deploy everything</span>
+python3<span class="w"> </span>bin/deploy_aws_homelab.py
+</code></pre></div>
+<h3 id="option-2-using-makefile">Option 2: Using Makefile<a class="headerlink" href="#option-2-using-makefile" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Deploy everything</span>
+make<span class="w"> </span>deploy
+
+<span class="c1"># Show all available commands</span>
+make<span class="w"> </span><span class="nb">help</span>
+</code></pre></div>
+<h3 id="option-3-manual-steps-educational">Option 3: Manual Steps (Educational)<a class="headerlink" href="#option-3-manual-steps-educational" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Step 1: Create AWS infrastructure</span>
+<span class="nb">cd</span><span class="w"> </span>infra/aws
+terraform<span class="w"> </span>init
+terraform<span class="w"> </span>apply<span class="w"> </span>-auto-approve
+
+<span class="c1"># Step 2: Wait for instances (get IPs)</span>
+<span class="nv">SERVER_IP</span><span class="o">=</span><span class="k">$(</span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>k3s_server_public_ip<span class="k">)</span>
+<span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-i<span class="w"> </span>~/.ssh/homelab-aws<span class="w"> </span>ec2-user@<span class="nv">$SERVER_IP</span><span class="w"> </span><span class="s2">&quot;echo ready&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">    </span>sleep<span class="w"> </span><span class="m">10</span>
+<span class="k">done</span>
+
+<span class="c1"># Step 3: Configure k3s cluster</span>
+<span class="nb">cd</span><span class="w"> </span>../../ansible
+ansible-playbook<span class="w"> </span>-i<span class="w"> </span>terraform_inventory_aws.py<span class="w"> </span>playbooks/site.yml
+
+<span class="c1"># Step 4: Get kubeconfig</span>
+ssh<span class="w"> </span>-i<span class="w"> </span>~/.ssh/homelab-aws<span class="w"> </span>ec2-user@<span class="nv">$SERVER_IP</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;sudo cat /etc/rancher/k3s/k3s.yaml&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>sed<span class="w"> </span><span class="s2">&quot;s|127.0.0.1|</span><span class="nv">$SERVER_IP</span><span class="s2">|g&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>~/.kube/homelab-config
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span>~/.kube/homelab-config
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+</code></pre></div>
+<hr />
+<h2 id="what-happens-during-deployment">📊 What Happens During Deployment<a class="headerlink" href="#what-happens-during-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-terraform-3-5-minutes">Phase 1: Terraform (3-5 minutes)<a class="headerlink" href="#phase-1-terraform-3-5-minutes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>[INFO] Checking prerequisites...
+[INFO] Initializing Terraform...
+[INFO] Validating Terraform configuration...
+[INFO] Applying Terraform configuration...
+
+Creating resources:
+  ✓ VPC and subnets
+  ✓ Security groups
+  ✓ IAM roles and policies
+  ✓ EC2 Fleet (2x Spot instances)
+  ✓ Lambda scheduler
+  ✓ EventBridge rules
+
+[SUCCESS] AWS infrastructure created
+</code></pre></div>
+<h3 id="phase-2-wait-for-instances-2-5-minutes">Phase 2: Wait for Instances (2-5 minutes)<a class="headerlink" href="#phase-2-wait-for-instances-2-5-minutes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>[INFO] Retrieving instance IPs from Terraform...
+[INFO] k3s-server: 54.123.45.67
+[INFO] k3s-agent:  54.123.45.68
+
+[INFO] Waiting for SSH on 54.123.45.67...
+[SUCCESS] SSH ready on 54.123.45.67
+[INFO] Waiting for SSH on 54.123.45.68...
+[SUCCESS] SSH ready on 54.123.45.68
+
+[SUCCESS] All instances are ready
+</code></pre></div>
+<h3 id="phase-3-ansible-configuration-10-18-minutes">Phase 3: Ansible Configuration (10-18 minutes)<a class="headerlink" href="#phase-3-ansible-configuration-10-18-minutes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>[INFO] Running Ansible playbook...
+
+PLAY [Phase 1.1 - Optimize Raspberry Pi Nodes] (skipped - AWS only)
+PLAY [Phase 1.2 - Deploy k3s Cluster]
+  ✓ Install k3s server on k3s-server-1
+  ✓ Retrieve k3s token
+  ✓ Install k3s agent on k3s-agent-2
+  ✓ Verify cluster (2 nodes Ready)
+
+PLAY [Phase 2.1 - Deploy ArgoCD]
+  ✓ Install ArgoCD v2.13.2
+  ✓ Configure SOPS plugin
+  ✓ Set up Git repository
+  ✓ Verify installation
+
+PLAY [Phase 2.2 - Bootstrap Applications]
+  ✓ Apply apps-root Application
+  ✓ Wait for initial sync
+  ✓ Monitor critical apps
+
+PLAY [Phase 3 - Final Verification]
+  ✓ Check cluster nodes
+  ✓ Check applications
+  ✓ Check pods
+
+[SUCCESS] Kubernetes cluster configured
+</code></pre></div>
+<h3 id="phase-4-verification-summary-1-minute">Phase 4: Verification &amp; Summary (1 minute)<a class="headerlink" href="#phase-4-verification-summary-1-minute" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>[INFO] Retrieving kubeconfig...
+[SUCCESS] Kubeconfig saved to /tmp/k3s-homelab-kubeconfig.yaml
+
+╔════════════════════════════════════════════════════════════════╗
+║              DEPLOYMENT COMPLETED SUCCESSFULLY!                ║
+╚════════════════════════════════════════════════════════════════╝
+
+Instance Information:
+  k3s-server: 54.123.45.67
+  k3s-agent:  54.123.45.68
+
+Access Kubernetes:
+  export KUBECONFIG=/tmp/k3s-homelab-kubeconfig.yaml
+  kubectl get nodes
+
+Access ArgoCD:
+  kubectl port-forward svc/argocd-server -n argocd 8080:443
+  URL: https://localhost:8080
+  Username: admin
+  Password: &lt;shown here&gt;
+
+Monitor Applications:
+  kubectl get applications -n argocd
+  kubectl get pods -A
+</code></pre></div>
+<hr />
+<h2 id="verification">🔍 Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h2>
+<h3 id="1-check-kubernetes-nodes">1. Check Kubernetes Nodes<a class="headerlink" href="#1-check-kubernetes-nodes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span>/tmp/k3s-homelab-kubeconfig.yaml
+kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>wide
+
+<span class="c1"># Expected output (2 AWS nodes + 2 RPi nodes if connected):</span>
+<span class="c1"># NAME            STATUS   ROLES                  AGE   VERSION</span>
+<span class="c1"># k3s-server-1    Ready    control-plane,master   5m    v1.34.3+k3s1</span>
+<span class="c1"># k3s-agent-2     Ready    &lt;none&gt;                 4m    v1.34.3+k3s1</span>
+<span class="c1"># rasp-pi-03      Ready    &lt;none&gt;                 2h    v1.34.3+k3s1</span>
+<span class="c1"># rasp-pi-04      Ready    &lt;none&gt;                 2h    v1.34.3+k3s1</span>
+</code></pre></div>
+<h3 id="2-check-argocd">2. Check ArgoCD<a class="headerlink" href="#2-check-argocd" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check ArgoCD pods</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>argocd
+
+<span class="c1"># Expected: All Running, repo-server should show 2/2 (main + SOPS sidecar)</span>
+
+<span class="c1"># Check applications</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-n<span class="w"> </span>argocd
+</code></pre></div>
+<h3 id="3-access-argocd-ui">3. Access ArgoCD UI<a class="headerlink" href="#3-access-argocd-ui" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get admin password</span>
+kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s2">&quot;{.data.password}&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span>
+
+<span class="c1"># Port forward</span>
+kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="m">8080</span>:443
+
+<span class="c1"># Open browser: https://localhost:8080</span>
+<span class="c1"># Username: admin</span>
+<span class="c1"># Password: &lt;from above&gt;</span>
+</code></pre></div>
+<h3 id="4-check-applications">4. Check Applications<a class="headerlink" href="#4-check-applications" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all pods</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>wide
+
+<span class="c1"># Check media namespace</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>media
+
+<span class="c1"># Check Tailscale ingresses</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A
+
+<span class="c1"># Test app access (if Tailscale configured)</span>
+</code></pre></div>
+<hr />
+<h2 id="makefile-commands">🛠️ Makefile Commands<a class="headerlink" href="#makefile-commands" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show all available commands</span>
+make<span class="w"> </span><span class="nb">help</span>
+
+<span class="c1"># Deployment</span>
+make<span class="w"> </span>deploy<span class="w">              </span><span class="c1"># Full deployment</span>
+make<span class="w"> </span>destroy<span class="w">             </span><span class="c1"># Destroy infrastructure</span>
+
+<span class="c1"># Terraform</span>
+make<span class="w"> </span>terraform-plan<span class="w">      </span><span class="c1"># Show planned changes</span>
+make<span class="w"> </span>terraform-apply<span class="w">     </span><span class="c1"># Apply infrastructure only</span>
+make<span class="w"> </span>terraform-output<span class="w">    </span><span class="c1"># Show outputs</span>
+
+<span class="c1"># Ansible</span>
+make<span class="w"> </span>ansible-deploy<span class="w">      </span><span class="c1"># Run Ansible only</span>
+make<span class="w"> </span>ansible-ping<span class="w">        </span><span class="c1"># Test connectivity</span>
+make<span class="w"> </span>ansible-health<span class="w">      </span><span class="c1"># Health check</span>
+
+<span class="c1"># Kubernetes</span>
+make<span class="w"> </span>k8s-nodes<span class="w">           </span><span class="c1"># Show nodes</span>
+make<span class="w"> </span>k8s-pods<span class="w">            </span><span class="c1"># Show all pods</span>
+make<span class="w"> </span>k8s-apps<span class="w">            </span><span class="c1"># Show ArgoCD apps</span>
+make<span class="w"> </span>k8s-kubeconfig<span class="w">      </span><span class="c1"># Download kubeconfig</span>
+make<span class="w"> </span>argocd-password<span class="w">     </span><span class="c1"># Get admin password</span>
+make<span class="w"> </span>argocd-port-forward<span class="w"> </span><span class="c1"># Port forward ArgoCD</span>
+
+<span class="c1"># Status</span>
+make<span class="w"> </span>status<span class="w">              </span><span class="c1"># Overall status</span>
+make<span class="w"> </span><span class="nb">test</span><span class="w">                </span><span class="c1"># Run all tests</span>
+</code></pre></div>
+<hr />
+<h2 id="common-scenarios">🔄 Common Scenarios<a class="headerlink" href="#common-scenarios" title="Permanent link">&para;</a></h2>
+<h3 id="scenario-1-first-time-deployment">Scenario 1: First-Time Deployment<a class="headerlink" href="#scenario-1-first-time-deployment" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Deploy everything</span>
+python3<span class="w"> </span>bin/deploy_aws_homelab.py
+
+<span class="c1"># Or with make</span>
+make<span class="w"> </span>deploy
+</code></pre></div>
+<h3 id="scenario-2-instances-were-terminated">Scenario 2: Instances Were Terminated<a class="headerlink" href="#scenario-2-instances-were-terminated" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Same command recreates everything</span>
+python3<span class="w"> </span>bin/deploy_aws_homelab.py
+
+<span class="c1"># Infrastructure will be recreated with new IPs</span>
+<span class="c1"># Ansible will configure the new instances</span>
+<span class="c1"># ArgoCD will sync applications</span>
+</code></pre></div>
+<h3 id="scenario-3-just-update-configuration-infrastructure-exists">Scenario 3: Just Update Configuration (Infrastructure Exists)<a class="headerlink" href="#scenario-3-just-update-configuration-infrastructure-exists" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run Ansible only</span>
+make<span class="w"> </span>ansible-deploy
+
+<span class="c1"># Or directly</span>
+<span class="nb">cd</span><span class="w"> </span>ansible
+ansible-playbook<span class="w"> </span>-i<span class="w"> </span>terraform_inventory_aws.py<span class="w"> </span>playbooks/site.yml
+</code></pre></div>
+<h3 id="scenario-4-destroy-everything">Scenario 4: Destroy Everything<a class="headerlink" href="#scenario-4-destroy-everything" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Interactive destruction</span>
+make<span class="w"> </span>destroy
+
+<span class="c1"># Or with script</span>
+python3<span class="w"> </span>bin/deploy_aws_homelab.py<span class="w"> </span>--destroy
+</code></pre></div>
+<h3 id="scenario-5-check-status-without-making-changes">Scenario 5: Check Status Without Making Changes<a class="headerlink" href="#scenario-5-check-status-without-making-changes" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Overall status</span>
+make<span class="w"> </span>status
+
+<span class="c1"># Terraform plan (see what would change)</span>
+make<span class="w"> </span>terraform-plan
+
+<span class="c1"># Ansible check mode (dry run)</span>
+make<span class="w"> </span>ansible-check
+</code></pre></div>
+<hr />
+<h2 id="troubleshooting">⚠️ Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="issue-1-terraform-not-found">Issue 1: "Terraform not found"<a class="headerlink" href="#issue-1-terraform-not-found" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install Terraform</span>
+brew<span class="w"> </span>install<span class="w"> </span>terraform<span class="w">  </span><span class="c1"># macOS</span>
+<span class="c1"># Or follow: https://www.terraform.io/downloads</span>
+</code></pre></div>
+<h3 id="issue-2-ssh-connection-timeout">Issue 2: "SSH connection timeout"<a class="headerlink" href="#issue-2-ssh-connection-timeout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check security group allows SSH from your IP</span>
+<span class="nb">cd</span><span class="w"> </span>infra/aws
+terraform<span class="w"> </span>output
+
+<span class="c1"># Verify SSH key exists</span>
+ls<span class="w"> </span>~/.ssh/homelab-aws
+
+<span class="c1"># Test SSH manually</span>
+<span class="nv">SERVER_IP</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>infra/aws<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>k3s_server_public_ip<span class="k">)</span>
+ssh<span class="w"> </span>-i<span class="w"> </span>~/.ssh/homelab-aws<span class="w"> </span>ec2-user@<span class="nv">$SERVER_IP</span>
+</code></pre></div>
+<h3 id="issue-3-ansible-playbook-failed">Issue 3: "Ansible playbook failed"<a class="headerlink" href="#issue-3-ansible-playbook-failed" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check Ansible can reach instances</span>
+<span class="nb">cd</span><span class="w"> </span>ansible
+ansible<span class="w"> </span>all<span class="w"> </span>-i<span class="w"> </span>terraform_inventory_aws.py<span class="w"> </span>-m<span class="w"> </span>ping
+
+<span class="c1"># Check dynamic inventory</span>
+python3<span class="w"> </span>terraform_inventory_aws.py<span class="w"> </span>--list
+
+<span class="c1"># Run with verbose output</span>
+ansible-playbook<span class="w"> </span>-i<span class="w"> </span>terraform_inventory_aws.py<span class="w"> </span>playbooks/site.yml<span class="w"> </span>-vvv
+</code></pre></div>
+<h3 id="issue-4-argocd-apps-stuck-in-progressing">Issue 4: "ArgoCD apps stuck in Progressing"<a class="headerlink" href="#issue-4-argocd-apps-stuck-in-progressing" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check ArgoCD logs</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>deployment/argocd-application-controller
+
+<span class="c1"># Check repo-server logs (SOPS issues)</span>
+kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>deployment/argocd-repo-server<span class="w"> </span>-c<span class="w"> </span>sops-plugin
+
+<span class="c1"># Force sync</span>
+kubectl<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app-name&gt;<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--type<span class="w"> </span>merge<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;operation&quot;:{&quot;sync&quot;:{&quot;revision&quot;:&quot;HEAD&quot;}}}&#39;</span>
+</code></pre></div>
+<h3 id="issue-5-ec2-instances-keep-getting-terminated">Issue 5: "EC2 instances keep getting terminated"<a class="headerlink" href="#issue-5-ec2-instances-keep-getting-terminated" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check spot instance settings</span>
+<span class="nb">cd</span><span class="w"> </span>infra/aws
+terraform<span class="w"> </span>show<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>spot
+
+<span class="c1"># Spot instances can be interrupted by AWS</span>
+<span class="c1"># The scheduler will restart them (10 AM - 9 PM BRT)</span>
+<span class="c1"># Or run deployment script to recreate</span>
+</code></pre></div>
+<h3 id="issue-6-deployment-script-fails-mid-way">Issue 6: "Deployment script fails mid-way"<a class="headerlink" href="#issue-6-deployment-script-fails-mid-way" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Script is safe to re-run (idempotent)</span>
+python3<span class="w"> </span>bin/deploy_aws_homelab.py
+
+<span class="c1"># If Terraform already applied, it will show &quot;no changes&quot;</span>
+<span class="c1"># If Ansible already configured, it will skip completed tasks</span>
+</code></pre></div>
+<hr />
+<h2 id="cost-breakdown">💰 Cost Breakdown<a class="headerlink" href="#cost-breakdown" title="Permanent link">&para;</a></h2>
+<p><strong>Monthly Costs (with scheduler running 11 hours/day):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Hours/Month</th>
+<th>Cost/Hour</th>
+<th>Monthly Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>t3.medium spot</td>
+<td>330</td>
+<td>$0.0187</td>
+<td>$6.17</td>
+</tr>
+<tr>
+<td>t3.small spot</td>
+<td>330</td>
+<td>$0.0094</td>
+<td>$3.10</td>
+</tr>
+<tr>
+<td>EBS 20GB gp3 (server)</td>
+<td>720</td>
+<td>-</td>
+<td>$1.60</td>
+</tr>
+<tr>
+<td>EBS 20GB gp3 (agent)</td>
+<td>720</td>
+<td>-</td>
+<td>$1.60</td>
+</tr>
+<tr>
+<td>Lambda executions</td>
+<td>~60/month</td>
+<td>Free tier</td>
+<td>$0.00</td>
+</tr>
+<tr>
+<td>Data transfer</td>
+<td>~10GB</td>
+<td>$0.09/GB</td>
+<td>$0.90</td>
+</tr>
+<tr>
+<td><strong>TOTAL</strong></td>
+<td>-</td>
+<td>-</td>
+<td><strong>~$13.37/month</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>If running 24/7:</strong>
+- t3.medium: $13.46/month
+- t3.small: $6.77/month
+- Storage + other: $4.10/month
+- <strong>Total: ~$24.33/month</strong></p>
+<p><strong>Savings with scheduler:</strong> ~45% ($10.96/month saved)</p>
+<hr />
+<h2 id="security-considerations">🔐 Security Considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="ssh-keys">SSH Keys<a class="headerlink" href="#ssh-keys" title="Permanent link">&para;</a></h3>
+<ul>
+<li>EC2 SSH key: <code>~/.ssh/homelab-aws</code></li>
+<li>GitHub deploy key: <code>~/.ssh/homelab-deploy-key</code></li>
+<li><strong>Never commit private keys to Git</strong></li>
+</ul>
+<h3 id="sops-age-key">SOPS Age Key<a class="headerlink" href="#sops-age-key" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Located: <code>~/.config/sops/age/keys.txt</code></li>
+<li>Used by ArgoCD to decrypt secrets</li>
+<li><strong>Keep backup in secure location</strong></li>
+</ul>
+<h3 id="aws-credentials">AWS Credentials<a class="headerlink" href="#aws-credentials" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Stored in <code>~/.aws/credentials</code></li>
+<li>Or use environment variables (better for CI/CD)</li>
+<li><strong>Use IAM user with least privilege</strong></li>
+</ul>
+<h3 id="argocd-admin-password">ArgoCD Admin Password<a class="headerlink" href="#argocd-admin-password" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Auto-generated on first install</li>
+<li>Stored in: <code>argocd-initial-admin-secret</code></li>
+<li><strong>Change password after first login</strong></li>
+</ul>
+<hr />
+<h2 id="additional-resources">📚 Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Main README:</strong> <code>README.md</code></li>
+<li><strong>Ansible Documentation:</strong> <code>ansible/README.md</code></li>
+<li><strong>Phase 2 Setup:</strong> <code>ansible/PHASE2-SETUP.md</code></li>
+<li><strong>Testing Guide:</strong> <code>ansible/TESTING.md</code></li>
+<li><strong>Terraform AWS:</strong> <code>infra/aws/README.md</code></li>
+</ul>
+<hr />
+<h2 id="summary">🎯 Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p><strong>Can you recreate everything without CLI?</strong></p>
+<p>✅ <strong>YES!</strong> Just run:
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>bin/deploy_aws_homelab.py
+</code></pre></div></p>
+<p><strong>What if instances are terminated?</strong></p>
+<p>✅ <strong>Same command recreates everything:</strong>
+- Terraform creates new instances
+- Ansible configures them
+- ArgoCD syncs apps
+- Zero manual intervention</p>
+<p><strong>Total time:</strong> 15-25 minutes, fully automated</p>
+<p><strong>Cost:</strong> ~$13/month (with 11h/day schedule)</p>
+<hr />
+<p><strong>Questions? Issues? Check the troubleshooting section or open a GitHub issue!</strong> 🚀</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

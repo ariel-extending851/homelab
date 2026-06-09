@@ -1,0 +1,3678 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/security/audit-history/">
+      
+      
+        <link rel="prev" href="../network-policies/">
+      
+      
+        <link rel="next" href="../fixes-backlog/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Audit history - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#security-audit-history" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Audit history
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-ssm-break-glass-authenticated-docker-hub-pulls-pi-only-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-offsite-k3s-control-plane-backup-to-s3-pi-only-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-finops-guardrails-ebs-snapshots-private-ecr-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-23-alloy-ebpf-observability-pipeline-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-23 — Alloy + eBPF observability pipeline (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-23 — Alloy + eBPF observability pipeline (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mitigations-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mitigations active
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convergent-state-post-ci-hardening-same-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Convergent state — post-CI hardening (same PR)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-09-adguard-home-runasuser-65534-0-incident-driven" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-root-is-acceptable-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why root is acceptable here
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mitigations-retained" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mitigations retained
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardening-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hardening deferred
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-07-dependabot-simulation-audit-supply-chain-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#headline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Headline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed-in-this-pass-prs-abcdefghi" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed in this pass (PRs A/B/C/D/E/F/G/H/I)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risk-register-action-required-by-review-by-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risk register (action required by review-by date)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#posture-delta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Posture delta
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-follow-up-ci-behaviour-pr-66" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known follow-up CI behaviour (PR #66)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-31-hardening-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-31 — Hardening Pass
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-31 — Hardening Pass">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documented-accepted-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documented (accepted risk)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skipped-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Skipped / deferred
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#posture-delta_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Posture delta
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-30-media-stack-assessment-vpn-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-30 — Media Stack Assessment (VPN routing)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-30 — Media Stack Assessment (VPN routing)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findings-at-the-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Findings (at the time)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-was-tried" class="md-nav__link">
+    <span class="md-ellipsis">
+      What was tried
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-april-2026-post-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resolution (April 2026, post-audit)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networkpolicy-decisions-made-still-in-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      NetworkPolicy decisions made (still in effect)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-container-image-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-?? — Container Image Audit
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-?? — Container Image Audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audited-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audited Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-still-pending-see-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recommendation (still pending — see backlog)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-add-an-audit-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      How to Add an Audit Entry
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-ssm-break-glass-authenticated-docker-hub-pulls-pi-only-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-offsite-k3s-control-plane-backup-to-s3-pi-only-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-06-05-finops-guardrails-ebs-snapshots-private-ecr-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-23-alloy-ebpf-observability-pipeline-planned-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-23 — Alloy + eBPF observability pipeline (planned change)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-23 — Alloy + eBPF observability pipeline (planned change)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scope_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decisions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risks_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mitigations-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mitigations active
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convergent-state-post-ci-hardening-same-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Convergent state — post-CI hardening (same PR)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-09-adguard-home-runasuser-65534-0-incident-driven" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-root-is-acceptable-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why root is acceptable here
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mitigations-retained" class="md-nav__link">
+    <span class="md-ellipsis">
+      Mitigations retained
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardening-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hardening deferred
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-05-07-dependabot-simulation-audit-supply-chain-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#headline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Headline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed-in-this-pass-prs-abcdefghi" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed in this pass (PRs A/B/C/D/E/F/G/H/I)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#residual-risk-register-action-required-by-review-by-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      Residual risk register (action required by review-by date)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#posture-delta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Posture delta
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-follow-up-ci-behaviour-pr-66" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known follow-up CI behaviour (PR #66)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-31-hardening-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-31 — Hardening Pass
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-31 — Hardening Pass">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fixed
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documented-accepted-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documented (accepted risk)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skipped-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      Skipped / deferred
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#posture-delta_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Posture delta
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-30-media-stack-assessment-vpn-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-30 — Media Stack Assessment (VPN routing)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-30 — Media Stack Assessment (VPN routing)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      Context
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findings-at-the-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Findings (at the time)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-was-tried" class="md-nav__link">
+    <span class="md-ellipsis">
+      What was tried
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-april-2026-post-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resolution (April 2026, post-audit)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networkpolicy-decisions-made-still-in-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      NetworkPolicy decisions made (still in effect)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-01-container-image-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      2026-01-?? — Container Image Audit
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2026-01-?? — Container Image Audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audited-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audited Images
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendation-still-pending-see-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recommendation (still pending — see backlog)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-add-an-audit-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      How to Add an Audit Entry
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      Related
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/security/audit-history.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="security-audit-history">Security Audit History<a class="headerlink" href="#security-audit-history" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Active
+<strong>Last reviewed:</strong> 2026-05-09
+<strong>Owner:</strong> @ariel-extending851</p>
+</blockquote>
+<p>Chronological record of security audits, findings, and remediations. The current security posture lives in <a href="../overview/"><code>overview.md</code></a>; open work lives in <a href="../fixes-backlog/"><code>fixes-backlog.md</code></a>.</p>
+<p>This page is the historical record — entries here describe the state at the time of each audit, not necessarily today's reality.</p>
+<hr />
+<h2 id="2026-06-05-ssm-break-glass-authenticated-docker-hub-pulls-pi-only-planned-change">2026-06-05 — SSM break-glass + authenticated Docker Hub pulls (Pi-only) (planned change)<a class="headerlink" href="#2026-06-05-ssm-break-glass-authenticated-docker-hub-pulls-pi-only-planned-change" title="Permanent link">&para;</a></h2>
+<p>Two zero/near-zero-cost adds for the Pi-only cluster: a free SSM break-glass path
+and authenticated Docker Hub pulls.</p>
+<h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>infra/aws-velero/main.tf</code> — new IAM role <code>hl-ssm-hybrid-pi</code> (trust
+  <code>ssm.amazonaws.com</code>, <code>permissions_boundary</code> = principal boundary) + attach
+  AWS-managed <code>AmazonSSMManagedInstanceCore</code> + <code>aws_ssm_activation</code> (registration
+  limit 2). Outputs <code>ssm_activation_id</code>/<code>ssm_activation_code</code> are <code>sensitive</code>.</li>
+<li><code>infra/aws-oidc/main.tf</code> — apply role + boundary gain <code>ssm:CreateActivation</code>/
+  <code>DeleteActivation</code>/<code>DescribeActivations</code>/tags (Resource <code>*</code>; activations are
+  account-level). Role create/PassRole/policy-attach already covered by the
+  <code>role/hl-*</code> statements; <code>AmazonSSMManagedInstanceCore</code> is not in the
+  admin-attach denylist. Boundary remeasured ~3.4 KB (limit 6144).</li>
+<li><code>ansible/roles/ssm_agent/</code> — installs + idempotently registers the agent;
+  gated by <code>ssm_breakglass_enabled</code> (default false). Includes <code>molecule/default/</code>.</li>
+<li><code>ansible/roles/k3s/</code> — <code>registries.yaml.j2</code> for authenticated Docker Hub pulls
+  (<code>mode 0600</code>, <code>no_log</code>), gated by <code>k3s_dockerhub_auth_enabled</code> (default false).</li>
+<li><code>ansible/group_vars/all.sops.yml</code> (new, SOPS) — <code>dockerhub_token</code>,
+  <code>ssm_activation_id</code>, <code>ssm_activation_code</code> encrypted (dedicated <code>.sops.yaml</code>
+  rule); <code>dockerhub_username</code>/<code>ssm_region</code> plaintext (non-secret).</li>
+</ul>
+<h3 id="decisions">Decisions<a class="headerlink" href="#decisions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Standard tier only (Run Command), NOT advanced/Session Manager.</strong> Interactive
+  on-prem SSM costs ~$5/instance/mo; Run Command is free and covers break-glass
+  (<code>tailscale up</code> without SSH). Documented in <code>tailscale-logged-out.md</code>.</li>
+<li><strong>Authenticated Docker Hub over ECR pull-through.</strong> For an on-prem Pi, ECR
+  pull-through adds egress (~$0.09/GB) + Secrets Manager ($0.40/mo); a free
+  Docker Hub PAT raises the pull limit at $0. Auth only, no mirror endpoint.</li>
+<li>Both features ship <strong>off by default</strong> — opt-in via the gating vars.</li>
+</ul>
+<h3 id="residual-risks">Residual risks<a class="headerlink" href="#residual-risks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Owner</th>
+<th>Review-by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13</td>
+<td>SSM activation code/id are registration credentials in SOPS</td>
+<td>secret-handling</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Both <code>sensitive</code> TF outputs + SOPS-encrypted in <code>all.sops.yml</code>; activation expires (AWS caps ≤30d) and managed instances persist after. registration_limit 2.</td>
+</tr>
+<tr>
+<td>14</td>
+<td>hl-ssm-hybrid-pi role lets SSM run commands as root on the Pis</td>
+<td>runtime-permission</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Standard tier, Run Command only; same blast radius as existing SSH-as-root. Role carries the principal boundary; off unless <code>ssm_breakglass_enabled</code>.</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Docker Hub PAT distributed to all k3s nodes in registries.yaml</td>
+<td>secret-handling</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td><code>mode 0600</code>, <code>no_log</code> task; read-only PAT recommended; SOPS-encrypted at rest. Worst case is Docker Hub pull abuse, not infra access.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2026-06-05-offsite-k3s-control-plane-backup-to-s3-pi-only-planned-change">2026-06-05 — Offsite k3s control-plane backup to S3 (Pi-only) (planned change)<a class="headerlink" href="#2026-06-05-offsite-k3s-control-plane-backup-to-s3-pi-only-planned-change" title="Permanent link">&para;</a></h2>
+<p>Closes a real DR gap: with <code>cluster-init: false</code> the k3s etcd-snapshot config is
+inert (SQLite), so there was no automated control-plane backup — Velero covers
+only app namespaces + PVCs. Adds a write-only S3 uploader + a CronJob that
+snapshots <code>state.db</code> offsite.</p>
+<h3 id="scope_1">Scope<a class="headerlink" href="#scope_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>infra/aws-velero/main.tf</code> — new IAM user <code>hl-k3s-snapshot</code> at path <code>/system/</code>,
+  <code>permissions_boundary</code> = <code>homelab-principal-boundary</code>, <strong>write-only</strong> on the
+  <code>cluster-state/*</code> prefix (<code>s3:PutObject</code>/<code>AbortMultipartUpload</code>/<code>ListMultipart
+  UploadParts</code>); <code>ListBucket</code> is conditioned on <code>s3:prefix = cluster-state/*</code> so
+  it cannot enumerate Velero's backups. New lifecycle rule expiring
+  <code>cluster-state/</code> objects at 30d; the existing Velero rule is now scoped to the
+  <code>backups/</code> prefix.</li>
+<li><code>k8s/apps/k3s-snapshot/</code> — CronJob (every 12h) pinned via nodeAffinity to the
+  control-plane node, mounts <code>/var/lib/rancher/k3s/server/db</code> <strong>read-only</strong>, runs
+  <code>sqlite3 .backup</code> → gzip → <code>aws s3 cp</code>. SOPS secret holds the uploader creds.</li>
+<li><code>ansible/roles/k3s/templates/server-config.yaml.j2</code> — suppress the inert
+  <code>etcd-snapshot-*</code> lines under SQLite and emit an explanatory comment.</li>
+</ul>
+<h3 id="decisions_1">Decisions<a class="headerlink" href="#decisions_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>SQLite <code>.backup</code>, not etcd migration.</strong> etcd on an SD card is a write-
+  amplification anti-pattern; keep SQLite + offsite snapshots.</li>
+<li><strong>Write-only uploader.</strong> A compromised Pi pod can append a snapshot but cannot
+  read or delete backup history. Restore is a human action with admin creds.</li>
+<li><strong>Reused the storage-latency debian digest</strong> (already Trivy-allowlisted) — no
+  new image to vet.</li>
+<li><strong>Pinned to the control-plane role</strong> (Exists, value-agnostic), not a hostname,
+  so it follows the control plane in both pi-only (pi-04) and hybrid (EC2) modes.</li>
+</ul>
+<h3 id="residual-risks_1">Residual risks<a class="headerlink" href="#residual-risks_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Owner</th>
+<th>Review-by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11</td>
+<td>CronJob runs as root with a hostPath mount of the k3s db dir</td>
+<td>runtime-permission</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>hostPath is <strong>read-only</strong> and scoped to <code>/var/lib/rancher/k3s/server/db</code> (not <code>/</code>); <code>allowPrivilegeEscalation: false</code> + <code>drop: [ALL]</code>; pinned to the control-plane node; same posture already accepted for <code>storage-latency</code>. Root is required to read the 0700 root-owned datastore dir.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Snapshot contains full cluster state (secrets, tokens) in S3</td>
+<td>data-at-rest</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Bucket is AES256-SSE, public-access-blocked, versioned; uploader is write-only; 30-day expiry. Same bucket/posture as Velero backups, which already contain Secrets.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2026-06-05-finops-guardrails-ebs-snapshots-private-ecr-planned-change">2026-06-05 — FinOps guardrails + EBS snapshots + private ECR (planned change)<a class="headerlink" href="#2026-06-05-finops-guardrails-ebs-snapshots-private-ecr-planned-change" title="Permanent link">&para;</a></h2>
+<p>Adds free/near-free AWS capabilities: cost alerting (Budgets + Cost Anomaly Detection + billing alarm), IAM Access Analyzer, EBS snapshot lifecycle (DLM), and a private ECR registry. Recorded ahead of merge so the new IAM grants and the widened <code>hl-k3s-node</code> surface are visible to future reviewers.</p>
+<h3 id="scope_2">Scope<a class="headerlink" href="#scope_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>infra/aws/modules/finops/</code> — new: SNS topic <code>hl-cost-alerts</code> (+ topic policy scoped to <code>aws:SourceAccount</code>), <code>aws_budgets_budget</code>, Cost Anomaly Detection monitor/subscription, CloudWatch billing alarm, <code>aws_accessanalyzer_analyzer</code> (ACCOUNT/external-access), and an EventBridge rule fanning GuardDuty + Access Analyzer findings to the topic.</li>
+<li><code>infra/aws/modules/backup-ebs/</code> — new: <code>aws_dlm_lifecycle_policy</code> + a DLM service role <code>hl-dlm-lifecycle-*</code> carrying the <code>homelab-principal-boundary</code>, attached to the AWS-managed <code>AWSDataLifecycleManagerServiceRole</code>.</li>
+<li><code>infra/aws/modules/ecr/</code> — new: private repos (default <code>hl-apps</code>) with <code>IMMUTABLE</code> tags, free basic <code>scan_on_push</code>, AES256, and a lifecycle policy capping retained images.</li>
+<li><code>infra/aws/modules/compute/main.tf</code> — appended inline policy <code>hl-ecr-pull-*</code> on the existing <code>hl-k3s-node-*</code> role: <code>ecr:GetAuthorizationToken</code> (Resource <code>*</code>, AWS-mandated) + <code>ecr:BatchGetImage</code> / <code>GetDownloadUrlForLayer</code> / <code>BatchCheckLayerAvailability</code> scoped to the <code>hl-*</code> repo ARNs. Added <code>Snapshot = hl-k3s</code> volume tag (DLM selector).</li>
+<li><code>infra/aws-oidc/main.tf</code> — extended the apply role's inline policy and boundary with <code>budgets:*</code>, <code>ce:*</code>, <code>dlm:*</code>, <code>access-analyzer:*</code>, <code>sns:*</code> (scoped to <code>hl-cost-alerts</code>), scoped <code>cloudwatch</code> alarm actions, and <code>ecr:*</code> (scoped to <code>repository/hl-*</code>). Boundary measured at 3428 bytes (limit 6144).</li>
+</ul>
+<h3 id="decisions_2">Decisions<a class="headerlink" href="#decisions_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Access Analyzer + findings fan-out live in <code>finops</code>, not <code>audit</code>.</strong> The audit module's contract explicitly scopes out EventBridge fan-out (<code>modules/audit/main.tf:15-16</code>); the rule belongs next to the SNS topic it publishes to.</li>
+<li><strong>ACCOUNT-type Access Analyzer only.</strong> The external-access analyzer is free; the unused-access tier is paid and deliberately not created.</li>
+<li><strong>ECR tags are <code>IMMUTABLE</code> + scan-on-push.</strong> Reproducible deploys; enhanced/Inspector scanning (paid) is NOT enabled.</li>
+<li><strong>DLM role carries the principal boundary</strong> like every other <code>hl-</code> role. <code>AWSDataLifecycleManagerServiceRole</code> is not in the boundary's admin-attach denylist, so it attaches under the cap.</li>
+<li><strong><code>alert_email</code> is a plain variable, not SOPS.</strong> It is an alert destination, not a credential; the SOPS catch-all (<code>*Token</code>/<code>*Key</code>/<code>*Secret</code>) does not match it and encrypting it adds friction with no security benefit.</li>
+</ul>
+<h3 id="residual-risks_2">Residual risks<a class="headerlink" href="#residual-risks_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Owner</th>
+<th>Review-by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8</td>
+<td><code>hl-k3s-node</code> role widened with ECR pull (<code>BatchGetImage</code> etc.)</td>
+<td>runtime-permission</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Read-only, scoped to <code>arn:aws:ecr:*:*:repository/hl-*</code>; <code>GetAuthorizationToken</code> requires Resource <code>*</code> (AWS limitation) but only mints a pull token for repos the other statement already scopes. No push/delete.</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>alert_email</code> stored as plaintext in tfvars / state</td>
+<td>secret-handling</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Intentional — non-secret alert destination, not a credential. Worst case is a leaked email address.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>SNS topic <code>hl-cost-alerts</code> can be published to by AWS services</td>
+<td>exposure</td>
+<td>@ariel-extending851</td>
+<td>2026-09-01</td>
+<td>Topic policy restricts <code>SNS:Publish</code> to the four service principals with an <code>aws:SourceAccount</code> condition; no cross-account publish.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2026-05-23-alloy-ebpf-observability-pipeline-planned-change">2026-05-23 — Alloy + eBPF observability pipeline (planned change)<a class="headerlink" href="#2026-05-23-alloy-ebpf-observability-pipeline-planned-change" title="Permanent link">&para;</a></h2>
+<p>Introduces a capabilities-only DaemonSet (privileged=false, mirrors Falco), a write-only IAM policy on the existing <code>hl-k3s-node</code> role, a new S3 bucket, and an IMDSv2 hop-limit bump from 1 to 2. Recorded ahead of merge so the trade-offs are visible to future security reviewers.</p>
+<h3 id="scope_3">Scope<a class="headerlink" href="#scope_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>k8s/apps/alloy/</code> — DaemonSet pinned to <code>homelab.io/tier: cloud</code> (excludes the 2 GB k3s server).</li>
+<li><code>ansible/roles/alloy/</code> — native systemd unit for Raspberry Pi <code>k3s-agent</code> nodes.</li>
+<li><code>infra/aws/modules/observability/</code> — new S3 bucket <code>hl-observability-cold-storage-*</code> with lifecycle Standard → Standard-IA @30d → Deep Archive @90d → expire @730d, SSE-S3, full public-access-block, versioning, abort-incomplete-multipart @7d, bucket policy denying non-TLS and unencrypted PUT.</li>
+<li><code>infra/aws/modules/compute/main.tf</code> — appended inline policy <code>hl-alloy-s3-export-*</code> on the existing <code>hl-k3s-node-*</code> role granting <code>s3:PutObject</code> / <code>s3:PutObjectAcl</code> / <code>s3:AbortMultipartUpload</code> / <code>s3:ListBucketMultipartUploads</code> on the new bucket ARN only. <strong>No <code>s3:GetObject</code>, no <code>s3:DeleteObject</code> — write-only.</strong></li>
+<li>IMDSv2 hop limit raised from 1 to 2 on both <code>aws_launch_template.k3s_server</code> and <code>aws_launch_template.k3s_agent</code> so the Alloy DaemonSet pod can reach the Instance Profile from inside the pod network namespace.</li>
+</ul>
+<h3 id="decisions_3">Decisions<a class="headerlink" href="#decisions_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Capabilities-only DaemonSet (NOT privileged).</strong> Beyla CO-RE probes need <code>CAP_SYS_ADMIN + CAP_BPF + CAP_PERFMON + CAP_SYS_PTRACE + CAP_DAC_READ_SEARCH + CAP_NET_ADMIN + CAP_NET_RAW</code> plus <code>hostPID: true</code>. The DaemonSet sets <code>privileged: false</code> + <code>allowPrivilegeEscalation: false</code> + <code>capabilities.drop: [ALL]</code> + the explicit add list — strictly less than full privilege and identical in shape to the Falco DaemonSet (<code>k8s/apps/falco/daemonset.yaml:51</code>). Kyverno <code>PolicyException</code> (at <code>k8s/apps/alloy/policy-exception.yaml</code>) covers only <code>disallow-host-namespaces</code> (hostPID) and <code>disallow-capabilities</code> (the cap add list). No exemption needed for <code>disallow-privileged-containers</code>.</li>
+<li><strong>Hop-limit 1 → 2 accepted</strong> as the AWS-recommended ceiling for pod IMDSv2 access. The previous test asserting <code>== 1</code> (<code>infra/aws/modules/compute/tests/security.tftest.hcl</code>) has been updated to assert <code>== 2</code> exactly (must not exceed).</li>
+<li><strong>S3 IAM is write-only.</strong> Cold reads are out-of-scope for this PR; a separate read-only IAM principal will be added in a future PR for cold-tier query tooling.</li>
+<li><strong>Workload-name compliance enforced in three layers</strong> — source relabel removes pod and container name labels, sink relabel defensive guard catches any leak through, and the contract test at <code>bin/tests/test_no_forbidden_workload_names.py</code> fails the build at commit time. Belt-and-braces against accidental product-name exposure in Grafana Cloud labels.</li>
+</ul>
+<h3 id="residual-risks_3">Residual risks<a class="headerlink" href="#residual-risks_3" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Owner</th>
+<th>Review-by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>Grafana Cloud endpoint URLs (<code>grafana_cloud_prom_url</code>, <code>grafana_cloud_loki_url</code>) ship plaintext in SOPS file</td>
+<td>secret-handling</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>Existing <code>.sops.yaml</code> catch-all encrypts <code>*Token</code> / <code>*Key</code> / <code>*Secret</code> but not URL fields. URLs leak the GC tenant region (mildly sensitive). The path-specific <code>.sops.yaml</code> rule (encrypting <code>grafana_cloud_prom_url</code> and <code>_loki_url</code>) needs to be added by editing <code>.sops.yaml</code> through <code>sops</code> itself — the pre-commit <code>block-sops.sh</code> hook treats <code>.sops.yaml</code> as encrypted (false positive on the config file matching <code>*.sops.yaml</code>) and blocks direct edits. Tracked.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>DaemonSet with <code>hostPID: true</code> + <code>CAP_SYS_ADMIN</code> (Alloy / Beyla)</td>
+<td>runtime-permission</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>Capability list mirrors the Falco DaemonSet — drop-ALL + explicit adds. No <code>privileged: true</code>. Kyverno <code>PolicyException</code> scoped to ns <code>alloy</code> only; NetworkPolicy denies all non-essential egress; covered by Checkov baseline.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>IMDSv2 <code>http_put_response_hop_limit</code> raised 1 → 2 on <code>k3s_server</code> and <code>k3s_agent</code> launch templates</td>
+<td>imds-exposure</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>Required for pod-network access to <code>169.254.169.254</code>. 2 is AWS's documented ceiling; from-host SSRF still blocked by the standard IMDSv2 token-required + 2-hop guard.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mitigations-active">Mitigations active<a class="headerlink" href="#mitigations-active" title="Permanent link">&para;</a></h3>
+<ul>
+<li>NetworkPolicy (default-deny + explicit allowlist) in <code>k8s/apps/alloy/networkpolicy.yaml</code> — egress restricted to DNS, kube-apiserver, IMDSv2, Grafana Cloud (443), S3 (443). Ingress restricted to Prometheus + Tailscale operator.</li>
+<li>Bucket policy denies all non-TLS requests and any PUT without SSE.</li>
+<li>IAM policy is scope-minimal — no Get/Delete on the bucket.</li>
+<li><code>force_destroy = false</code> on the bucket (archived logs evidentiary).</li>
+<li>Contract test in CI blocks any commit that leaks a forbidden product name.</li>
+</ul>
+<h3 id="convergent-state-post-ci-hardening-same-pr">Convergent state — post-CI hardening (same PR)<a class="headerlink" href="#convergent-state-post-ci-hardening-same-pr" title="Permanent link">&para;</a></h3>
+<p>After the initial CI cycle reached 18/18 green, a follow-up security audit removed two avoidable elevations:</p>
+<ul>
+<li><strong><code>CAP_NET_RAW</code> dropped</strong> from both the DaemonSet (<code>k8s/apps/alloy/daemonset.yaml</code>) and the native systemd unit (<code>ansible/roles/alloy/templates/alloy.service.j2</code>). Beyla's HTTP/TCP RED probes run via uprobes / tracepoints, not raw socket capture — the cap was over-privileged. Matches the Falco precedent (also no <code>NET_RAW</code>).</li>
+<li><strong><code>readOnlyRootFilesystem: true</code></strong> added to the DaemonSet container, paired with a 256 MiB <code>/tmp</code> emptyDir for the awss3 exporter's multipart staging. Mirrors the otel-collector daemonset pattern. Reduces blast radius if the binary is ever exploited — no writable rootfs to drop tooling.</li>
+</ul>
+<p>The Pi-side systemd unit already has <code>ProtectSystem=full</code> + <code>PrivateTmp=true</code>, so the filesystem hardening only needed to ship for the cluster mode.</p>
+<p>Linked architecture: <a href="../../architecture/observability-alloy-ebpf/"><code>../architecture/observability-alloy-ebpf.md</code></a>.
+Linked runbook: <a href="../../runbooks/alloy-troubleshooting/"><code>../runbooks/alloy-troubleshooting.md</code></a>.</p>
+<hr />
+<h2 id="2026-05-09-adguard-home-runasuser-65534-0-incident-driven">2026-05-09 — AdGuard Home: runAsUser 65534 → 0 (incident-driven)<a class="headerlink" href="#2026-05-09-adguard-home-runasuser-65534-0-incident-driven" title="Permanent link">&para;</a></h2>
+<p>Triggered by an incident (<code>/incident</code>) on the production cluster: <code>adguard/adguardhome-*</code> in CrashLoopBackOff with <strong>141 restarts over 23h</strong>, exit code 1 inside the same wall-clock second. Logs showed AdGuard's first-launch permcheck rejecting the non-root container with <code>you must run it as administrator</code>.</p>
+<h3 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h3>
+<p>Pod-level <code>securityContext</code> changed from <code>runAsUser: 65534 / runAsGroup: 65534 / fsGroup: 65534</code> to <code>runAsUser: 0 / runAsGroup: 0</code> (drop <code>fsGroup</code>). Container caps add <code>NET_RAW</code> alongside <code>NET_BIND_SERVICE</code>.</p>
+<h3 id="why-root-is-acceptable-here">Why root is acceptable here<a class="headerlink" href="#why-root-is-acceptable-here" title="Permanent link">&para;</a></h3>
+<p>AdGuard Home v0.107.50+ permcheck inspects the <strong>binary's file capabilities</strong> (<code>cap.GetFile</code>), not the <strong>process</strong> caps injected by the Pod. The upstream image ships without <code>setcap</code> on the binary, so non-root + Pod-level <code>NET_BIND_SERVICE</code> still fails the check. Upstream's official k8s example also runs as root.</p>
+<p>The pod already requires <code>hostNetwork: true</code> to bind UDP/TCP 53 on the node — that alone makes the runtime co-tenant with the host's network namespace. Dropping <code>runAsUser: 65534</code> does not change the pod's blast radius materially in this configuration.</p>
+<h3 id="mitigations-retained">Mitigations retained<a class="headerlink" href="#mitigations-retained" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>privileged: false</code></li>
+<li><code>allowPrivilegeEscalation: false</code> (<code>no_new_privs</code> on the process)</li>
+<li><code>capabilities.drop: [ALL]</code> then explicit add of <code>NET_BIND_SERVICE</code>, <code>NET_RAW</code>, <code>SETUID</code>, <code>SETGID</code></li>
+<li>NetworkPolicy <code>default-deny</code> + <code>allow-adguardhome</code> egress allowlist (added 2026-05-07 in PR-E)</li>
+<li>Single-namespace, single-pod scope; no service account binding outside its namespace</li>
+<li>Read-only mount for the docs ConfigMap</li>
+</ul>
+<h3 id="hardening-deferred">Hardening deferred<a class="headerlink" href="#hardening-deferred" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Init-container <code>setcap</code> workaround to allow non-root, once upstream stabilizes</li>
+<li><code>nodeSelector: role=dns-server</code> for IP-stability of the DNS endpoint</li>
+</ul>
+<p>Linked runbook: <a href="../../runbooks/adguard-firstlaunch-permcheck/"><code>docs/runbooks/adguard-firstlaunch-permcheck.md</code></a>.</p>
+<p>Same-PR cleanup: deleted <code>k8s/apps/adguard/pv.yaml</code> (storageClassName mismatched the PVC; pinned to a node that has not existed in the cluster since the 2026-05-04 re-deploy). Dynamic <code>local-path</code> provisioning has covered this PVC since first deploy.</p>
+<hr />
+<h2 id="2026-05-07-dependabot-simulation-audit-supply-chain-pass">2026-05-07 — Dependabot-Simulation Audit (Supply Chain Pass)<a class="headerlink" href="#2026-05-07-dependabot-simulation-audit-supply-chain-pass" title="Permanent link">&para;</a></h2>
+<p>Source: branch <code>worktree-calm-oak-vk48</code>, plan file <code>/home/vscode/.claude/plans/role-you-are-a-vast-pascal.md</code>. Read-only audit across Python deps, GitHub Actions, Terraform providers, Ansible collections, k8s manifests, RBAC, security contexts, and SAST on Python/Terraform/Ansible.</p>
+<h3 id="headline">Headline<a class="headerlink" href="#headline" title="Permanent link">&para;</a></h3>
+<p>No critical RCE / IAM-bypass / secret-exposure issues. Bulk of the work is supply-chain hygiene — pinning, allowlist tracking, and segmentation — not bug-fixing.</p>
+<h3 id="fixed-in-this-pass-prs-abcdefghi">Fixed in this pass (PRs A/B/C/D/E/F/G/H/I)<a class="headerlink" href="#fixed-in-this-pass-prs-abcdefghi" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Item</th>
+<th>Resolution</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔴 Critical</td>
+<td>52+ floating GitHub Action refs (<code>@v3/v4/v5/v7</code>) — supply-chain takeover</td>
+<td>Pinned every <code>uses:</code> to a 40-char commit SHA across 10 workflows; tag retained as trailing comment so Dependabot can keep them current weekly. Pinned to latest patch within current major (no major bumps). 97 ref lines updated.</td>
+<td><code>.github/workflows/*.yml</code> (10 files)</td>
+</tr>
+<tr>
+<td>🟠 High</td>
+<td>CI pip installs unpinned (<code>pytest pytest-cov pyyaml jinja2 boto3</code>)</td>
+<td>Added <code>[project.optional-dependencies] ci</code> with explicit floors (jinja2 ≥ 3.1.6 → CVE-2024-34064; urllib3 ≥ 2.5.0 → CVE-2024-37891 transitive)</td>
+<td><code>pyproject.toml</code>, <code>.github/workflows/ci-validation.yml</code></td>
+</tr>
+<tr>
+<td>🟠 High</td>
+<td>Ansible collections with no upper bound (<code>&gt;=3.0.0</code>)</td>
+<td>Added <code>&lt;major+1</code> upper bounds on <code>kubernetes.core</code>, <code>community.sops</code>, <code>community.general</code>, <code>ansible.posix</code> to protect 1 GB RPi3 from transitive-dep churn during converges</td>
+<td><code>ansible/requirements.yml</code></td>
+</tr>
+<tr>
+<td>🟠 High</td>
+<td>Floating tool versions in <code>.mise.toml</code> (<code>terraform</code>, <code>kubectl</code>, <code>awscli</code>, <code>sops</code>, <code>jq</code>, <code>tflint</code>, <code>infracost</code>, <code>actionlint</code>, <code>pre-commit</code>, <code>zizmor</code>)</td>
+<td>Pinned each to a known version. <code>kubectl 1.30.14</code> matches k3s server minor; <code>terraform 1.11.0</code> matches CI workflow pin. LocalStack pipx tools left at <code>latest</code> (continue-on-error job only).</td>
+<td><code>.mise.toml</code></td>
+</tr>
+<tr>
+<td>🟠 High</td>
+<td>10 namespaces missing NetworkPolicy (adguard, blackbox, falco, golink, kube-state-metrics, node-exporter, otel-collector, storage-latency, unifi, velero)</td>
+<td>Added <code>default-deny</code> (Ingress + Egress) plus tight per-workload allow-list per namespace. 21 NetworkPolicy resources total; validated with kubeconform + kustomize build. hostNetwork pods get best-effort ingress under most CNIs (egress rules apply since they're pod-scoped).</td>
+<td><code>k8s/apps/&lt;ns&gt;/networkpolicy.yaml</code> (10 new) + each <code>kustomization.yaml</code></td>
+</tr>
+<tr>
+<td>🟡 Medium</td>
+<td>Dependabot missing <code>docker</code> ecosystem</td>
+<td>Added <code>package-ecosystem: docker</code> block (npm deferred — no <code>package.json</code> yet)</td>
+<td><code>.github/dependabot.yml</code></td>
+</tr>
+<tr>
+<td>🟡 Medium</td>
+<td>Terraform state-lock table missing at-rest encryption + PITR (3× tfsec ignores acknowledged but not fixed)</td>
+<td>Added <code>point_in_time_recovery { enabled = true }</code> and <code>server_side_encryption { enabled = true }</code>; left CMK ignore in place with rationale comment</td>
+<td><code>infra/aws-backend/main.tf</code></td>
+</tr>
+<tr>
+<td>🟡 Medium</td>
+<td>15 image refs missing <code>@sha256:</code> digest pin</td>
+<td>Resolved manifest-list digests via <code>crane digest</code> and appended <code>@sha256:&lt;digest&gt;</code> to 17 image refs across 14 files. ARM64-safe: pinned manifest lists, not arch leaves, so K8s resolves per-arch digest at pull time.</td>
+<td><code>k8s/apps/**/*.yaml</code> (13 files) + <code>k8s/gitops/sops/argocd-repo-server-patch.yaml</code></td>
+</tr>
+<tr>
+<td>🟢 Low</td>
+<td><code>link-checker.yml</code> missing top-level <code>permissions:</code></td>
+<td>Added <code>permissions: { contents: read }</code> (bundled with PR-A SHA pins after zizmor flagged the gap on the SHA-pinned diff)</td>
+<td><code>.github/workflows/link-checker.yml</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="residual-risk-register-action-required-by-review-by-date">Residual risk register (action required by review-by date)<a class="headerlink" href="#residual-risk-register-action-required-by-review-by-date" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risk</th>
+<th>Class</th>
+<th>Owner</th>
+<th>Review-by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>anthropics/claude-code-action@v1.0.115</code> (third-party, holds <code>id-token: write</code>)</td>
+<td>action-takeover</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>SHA-pinned in PR-A but the trust decision is residual; re-evaluate quarterly. Used in <code>claude-code-review.yml:35</code>, <code>claude.yml:43</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>tailscale/tailscale ~&gt; 0.13</code> Terraform provider</td>
+<td>third-party-provider</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>Re-verify maintenance status quarterly; consider patch-pinning</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>.trivy-image-allowlist.txt</code> — 13 known-CVE images allowlisted</td>
+<td>image-cve</td>
+<td>@ariel-extending851</td>
+<td>2026-07-30</td>
+<td>Driven by <code>docs/runbooks/image-upgrade-sprint-2026-q3.md</code>; do not let dates silently expire</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Velero ClusterRole <code>verbs/apiGroups/resources = ["*"]</code></td>
+<td>rbac-overly-broad</td>
+<td>@ariel-extending851</td>
+<td>2026-08-01</td>
+<td>Documented exception in <code>k8s/policies/rbac_safety.rego</code>; quarterly RBAC review</td>
+</tr>
+</tbody>
+</table>
+<h3 id="posture-delta">Posture delta<a class="headerlink" href="#posture-delta" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CRITICAL: 52+ floating action refs (mid-week supply-chain takeover risk)</td>
+<td>All workflows SHA-pinned + Dependabot keeps current</td>
+</tr>
+<tr>
+<td>HIGH: CI test toolchain auto-pulls latest (CVE exposure window)</td>
+<td>Pinned in <code>pyproject.toml</code> <code>[ci]</code> extra</td>
+</tr>
+<tr>
+<td>HIGH: Ansible major-bump risk on RPi3</td>
+<td>Capped at current major across all 4 collections</td>
+</tr>
+<tr>
+<td>HIGH: Tool drift between local + CI (kubectl/k3s minor mismatch class of failure)</td>
+<td><code>.mise.toml</code> pinned to k3s-matched versions</td>
+</tr>
+<tr>
+<td>HIGH: 10 NS with no network segmentation</td>
+<td>Default-deny + minimal allow per NS</td>
+</tr>
+<tr>
+<td>MEDIUM: Container-image bumps tracked manually via Trivy allowlist</td>
+<td>Dependabot now opens weekly PRs</td>
+</tr>
+<tr>
+<td>MEDIUM: State-lock table unencrypted at rest</td>
+<td>SSE + PITR enabled</td>
+</tr>
+<tr>
+<td>MEDIUM: 15 image refs mutable (registry-replay vulnerable)</td>
+<td>Manifest-list digests pinned</td>
+</tr>
+<tr>
+<td>LOW: link-checker workflow ran with default permissions</td>
+<td>Restricted to <code>contents: read</code></td>
+</tr>
+</tbody>
+</table>
+<p>Overall risk: <strong>CRITICAL/HIGH → LOW</strong> (4 residuals are policy/quarterly-review items, not code gaps).</p>
+<h3 id="known-follow-up-ci-behaviour-pr-66">Known follow-up CI behaviour (PR #66)<a class="headerlink" href="#known-follow-up-ci-behaviour-pr-66" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Class</th>
+<th>Why</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>claude-review</code> workflow fails on this PR with <code>App token exchange failed: 401 — Workflow validation failed</code></td>
+<td>expected</td>
+<td>The <code>anthropics/claude-code-action</code> action refuses to issue a PR-scoped token when the workflow file on the PR diverges from <code>develop</code>. PR-A SHA-pinned the action, so divergence is by design. The action's own error message instructs to ignore on first-add.</td>
+<td>Resolves automatically once the PR merges to <code>develop</code>; the action then runs identically against the new SHA. No code change.</td>
+</tr>
+<tr>
+<td><code>Trivy strict</code> failed initial run on PR #66</td>
+<td>regression-from-this-pass</td>
+<td>PR-H added <code>@sha256:…</code> digests to manifest <code>image:</code> refs; <code>bin/trivy_scan.py</code> did exact-string allowlist matching, so digest-suffixed refs missed entries.</td>
+<td>Fixed in follow-up commit: <code>bin/trivy_scan.py</code> now also matches the bare <code>repo:tag</code> form.</td>
+</tr>
+<tr>
+<td><code>QA: Offline Required Profile</code> failed on <code>oidc.tftest.hcl:110</code> with <code>contains() argument must be list</code>; second iteration failed on <code>backend.tftest.hcl</code> teardown with <code>aws_s3_bucket.terraform_state has lifecycle.prevent_destroy set</code></td>
+<td>regression-from-this-pass</td>
+<td>PR-E pinned <code>terraform = "1.11.0"</code> (was <code>latest</code> ≈ 1.15.x). 1.11 has two test-framework behaviors that 1.15 doesn't: (a) <code>&amp;&amp;</code> evaluates eagerly in <code>for</code> expressions, so <code>contains(try(stmt.Action, []), …)</code> fires even on filtered-out <code>Allow</code> statements (homelab_principal_boundary has <code>Action = "*"</code> scalar that breaks <code>contains</code>); (b) <code>prevent_destroy</code> is enforced during mock_provider teardown of resources not under test, blocking S3 bucket destruction even though the test is mocked.</td>
+<td>Fixed in two follow-up commits: (1) wrap <code>try(stmt.Action, [])</code> in <code>flatten([...])</code> at all 7 call-sites in <code>infra/aws-oidc/tests/oidc.tftest.hcl</code> for type-tolerance — this is defensive and correct on any terraform version; (2) bump <code>.mise.toml</code> <code>terraform = "1.15.2"</code> to match what develop's CI implicitly used. CI-only setup-terraform pin in <code>ci-validation.yml</code> (<code>terraform_version: "1.11.0"</code>) stays — that job only runs <code>terraform plan</code>, no tests, so the cross-job mismatch is cosmetic.</td>
+</tr>
+<tr>
+<td><code>Kubernetes: GitOps Convergence (k3d)</code> flaked on push of fix commit (<code>ComparisonError: dial tcp 10.43.169.177:8081: connect: connection refused</code>)</td>
+<td>flake</td>
+<td>The first CI run on this branch (with all 9 PRs and the digest pins) passed k3d in 1m11s; the failing run was the rebuild after pushing the fix commit, which only changed <code>bin/trivy_scan.py</code>, <code>infra/aws-oidc/tests/oidc.tftest.hcl</code>, and this doc. None of those affect ArgoCD repo-server bootstrap. Connection refused on a cluster service IP indicates the repo-server pod hadn't fully started when the test polled.</td>
+<td>No fix needed unless it persists. The <code>k3d_convergence.py</code> test treats any <code>ComparisonError</code> as fatal, which is a known sharp edge. If it recurs on retries, follow up by adding a startup-grace retry on transient gRPC unavailable.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2026-01-31-hardening-pass">2026-01-31 — Hardening Pass<a class="headerlink" href="#2026-01-31-hardening-pass" title="Permanent link">&para;</a></h2>
+<p>Source: original <code>SECURITY_FIX_PLAN.md</code> (now merged here).</p>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Item</th>
+<th>Resolution</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔴 Critical</td>
+<td>otel-collector running with <code>privileged: true</code></td>
+<td>Switched to <code>privileged: false</code>, added <code>runAsUser: 0</code> + <code>allowPrivilegeEscalation: false</code> + drop ALL capabilities + <code>readOnlyRootFilesystem: true</code></td>
+<td><code>k8s/apps/otel-collector/daemonset.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="documented-accepted-risk">Documented (accepted risk)<a class="headerlink" href="#documented-accepted-risk" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>hostPath</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>otel-collector</td>
+<td><code>/</code>, <code>/var/log</code>, <code>/var/lib/docker/containers</code></td>
+<td><code>readOnly: true</code>, non-root</td>
+</tr>
+<tr>
+<td>node-exporter</td>
+<td><code>/</code></td>
+<td><code>readOnly: true</code>, UID 65534</td>
+</tr>
+</tbody>
+</table>
+<h3 id="skipped-deferred">Skipped / deferred<a class="headerlink" href="#skipped-deferred" title="Permanent link">&para;</a></h3>
+<h3 id="posture-delta_1">Posture delta<a class="headerlink" href="#posture-delta_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CRITICAL: full host compromise possible via privileged container</td>
+<td>None — privileged: false enforced</td>
+</tr>
+<tr>
+<td>HIGH: root access during pod init</td>
+<td>Init runs as UID 1000</td>
+</tr>
+<tr>
+<td>HIGH: unsecured hostPath mounts</td>
+<td>All readOnly or constrained</td>
+</tr>
+<tr>
+<td>MEDIUM: unpredictable image updates</td>
+<td>Pending image updater</td>
+</tr>
+</tbody>
+</table>
+<p>Overall risk: <strong>CRITICAL/HIGH → MEDIUM/LOW</strong>.</p>
+<hr />
+<h2 id="2026-01-30-media-stack-assessment-vpn-routing">2026-01-30 — Media Stack Assessment (VPN routing)<a class="headerlink" href="#2026-01-30-media-stack-assessment-vpn-routing" title="Permanent link">&para;</a></h2>
+<p>Source: original <code>SECURITY_ASSESSMENT.md</code> (now merged here).</p>
+<h3 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h3>
+<h3 id="findings-at-the-time">Findings (at the time)<a class="headerlink" href="#findings-at-the-time" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Suspected root causes (at the time):
+2. Multiple pod restarts triggering rate limiting</p>
+<h3 id="what-was-tried">What was tried<a class="headerlink" href="#what-was-tried" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Cloudflare DNS (1.1.1.1) → still broken</li>
+<li>Removed DNS override → still broken</li>
+<li>Scaled to single VPN sidecar → still broken</li>
+<li>Pod recreations + reverts → still broken</li>
+</ul>
+<h3 id="resolution-april-2026-post-audit">Resolution (April 2026, post-audit)<a class="headerlink" href="#resolution-april-2026-post-audit" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Pinning <code>WIREGUARD_ENDPOINT_IP=193.32.127.66</code> (IPv4)</li>
+<li><code>VPN_IPV6=off</code></li>
+<li>Disabling IPv6 on the Pi host (<code>/etc/sysctl.d/99-disable-ipv6.conf</code>)</li>
+</ul>
+<h3 id="networkpolicy-decisions-made-still-in-effect">NetworkPolicy decisions made (still in effect)<a class="headerlink" href="#networkpolicy-decisions-made-still-in-effect" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ingress</td>
+<td>Allow same namespace, kube-system (probes), tailscale namespace (WebUI)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p>Outcome: VPN sidecar architecture validated; resource limits sized appropriately for <code>media</code> namespace (<a href="../../operations/resource-limits/"><code>../operations/resource-limits.md</code></a>); naming follows <a href="../../CONVENTIONS/"><code>../CONVENTIONS.md</code></a>.</p>
+<hr />
+<h2 id="2026-01-container-image-audit">2026-01-?? — Container Image Audit<a class="headerlink" href="#2026-01-container-image-audit" title="Permanent link">&para;</a></h2>
+<p>Source: original <code>CONTAINER_IMAGE_AUDIT.md</code> (now merged here).</p>
+<h3 id="audited-images">Audited Images<a class="headerlink" href="#audited-images" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Image</th>
+<th>Pinning</th>
+<th>Risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>grafana</td>
+<td><code>grafana/grafana</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>prometheus</td>
+<td><code>prom/prometheus</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>loki</td>
+<td><code>grafana/loki</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>node-exporter</td>
+<td><code>prom/node-exporter</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>kube-state-metrics</td>
+<td><code>registry.k8s.io/kube-state-metrics/kube-state-metrics</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>blackbox</td>
+<td><code>prom/blackbox-exporter</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>otel-collector</td>
+<td><code>otel/opentelemetry-collector-contrib</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>tailscale</td>
+<td><code>tailscale/tailscale</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>searxng</td>
+<td><code>searxng/searxng</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>adguard</td>
+<td><code>adguard/adguardhome</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>golink</td>
+<td><code>tailscale/golink</code></td>
+<td><code>latest</code></td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recommendation-still-pending-see-backlog">Recommendation (still pending — see backlog)<a class="headerlink" href="#recommendation-still-pending-see-backlog" title="Permanent link">&para;</a></h3>
+<p>Adopt <strong>ArgoCD Image Updater</strong> for semver-pinned automated updates. Annotations on each Application would specify the update strategy (<code>semver</code>, <code>digest</code>, or <code>latest</code>) and write back to git for audit.</p>
+<hr />
+<h2 id="how-to-add-an-audit-entry">How to Add an Audit Entry<a class="headerlink" href="#how-to-add-an-audit-entry" title="Permanent link">&para;</a></h2>
+<p>Each entry follows: date, source, findings (table), resolution, posture delta. Append at the top (newest first). For substantive new audits, also create a date-prefixed file under <a href="../reviews/"><code>../reviews/</code></a> and link to it here.</p>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Current posture:</strong> <a href="../overview/"><code>overview.md</code></a></li>
+<li><strong>Open work:</strong> <a href="../fixes-backlog/"><code>fixes-backlog.md</code></a></li>
+<li><strong>NetworkPolicy detail:</strong> <a href="../network-policies/"><code>network-policies.md</code></a></li>
+<li><strong>Reviews directory:</strong> <a href="../reviews/"><code>../reviews/</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>
