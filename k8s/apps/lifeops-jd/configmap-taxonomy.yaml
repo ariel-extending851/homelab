@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taxonomy-yaml
+data:
+  taxonomy.yaml: |
+    # See src/main/resources/taxonomy.yaml in the lifeops-jd repo for the canonical source.
+    # Edit there, regenerate this ConfigMap via `kustomize build`, then PR into the homelab repo.
+    areas:
+      - id: "10-19"
+        name: "Trabalho & Carreira"
+        categories:
+          - { id: "11", name: "Reuniões & Calls", purpose: "Convites Zoom/Meet, 1:1s" }
+          - { id: "12", name: "Projetos Ativos", purpose: "Sprints, code review, PRs" }
+          - { id: "13", name: "RH & Benefícios", purpose: "Holerite, plano de saúde" }
+          - { id: "14", name: "Networking & Oportunidades", purpose: "Recrutadores, eventos" }
+          - { id: "15", name: "Comunicados Corporativos", purpose: "All-hands, newsletters" }
+      - id: "20-29"
+        name: "Estudos & Desenvolvimento"
+        categories:
+          - { id: "21", name: "Cursos Online", purpose: "Coursera, Udemy, edX" }
+          - { id: "22", name: "Certificações", purpose: "AWS, GCP, CKA, K8s" }
+          - { id: "23", name: "Livros & Newsletters", purpose: "Substack, Medium" }
+          - { id: "24", name: "Conferências & Meetups", purpose: "KubeCon, QCon" }
+      - id: "30-39"
+        name: "Finanças Pessoais"
+        categories:
+          - { id: "31", name: "Bancos & Cartões", purpose: "Faturas, extratos" }
+          - { id: "32", name: "Investimentos", purpose: "Corretora, dividendos, IR" }
+          - { id: "33", name: "Impostos & Fiscal", purpose: "Receita Federal, IRPF" }
+          - { id: "34", name: "Assinaturas & Recorrentes", purpose: "Netflix, AWS, GitHub" }
+          - { id: "35", name: "Contas de Casa", purpose: "Luz, água, gás, internet" }
+      - id: "40-49"
+        name: "Vida Pessoal & Saúde"
+        categories:
+          - { id: "41", name: "Saúde & Consultas", purpose: "Médicos, exames, receitas" }
+          - { id: "42", name: "Família & Amigos", purpose: "Comunicação pessoal" }
+          - { id: "43", name: "Compras & Entregas", purpose: "Pedidos online, NFs" }
+          - { id: "44", name: "Viagens", purpose: "Passagens, hotéis, milhas" }
+          - { id: "45", name: "Documentos & Burocracia", purpose: "CNH, passaporte" }
+    fallback:
+      id: "00"
+      name: "Triagem"
+      full_id: "00.00"
+      label: "00-09 Sistema/00 Triagem"
+      purpose: "Não classificável com confiança >= 0.7 — revisão manual"

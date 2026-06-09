@@ -1,0 +1,57 @@
+---
+# Default deny — explicit allow per direction below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lifeops-jd-tick-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: lifeops-jd
+  policyTypes: ["Egress"]
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Postgres (in-namespace)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: lifeops-jd-db
+      ports:
+        - { protocol: TCP, port: 5432 }
+    # HTTPS egress to Google + Anthropic — cluster-scoped allow on 443
+    - ports:
+        - { protocol: TCP, port: 443 }
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: lifeops-jd-db
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: lifeops-jd
+      ports:
+        - { protocol: TCP, port: 5432 }
