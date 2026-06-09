@@ -1,0 +1,41 @@
+# Example structure for ansible/group_vars/alloy_native.sops.yaml
+#
+# The file name matches the inventory group `alloy_native` so Ansible
+# auto-loads it for hosts in that group — no explicit `vars_files:` needed
+# in the deploy playbook.
+#
+# Workflow:
+#   1. Copy this file:    cp alloy_native.sops.yaml.example /tmp/alloy.yaml
+#   2. Replace the placeholder values with real Grafana Cloud credentials.
+#   3. Encrypt + place:   sops -e /tmp/alloy.yaml > ansible/group_vars/alloy_native.sops.yaml
+#   4. Verify:            sops -d ansible/group_vars/alloy_native.sops.yaml | head
+#   5. Securely wipe:     shred -u /tmp/alloy.yaml
+#
+# The block-sops pre-commit hook will reject the file unless it is encrypted.
+# Key fingerprint (must match .sops.yaml age recipient):
+#   age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+#
+# See docs/runbooks/alloy-troubleshooting.md ("Grafana Cloud auth fails")
+# for token rotation procedure.
+# ── Grafana Cloud authentication ────────────────────────────────────────────
+grafana_cloud_user: ENC[AES256_GCM,data:+a49IxF+YQ==,iv:+7KyMyvbJZo8zLvnOEDbBIxy6UWxV1P7DG1ld3sUJCY=,tag:AQzRqTw4ZDMNvznH3jgW2g==,type:int]
+grafana_cloud_token: ENC[AES256_GCM,data:X+ZPAc6GH1F/cR2RLBPieKgVwnYGfEcSc81rd0qJjLtr/Fhm7VlX+WrNN1hYWsDLanJ/zhpWGVS7CQbYWypqwsJYLBMqfPz0NVo25DnWQceTAnh31TvtBGjvv2U2Qub40MRe2HQa/dPKdci4rahei2gXwN7cFtwKRfdyag==,iv:vJZk68uQEhynH5bNEtF0PymYqKDfLdmj8Li94AcgdUM=,tag:x/N8MsCf+CNd+jp1IUZZ5w==,type:str]
+# ── Endpoint URLs (sensitive — leak tenant region) ──────────────────────────
+grafana_cloud_prom_url: ENC[AES256_GCM,data:16OCCR7J7MRqIgqwixdL4Wu3zhchf7zwNF869bU1Xjj2MBGDeQ0ODQ9qNY1rmwhcEvVevWnM3WD13asbWQ1XG7vBLw==,iv:6AizRWrVnqZb6LrdlSAvdrRnS9gnNvEy0jCzuv7Ad0c=,tag:1G7Yz8V79lvPXISIVOEyGQ==,type:str]
+grafana_cloud_loki_url: ENC[AES256_GCM,data:KCepd6tcr1qBZMoo9/XxDua/PzY9j/V3Jn9RjHGfBbBUO3+pBWsLBc+SyfQAXq1ce44=,iv:vfUSbKNp1jgjJFCtvdUA4W8SJw6X1N4ECfpbeO2huc8=,tag:CnFlcmSX4/dB6hxF5cB1dA==,type:str]
+grafana_cloud_loki_user: ENC[AES256_GCM,data:Wopmdpcfrw==,iv:R0HHgiqwK9lmhhYRzs5T5Qd296Bukl6gpISkIvxP/0w=,tag:55ohnntWzJD0BTQCj5nBqw==,type:str]
+sops:
+    age:
+        - recipient: age18mumpukzfug863dw7j3w2tntfd6y8nf34hzx07u2fep633mprqmqc3myja
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBBNUFQMitsclFKTzZiZUdo
+            Y3g0bUIyRkt6cWF5ZkJRcld1V0lTNWtyQmpzCnJ1Umw1eG5Fem5pc2lsYW84dVkx
+            YS9XcEVsRHB2UDMwV0hyQUZhYVBLR0EKLS0tIE9JVk5iV3IyUmFneUhGV3M3MlRU
+            d1ZhTFBNeHhhNFF4NUVTV0pTOVFHdzgK05S3M8QBAnIu+Mgx4ct+1cODByFdDXel
+            UWaoOXUioZAHqC9BuvHGUE+BhiJVLdrZ6vzu3Lt7J4K8pJBWBdNXww==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-05-23T22:33:29Z"
+    mac: ENC[AES256_GCM,data:qsJU8c2pIIMZnDFke0ZYTCelqIb/DGro8FV73LIdNXJCUS0jmnsWE+5D9WzD+su7Seuwx0InQKLYiJXUbavzWTQ3iBdYl4g6Dpnu7merY83n+sEcYn9RUxlV6QdTwE6rxjuXLmJ6YaLpRPd6vPZwQB2BWFpkxR7nJuDQLNmALQo=,iv:FjQM8DvCdqrfns5YFPuj3stDzHxyrdEJ9HnfcB36zZ0=,tag:nHVfl1eBsdUl1096V4DzBw==,type:str]
+    encrypted_regex: ^(grafana_cloud_token|grafana_cloud_user|grafana_cloud_loki_user|grafana_cloud_prom_url|grafana_cloud_loki_url)$
+    version: 3.10.2

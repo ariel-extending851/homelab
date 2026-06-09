@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k3s-snapshot-script
+  namespace: k3s-snapshot
+data:
+  # Online, consistent snapshot of the k3s SQLite datastore -> gzip -> S3.
+  # sqlite3 ".backup" is safe against a live DB (it copies pages under a read
+  # lock). The source dir is mounted read-only; the copy lands in an emptyDir.
+  backup.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    ts="$(date -u +%Y%m%dT%H%M%SZ)"
+    node="${NODE_NAME:-$(hostname)}"
+    key="cluster-state/${node}/${ts}-state.db.gz"
+
+    echo "Snapshotting /db/state.db -> ${key}"
+    sqlite3 /db/state.db ".backup '/work/state.db'"
+    gzip -f /work/state.db
+
+    aws s3 cp /work/state.db.gz "s3://${BUCKET}/${key}"
+    echo "Uploaded s3://${BUCKET}/${key}"

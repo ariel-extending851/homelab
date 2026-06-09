@@ -7,6 +7,9 @@
 # GitHub settings pages (require authentication)
 https://github.com/ariel-extending851/homelab/settings
 
+# Private repos — auth-required, return 404 to unauthenticated requests
+^https?://github\.com/ariel-extending851/lifeops-jd(/.*)?$
+
 # Tailscale admin console (auth-required — referenced from sops-key-rotation runbook)
 https://login.tailscale.com/admin/settings/keys
 

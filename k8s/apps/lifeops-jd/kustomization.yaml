@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lifeops-jd
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: lifeops-jd
+
+resources:
+  - namespace.yaml
+  - configmap-taxonomy.yaml
+  # SOPS-encrypted — decrypted at sync time by the homelab ArgoCD CMP plugin.
+  - secret-db.yaml
+  - secret-oauth.yaml
+  - secret-anthropic.yaml
+  - postgres.yaml
+  - cronjob.yaml
+  - networkpolicy.yaml
+
+images:
+  - name: ghcr.io/ariel-extending851/lifeops-jd
+    newTag: "0.1.0"

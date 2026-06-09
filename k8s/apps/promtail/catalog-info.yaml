@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: promtail
+  description: >-
+    Lightweight log shipper for the Pi edge tier — tails container logs from
+    /var/log/pods via file-based discovery (no apiserver chatter) and pushes
+    to Grafana Cloud Loki. Replaces Alloy edge after operational evidence
+    showed I/O contention with Jellyfin transcoding on rasp-pi-04
+    (2026-05-29). Cloud tier still uses Alloy + Beyla when AWS Full is
+    active.
+  annotations:
+    homelab.io/runbook: docs/runbooks/alloy-troubleshooting.md
+    homelab.io/doc: docs/architecture/observability-alloy-ebpf.md
+spec:
+  type: service
+  lifecycle: production
+  owner: "@ariel-extending851"
+  # 'any' matches node-exporter (same DaemonSet-on-every-node shape).
+  # The schedulability constraint (Pi-only, no EC2) is enforced in the
+  # manifest's nodeAffinity, not in the catalog tier.
+  tier: any
+  dependsOn: []
+  providesApis: []

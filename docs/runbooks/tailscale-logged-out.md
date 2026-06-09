@@ -75,6 +75,33 @@ sudo tailscale up
 
 The `infra/aws/modules/network` security group has no public ingress by default — adding it should be a deliberate, time-bounded action.
 
+### Option 5 (Pi-only) — SSM hybrid Run Command
+
+Options 1–4 assume an EC2 server. On the **Pi-only** cluster there is no EC2 — if
+the Pis are registered as SSM managed instances (`ssm_breakglass_enabled: true`,
+see [`infra/aws-velero`](../../infra/aws-velero) + `ansible/roles/ssm_agent`),
+recover them with **Run Command** (free standard tier). Hybrid nodes have `mi-…`
+ids (not `i-…`):
+
+```bash
+# Find the managed-instance id(s)
+aws ssm describe-instance-information \
+  --query 'InstanceInformationList[?PingStatus==`Online`].[InstanceId,ComputerName]' \
+  --output table
+
+# Re-auth Tailscale on the control plane (rasp-pi-04)
+aws ssm send-command \
+  --instance-ids mi-xxxxxxxxxxxx \
+  --document-name "AWS-RunShellScript" \
+  --parameters '{"commands":["tailscale up --authkey tskey-auth-XXXX --advertise-routes=10.42.0.0/16,10.43.0.0/16"]}' \
+  --region us-east-1
+```
+
+> `aws ssm start-session` (interactive shell) is **not** available here — on-prem
+> interactive Session Manager requires the paid advanced-instances tier
+> (~$5/instance/mo). Run Command (`send-command`) is free and sufficient for
+> break-glass. This is the deliberate cost trade-off in `ansible/roles/ssm_agent`.
+
 ## Verification
 
 ```bash

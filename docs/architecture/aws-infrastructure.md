@@ -4,7 +4,7 @@
 > **Last reviewed:** 2026-05-01
 > **Owner:** @ariel-extending851
 
-Terraform-managed AWS infrastructure for the k3s control plane and one worker. Four modules: `network`, `compute`, `scheduler`, `audit`. Plus an SSM transfer bucket and OIDC bootstrap.
+Terraform-managed AWS infrastructure for the k3s control plane and one worker. Modules: `network`, `compute`, `scheduler`, `audit`, `observability`, `ecr`, `backup-ebs`, `finops`. Plus an SSM transfer bucket and OIDC bootstrap.
 
 ---
 
@@ -16,6 +16,10 @@ Terraform-managed AWS infrastructure for the k3s control plane and one worker. F
 | `compute` | [`infra/aws/modules/compute`](../../infra/aws/modules/compute) | EC2 spot instances, IAM, SSH key, launch templates |
 | `scheduler` | [`infra/aws/modules/scheduler`](../../infra/aws/modules/scheduler) | Lambda + EventBridge for start/stop schedule |
 | `audit` | [`infra/aws/modules/audit`](../../infra/aws/modules/audit) | CloudTrail (management events) + GuardDuty (regional detector); cost-bounded < $5/mo |
+| `observability` | [`infra/aws/modules/observability`](../../infra/aws/modules/observability) | Alloy cold-storage S3 bucket (long-term log archive) |
+| `ecr` | [`infra/aws/modules/ecr`](../../infra/aws/modules/ecr) | Private container registry (avoids Docker Hub rate limits); free tier 500 MB |
+| `backup-ebs` | [`infra/aws/modules/backup-ebs`](../../infra/aws/modules/backup-ebs) | DLM daily EBS snapshots with bounded retention |
+| `finops` | [`infra/aws/modules/finops`](../../infra/aws/modules/finops) | Budgets + Cost Anomaly Detection + billing alarm + IAM Access Analyzer → SNS |
 | `aws-backend` (separate) | [`infra/aws-backend`](../../infra/aws-backend) | One-time bootstrap of S3 state bucket |
 | `aws-oidc` (separate) | [`infra/aws-oidc`](../../infra/aws-oidc) | OIDC provider + IAM role for GitHub Actions |
 

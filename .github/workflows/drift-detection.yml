@@ -27,7 +27,7 @@ concurrency:
 jobs:
   detect:
     name: Terraform Plan vs Live State
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     timeout-minutes: 15
     permissions:
       id-token: write
@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.11.0"
 
@@ -90,7 +90,7 @@ jobs:
 
       - name: Open Issue on Drift
         if: steps.plan.outputs.exit_code == '2'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');

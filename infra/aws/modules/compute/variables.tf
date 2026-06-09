@@ -97,6 +97,12 @@ variable "observability_bucket_arn" {
   default     = ""
 }
 
+variable "ecr_repository_arns" {
+  description = "ARNs of the private ECR repositories (infra/aws/modules/ecr/) the k3s_node role may pull from. The role gets a read-only inline pull policy scoped to these ARNs. Empty list disables the policy (LocalStack)."
+  type        = list(string)
+  default     = []
+}
+
 variable "principal_boundary_arn" {
   description = "ARN of the IAM permissions boundary required on every IAM role created by this module. Set by infra/aws/main.tf via data.aws_iam_policy.principal_boundary; null in localstack."
   type        = string

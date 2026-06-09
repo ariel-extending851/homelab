@@ -56,18 +56,16 @@ prometheus.exporter.cadvisor "containers" {
 // Discovery selects by port range and namespace; service-name allowlists are
 // forbidden (compliance) — workloads identify themselves via the
 // `homelab.io/class` container label, which becomes the `service_class` label.
+//
+// beyla.ebpf.output.metrics expects otelcol.Consumer; prometheus.relabel
+// receiver is storage.Appendable. Bridge via otelcol.exporter.prometheus.
 beyla.ebpf "red" {
   output {
-    metrics = [prometheus.relabel.cardinality_guard.receiver]
+    metrics = [otelcol.exporter.prometheus.beyla_bridge.input]
   }
 
-  attributes {
-    select {
-      attr   = "url.path"
-      action = "exclude"
-      values = ["/-/healthy", "/-/ready", "/metrics", "/healthz", "/livez"]
-    }
-  }
+  // TODO: re-add URL path exclusion via `routes { ignored_patterns = [...] }`
+  // (the original `attributes.select` block was invalid for Alloy v1.5.1).
 
   discovery {
     services {
@@ -81,6 +79,11 @@ beyla.ebpf "red" {
       }
     }
   }
+}
+
+// Bridge: OTLP (beyla.ebpf) → native Prometheus (cardinality_guard).
+otelcol.exporter.prometheus "beyla_bridge" {
+  forward_to = [prometheus.relabel.cardinality_guard.receiver]
 }
 {% endif %}
 
@@ -202,8 +205,11 @@ discovery.relabel "containers" {
   // Drop the container name from the label set — compliance requires that
   // we never surface workload product names. Operators query by service_class.
   rule {
+    // Drop only post-resolution `container_name`; loki.source.docker needs
+    // __meta_docker_container_name to resolve targets. Compliance enforced
+    // at sink (loki.process.normalize).
     action = "labeldrop"
-    regex  = "__meta_docker_container_name|container_name"
+    regex  = "^container_name$"
   }
 }
 
@@ -219,7 +225,8 @@ loki.source.docker "containers" {
 loki.source.journal "system" {
   forward_to    = [loki.process.normalize.receiver]
   relabel_rules = loki.relabel.journal.rules
-  matches       = "_SYSTEMD_UNIT=k3s.service|_SYSTEMD_UNIT=k3s-agent.service|_SYSTEMD_UNIT=docker.service|_SYSTEMD_UNIT=alloy.service|_SYSTEMD_UNIT=tailscaled.service"
+  // TODO: re-add systemd unit filter. Alloy `matches` is space-AND; use `+`
+  // for OR per systemd journal native syntax. For now ingest all entries.
 }
 
 loki.relabel "journal" {
@@ -282,7 +289,10 @@ loki.write "grafana_cloud_loki" {
   endpoint {
     url = sys.env("GRAFANA_CLOUD_LOKI_URL")
     basic_auth {
-      username = sys.env("GRAFANA_CLOUD_USER")
+      // Grafana Cloud assigns separate Instance IDs per service.
+      // Prom user lives in GRAFANA_CLOUD_USER (Hosted Metrics card),
+      // Loki user lives in GRAFANA_CLOUD_LOKI_USER (Hosted Logs card).
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
       password = sys.env("GRAFANA_CLOUD_TOKEN")
     }
   }
@@ -347,10 +357,7 @@ otelcol.exporter.awss3 "cold_archive" {
     type = "otlp_proto"
   }
 
-  sending_queue {
-    enabled       = true
-    num_consumers = 2
-    queue_size    = 5000
-  }
+  // sending_queue block added in Alloy >= 1.6; not supported in v1.5.1.
+  // Default internal queue is fine for homelab volume.
 }
 {% endif %}

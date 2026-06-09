@@ -53,7 +53,7 @@ jobs:
   # ============================================================================
   validate-gate:
     name: Wait for Validation Gate
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     steps:
       - name: Validation Pipeline Status
         run: |
@@ -70,7 +70,7 @@ jobs:
   # ============================================================================
   terraform-plan-prod:
     name: "Prod: Generate Terraform Plan (for approval)"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [validate-gate]
     permissions:
       id-token: write
@@ -80,7 +80,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.11.0"
 
@@ -132,7 +132,7 @@ jobs:
   # ============================================================================
   await-prod-approval:
     name: "Approval: Reviewer approves plan"
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [terraform-plan-prod]
     environment: production-approval
     steps:
@@ -149,7 +149,7 @@ jobs:
   # ============================================================================
   terraform-apply:
     name: Apply Terraform
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pc-homelab]
     needs: [validate-gate, await-prod-approval]
     environment: production
     permissions:
@@ -160,7 +160,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.11.0"
 

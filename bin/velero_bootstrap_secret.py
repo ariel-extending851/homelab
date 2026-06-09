@@ -166,12 +166,22 @@ def encrypt_secret_in_place(secret_path: Path, plaintext: str) -> None:
 # ── orchestration ───────────────────────────────────────────────────────────
 
 
-def bootstrap(tf_dir: Path, secret_path: Path) -> None:
-    """End-to-end: read TF outputs → decrypt → patch → re-encrypt."""
+def bootstrap(
+    tf_dir: Path,
+    secret_path: Path,
+    access_key_output: str = ACCESS_KEY_OUTPUT,
+    secret_key_output: str = SECRET_KEY_OUTPUT,
+) -> None:
+    """End-to-end: read TF outputs → decrypt → patch → re-encrypt.
+
+    `access_key_output` / `secret_key_output` name the Terraform outputs to read,
+    so the same logic serves Velero and the hl-k3s-snapshot uploader (whose
+    Secret manifest has the identical `cloud: |` shape).
+    """
     print(f"📥 Reading terraform outputs from {tf_dir}...")
-    access_key = get_terraform_output(ACCESS_KEY_OUTPUT, tf_dir)
-    secret_key = get_terraform_output(SECRET_KEY_OUTPUT, tf_dir)
-    print(f"  ✓ Got {ACCESS_KEY_OUTPUT} and {SECRET_KEY_OUTPUT}")
+    access_key = get_terraform_output(access_key_output, tf_dir)
+    secret_key = get_terraform_output(secret_key_output, tf_dir)
+    print(f"  ✓ Got {access_key_output} and {secret_key_output}")
 
     print(f"🔓 Decrypting {secret_path}...")
     plaintext = decrypt_secret(secret_path)
@@ -191,10 +201,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tf-dir", type=Path, default=DEFAULT_TF_DIR)
     parser.add_argument("--secret", type=Path, default=DEFAULT_SECRET_PATH)
+    parser.add_argument("--access-key-output", default=ACCESS_KEY_OUTPUT)
+    parser.add_argument("--secret-key-output", default=SECRET_KEY_OUTPUT)
     args = parser.parse_args(argv)
 
     try:
-        bootstrap(args.tf_dir, args.secret)
+        bootstrap(
+            args.tf_dir,
+            args.secret,
+            access_key_output=args.access_key_output,
+            secret_key_output=args.secret_key_output,
+        )
     except Exception as exc:  # noqa: BLE001
         print(f"❌ Bootstrap failed: {exc}", file=sys.stderr)
         return 1

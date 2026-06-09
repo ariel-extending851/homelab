@@ -49,9 +49,16 @@ disable-cloud-controller: true
 disable-network-policy: true
 {% endif %}
 
-{% if k3s_enable_etcd_snapshots %}
+{% if k3s_enable_etcd_snapshots and (k3s_server_config['cluster-init'] | default(false)) %}
 etcd-snapshot-schedule-cron: "{{ k3s_etcd_snapshot_schedule }}"
 etcd-snapshot-retention: {{ k3s_etcd_snapshot_retention }}
+{% else %}
+# etcd snapshots NOT emitted: this server runs the SQLite datastore
+# (cluster-init=false). k3s only takes etcd snapshots with embedded etcd, so the
+# etcd-snapshot-* flags would be inert here. Control-plane backup is handled by
+# the k8s/apps/k3s-snapshot CronJob (SQLite .backup -> S3). To re-enable native
+# etcd snapshots set cluster-init: true (note: etcd on an SD card is a write-
+# amplification anti-pattern -- keep SQLite + the CronJob on Raspberry Pi).
 {% endif %}
 
 {% if k3s_secrets_encryption %}

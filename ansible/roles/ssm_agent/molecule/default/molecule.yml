@@ -1,0 +1,46 @@
+---
+# Molecule suite for the ssm_agent role.
+# The Docker-driven sandbox has no AWS reachability and cannot register a real
+# SSM agent, so install/register/service are skipped — the scenario exercises
+# the role's var assertions, arch selection, gating and idempotency.
+
+driver:
+  name: docker
+
+platforms:
+  - name: rasp-pi-04
+    # Same digest-pinned image the alloy/tailscale roles use.
+    image: geerlingguy/docker-ubuntu2204-ansible@sha256:3a9474d843917fbeb737a78626c1b8bc31daf6424fe51575e6ce4affffecfa24
+    privileged: true
+    pre_build_image: true
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    groups:
+      - raspberry_pi
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/../"
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: memory
+  inventory:
+    host_vars:
+      rasp-pi-04:
+        ssm_breakglass_enabled: true
+        # No AWS in the sandbox — skip the network + systemd-to-AWS steps.
+        ssm_skip_install: true
+        ssm_skip_register: true
+        ssm_skip_service: true
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
