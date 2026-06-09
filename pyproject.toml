@@ -21,7 +21,7 @@ ci = [
   "jinja2==3.1.6",
   "boto3==1.43.24",
   "urllib3>=2.7.0",
-  "moto[ec2,s3,iam]==5.2.1",
+  "moto[ec2,s3,iam]==5.2.2",
 ]
 
 [project.scripts]
