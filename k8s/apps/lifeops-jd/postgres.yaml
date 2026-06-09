@@ -38,27 +38,30 @@ spec:
           ports:
             - { name: pg, containerPort: 5432 }
           env:
-            - name: POSTGRES_DB
-              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: db-name } }
-            - name: POSTGRES_USER
-              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: username } }
-            - name: POSTGRES_PASSWORD
-              valueFrom: { secretKeyRef: { name: lifeops-jd-db, key: password } }
-            - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
+            # _FILE variants: postgres reads the credential value from disk,
+            # avoiding kubelet writing the secret into the container env
+            # (Checkov CKV_K8S_35). Files are projected by the secret volume
+            # below.
+            - { name: POSTGRES_DB_FILE,       value: /var/run/secrets/db/db-name }
+            - { name: POSTGRES_USER_FILE,     value: /var/run/secrets/db/username }
+            - { name: POSTGRES_PASSWORD_FILE, value: /var/run/secrets/db/password }
+            - { name: PGDATA,                 value: /var/lib/postgresql/data/pgdata }
           volumeMounts:
-            - { name: data, mountPath: /var/lib/postgresql/data }
-            - { name: run, mountPath: /var/run/postgresql }
-            - { name: tmp, mountPath: /tmp }
+            - { name: data,       mountPath: /var/lib/postgresql/data }
+            - { name: db-secrets, mountPath: /var/run/secrets/db, readOnly: true }
+            - { name: run,        mountPath: /var/run/postgresql }
+            - { name: tmp,        mountPath: /tmp }
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { cpu: 500m, memory: 256Mi }
           readinessProbe:
-            exec: { command: ["pg_isready", "-U", "$(POSTGRES_USER)"] }
+            # Probe via socket rather than -U $(POSTGRES_USER) — the user env
+            # var no longer exists when we use POSTGRES_USER_FILE.
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432"] }
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
-            exec: { command: ["pg_isready", "-U", "$(POSTGRES_USER)"] }
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432"] }
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
@@ -68,6 +71,10 @@ spec:
             capabilities:
               drop: ["ALL"]
       volumes:
+        - name: db-secrets
+          secret:
+            secretName: lifeops-jd-db
+            defaultMode: 0400
         - name: run
           emptyDir: { sizeLimit: 16Mi }
         - name: tmp
