@@ -14,7 +14,7 @@ description = "Homelab infrastructure-as-code project"
 # (CVE-2024-37891 — transitive via botocore, pinned explicitly), pyyaml
 # safe-loader patches.
 ci = [
-  "pytest==9.0.3",
+  "pytest==9.1.0",
   "pytest-cov==6.0.0",
   "pytest-benchmark==5.1.0",
   "pyyaml==6.0.3",
