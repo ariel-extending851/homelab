@@ -784,7 +784,17 @@
     set -eu
     changed=0
 
-    for svc in gl_tertf gl_health gl_macclone samba uhttpd sms_manager smstools3 repeater gl-cloud gl-alarm; do
+    # Explicitly disable UPnP daemon in UCI if present (Zero Trust - prevent automatic port mapping)
+    if uci -q get upnpd.config >/dev/null 2>&1; then
+      if [ "$(uci -q get upnpd.config.enable_upnp || true)" != "0" ] || [ "$(uci -q get upnpd.config.enable_natpmp || true)" != "0" ]; then
+        uci set upnpd.config.enable_upnp='0'
+        uci set upnpd.config.enable_natpmp='0'
+        uci commit upnpd
+        changed=1
+      fi
+    fi
+
+    for svc in gl_tertf gl_health gl_macclone samba uhttpd sms_manager smstools3 repeater gl-cloud gl-alarm miniupnpd; do
       if [ -x "/etc/init.d/$svc" ]; then
         if ls /etc/rc.d/S*"$svc" >/dev/null 2>&1; then
           /etc/init.d/$svc disable

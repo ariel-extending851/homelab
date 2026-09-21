@@ -92,6 +92,18 @@
         fail_msg: "CONNECTIVITY WARNING: Claro Modem ping failed or has packet loss!"
         success_msg: "✓ Connectivity: Claro Modem (192.168.0.1) responded with 0% packet loss."
 
+    - name: 🛡️  Check UPnP daemon is disabled
+      ansible.builtin.raw: pgrep miniupnpd || echo INACTIVE
+      register: upnp_proc
+      changed_when: false
+
+    - name: Assert UPnP daemon is not running
+      ansible.builtin.assert:
+        that:
+          - "'INACTIVE' in upnp_proc.stdout or upnp_proc.stdout | trim | length == 0"
+        fail_msg: "SECURITY COMPLIANCE FAILED: miniupnpd is active! UPnP poses auto-port-forwarding risk."
+        success_msg: "✓ Security: UPnP (miniupnpd) is disabled and inactive (Zero Trust)."
+
     - name: 📋 Display Audit Summary
       ansible.builtin.debug:
         msg:
@@ -103,5 +115,6 @@
           - "  [✓] DNS Security: Stubby running (1.1.1.3 Family TLS)         "
           - "  [✓] Dnsmasq: Locked to 127.0.0.1#5453                         "
           - "  [✓] 5GHz Wi-Fi: Fixed Channel 36 (Zero Jitter)                "
+          - "  [✓] UPnP Inactive: miniupnpd disabled (Zero Trust)            "
           - "  [✓] Claro Modem (192.168.0.1): Reachable (0% packet loss)     "
           - "================================================================"
