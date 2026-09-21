@@ -657,6 +657,38 @@
   register: gatekeeper_guest_modem
   changed_when: "'CHANGED' in gatekeeper_guest_modem.stdout"
 
+- name: Configure rate-limited drop logging for Zero Trust isolation in /etc/firewall.user
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+    target_file="/etc/firewall.user"
+
+    [ -f "$target_file" ] || touch "$target_file"
+
+    rule_admin='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: " 2>/dev/null || iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: "'
+    rule_modem='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-MODEM: " 2>/dev/null || iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-MODEM: "'
+
+    if ! grep -q "FW-BLOCK-ADMIN" "$target_file"; then
+      echo "" >> "$target_file"
+      echo "# Zero Trust Rate-Limited Forensic Logging (Managed by Ansible)" >> "$target_file"
+      echo "$rule_admin" >> "$target_file"
+      echo "$rule_modem" >> "$target_file"
+      chmod +x "$target_file"
+      /bin/sh "$target_file"
+      changed=1
+      echo CHANGED
+    else
+      if ! iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: " 2>/dev/null; then
+        /bin/sh "$target_file"
+        changed=1
+        echo CHANGED
+      else
+        echo OK
+      fi
+    fi
+  register: gatekeeper_firewall_logging
+  changed_when: "'CHANGED' in gatekeeper_firewall_logging.stdout"
+
 - name: Block direct DNS-over-TLS (port 853) bypass to force devices to use network DNS
   ansible.builtin.raw: |
     set -eu

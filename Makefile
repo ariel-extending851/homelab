@@ -437,6 +437,10 @@ audit-router: ## Run Ansible compliance audit on GL.iNet Opal router (White Box)
 	@echo "🛡️  Running compliance audit on OpenWrt Gatekeeper..."
 	@cd $(ANSIBLE_DIR) && ANSIBLE_VARS_ENABLED=host_group_vars ansible-playbook -i inventory/production.yml playbooks/audit_router.yml
 
+stress-router: ## Run hardware stress and latency resilience test on GL.iNet Opal
+	@echo "🚀 Running stress test on GL.iNet Opal Gatekeeper..."
+	@python3 bin/stress_test_router.py
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml
