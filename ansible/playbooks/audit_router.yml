@@ -1,0 +1,107 @@
+---
+- name: White Box Compliance & Security Audit - GL.iNet Opal Router
+  hosts: router
+  gather_facts: false
+
+  tasks:
+    - name: 🛡️  Check VLAN 9 corporate isolation in iptables
+      ansible.builtin.raw: iptables -S zone_guest_forward
+      register: guest_forward_rules
+      changed_when: false
+
+    - name: Assert VLAN 9 -> LAN isolation rule is active
+      ansible.builtin.assert:
+        that:
+          - "'192.168.9.0/24' in guest_forward_rules.stdout"
+          - "'192.168.8.0/24' in guest_forward_rules.stdout"
+          - "'REJECT' in guest_forward_rules.stdout or 'DROP' in guest_forward_rules.stdout"
+        fail_msg: "SECURITY COMPLIANCE FAILED: VLAN 9 (guest) isolation to private LAN is NOT active in kernel iptables!"
+        success_msg: "✓ Security: VLAN 9 corporate isolation to LAN is verified active in iptables."
+
+    - name: 🛡️  Check WAN inbound policy in iptables
+      ansible.builtin.raw: iptables -S zone_wan_input
+      register: wan_input_rules
+      changed_when: false
+
+    - name: Assert WAN inbound reject/drop policy is active
+      ansible.builtin.assert:
+        that:
+          - "'zone_wan_src_REJECT' in wan_input_rules.stdout or 'DROP' in wan_input_rules.stdout"
+        fail_msg: "SECURITY COMPLIANCE FAILED: WAN inbound default reject policy is missing!"
+        success_msg: "✓ Security: Opal WAN inbound interface drops/rejects unsolicited traffic."
+
+    - name: 🔒 Check Stubby DoT (DNS-over-TLS) daemon
+      ansible.builtin.raw: pgrep stubby || true
+      register: stubby_proc
+      changed_when: false
+
+    - name: Assert Stubby is running
+      ansible.builtin.assert:
+        that:
+          - stubby_proc.stdout | trim | length > 0
+        fail_msg: "SECURITY COMPLIANCE FAILED: Stubby DoT daemon is NOT running!"
+        success_msg: "✓ Security: Stubby DNS-over-TLS process is running."
+
+    - name: 🔒 Check Stubby upstream servers (Cloudflare Family 1.1.1.3)
+      ansible.builtin.raw: cat /var/etc/stubby/stubby.yml
+      register: stubby_config
+      changed_when: false
+
+    - name: Assert Stubby uses Cloudflare Family DoT
+      ansible.builtin.assert:
+        that:
+          - "'1.1.1.3' in stubby_config.stdout"
+          - "'family.cloudflare-dns.com' in stubby_config.stdout"
+          - "'GETDNS_AUTHENTICATION_REQUIRED' in stubby_config.stdout"
+        fail_msg: "SECURITY COMPLIANCE FAILED: Stubby is not configured with Cloudflare Family TLS!"
+        success_msg: "✓ Security: Stubby upstream verified with Cloudflare Family 1.1.1.3 TLS authentication."
+
+    - name: 🔒 Check dnsmasq routing to Stubby
+      ansible.builtin.raw: uci get dhcp.@dnsmasq[0].server
+      register: dnsmasq_server
+      changed_when: false
+
+    - name: Assert dnsmasq points to Stubby DoT port
+      ansible.builtin.assert:
+        that:
+          - "'127.0.0.1#5453' in dnsmasq_server.stdout"
+        fail_msg: "SECURITY COMPLIANCE FAILED: dnsmasq is not pointing to 127.0.0.1#5453!"
+        success_msg: "✓ Security: dnsmasq is strictly routing DNS queries to Stubby DoT."
+
+    - name: ⚡ Check 5GHz Wi-Fi fixed channel (Zero Jitter)
+      ansible.builtin.raw: uci get wireless.radio1.channel
+      register: wifi_5g_channel
+      changed_when: false
+
+    - name: Assert 5GHz Wi-Fi is locked on Channel 36
+      ansible.builtin.assert:
+        that:
+          - "'36' in wifi_5g_channel.stdout"
+        fail_msg: "PERFORMANCE WARNING: 5GHz Wi-Fi is not on Channel 36!"
+        success_msg: "✓ Performance: 5GHz Wi-Fi locked on non-DFS Channel 36 (Zero Jitter)."
+
+    - name: 🌐 Check Claro Modem Gateway reachability (192.168.0.1)
+      ansible.builtin.raw: ping -c 3 -W 2 192.168.0.1
+      register: ping_claro
+      changed_when: false
+
+    - name: Assert Claro Modem is reachable with zero packet loss
+      ansible.builtin.assert:
+        that:
+          - "'0% packet loss' in ping_claro.stdout"
+        fail_msg: "CONNECTIVITY WARNING: Claro Modem ping failed or has packet loss!"
+        success_msg: "✓ Connectivity: Claro Modem (192.168.0.1) responded with 0% packet loss."
+
+    - name: 📋 Display Audit Summary
+      ansible.builtin.debug:
+        msg:
+          - "================================================================"
+          - "  GL.iNet Opal (Gatekeeper) White Box Audit: ALL CHECKS PASSED  "
+          - "================================================================"
+          - "  [✓] VLAN 9 Isolation: Active in kernel iptables               "
+          - "  [✓] WAN Firewall: Unsolicited traffic dropped/rejected        "
+          - "  [✓] DNS Security: Stubby running (1.1.1.3 Family TLS)         "
+          - "  [✓] Dnsmasq: Locked to 127.0.0.1#5453                         "
+          - "  [✓] 5GHz Wi-Fi: Fixed Channel 36 (Zero Jitter)                "
+          - "  [✓] Claro Modem (192.168.0.1): Reachable (0% packet loss)     "
+          - "================================================================"
