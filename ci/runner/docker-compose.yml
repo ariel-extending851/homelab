@@ -27,7 +27,7 @@ x-runner-base: &runner-base
     RUNNER_NAME_PREFIX: pc-tower-runner
     LABELS: pc-homelab
     RUNNER_WORKDIR: /tmp/runner/work
-    EPHEMERAL: "false"
+    EPHEMERAL: "true"
     ACCESS_TOKEN: ${ACCESS_TOKEN:?ACCESS_TOKEN must be set — run via make runner-up}
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock

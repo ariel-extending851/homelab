@@ -11,6 +11,7 @@ pi_tailscale_ip: 192.168.8.10
 pi_adguard_ip: 192.168.8.11
 network_cidr: 192.168.8.0/24
 guest_network_cidr: 192.168.9.0/24
+modem_subnet_cidr: 192.168.0.0/24
 wan_static_ip: 192.168.0.2
 wan_gateway: 192.168.0.1
 wan_dns: 1.1.1.3

@@ -251,6 +251,7 @@ class AuditResult(NamedTuple):
 KNOWN_SINKHOLE_IPS = {
     "0.0.0.0",
     "127.0.0.1",
+    "94.140.14.33",  # AdGuard Default/Malware filter sinkhole
     "94.140.14.35",  # AdGuard Family filter sinkhole
     "185.228.168.10",  # CleanBrowsing Family filter sinkhole
 }
