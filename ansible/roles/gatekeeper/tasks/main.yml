@@ -22,7 +22,7 @@
     fi
   changed_when: false
 
-- name: Enable software and hardware flow offloading
+- name: Enable software and hardware flow offloading and harden firewall defaults
   ansible.builtin.raw: |
     set -eu
     changed=0
@@ -38,6 +38,12 @@
       uci set firewall.@defaults[0].flow_offloading_hw='1'
       changed=1
     fi
+
+    [ "$(uci -q get firewall.@defaults[0].syn_flood || true)" = "1" ] || \
+      { uci set firewall.@defaults[0].syn_flood='1'; changed=1; }
+
+    [ "$(uci -q get firewall.@defaults[0].drop_invalid || true)" = "1" ] || \
+      { uci set firewall.@defaults[0].drop_invalid='1'; changed=1; }
 
     if [ "$changed" -eq 1 ]; then
       echo CHANGED
@@ -61,6 +67,18 @@
     current_radio1_disabled="$(uci -q get wireless.radio1.disabled || true)"
     if [ "$current_radio1_disabled" != "0" ]; then
       uci set wireless.radio1.disabled='0'
+      changed=1
+    fi
+
+    current_channel_5="$(uci -q get wireless.radio1.channel || true)"
+    if [ "$current_channel_5" != "{{ wifi_channel_5g }}" ]; then
+      uci set wireless.radio1.channel='{{ wifi_channel_5g }}'
+      changed=1
+    fi
+
+    current_htmode_5="$(uci -q get wireless.radio1.htmode || true)"
+    if [ "$current_htmode_5" != "{{ wifi_htmode_5g }}" ]; then
+      uci set wireless.radio1.htmode='{{ wifi_htmode_5g }}'
       changed=1
     fi
 
@@ -111,6 +129,16 @@
       uci set wireless.default_radio1.encryption='sae-mixed'
       changed=1
     fi
+
+    # Disable WPS to eliminate Pixie Dust / PIN brute force vulnerabilities
+    [ "$(uci -q get wireless.default_radio0.wps_pushbutton || true)" = "0" ] || \
+      { uci set wireless.default_radio0.wps_pushbutton='0'; changed=1; }
+    [ "$(uci -q get wireless.default_radio1.wps_pushbutton || true)" = "0" ] || \
+      { uci set wireless.default_radio1.wps_pushbutton='0'; changed=1; }
+    [ "$(uci -q get wireless.default_radio0.wps_label || true)" = "0" ] || \
+      { uci set wireless.default_radio0.wps_label='0'; changed=1; }
+    [ "$(uci -q get wireless.default_radio1.wps_label || true)" = "0" ] || \
+      { uci set wireless.default_radio1.wps_label='0'; changed=1; }
 
     if [ "$changed" -eq 1 ]; then
       uci commit wireless
@@ -193,6 +221,42 @@
   changed_when: "'CHANGED' in gatekeeper_guest_wifi.stdout"
   no_log: true
 
+- name: Configure VLAN 9 isolation for corporate work port and trunking
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    # Ensure internal switch VLAN 1 (LAN) contains Port 1 (to UniFi switch) and CPU (5t)
+    cur_lan_ports="$(uci -q get network.vlan_lan.ports || true)"
+    if [ "$cur_lan_ports" != "1 5t" ]; then
+      uci set network.vlan_lan.ports='1 5t'
+      changed=1
+    fi
+
+    # Configure VLAN 9 for Corporate Work: Port 2 (untagged on router) and Port 1t / 5t (tagged)
+    cur_work_vlan="$(uci -q get network.vlan_work.vlan || true)"
+    cur_work_ports="$(uci -q get network.vlan_work.ports || true)"
+    if [ "$cur_work_vlan" != "{{ work_vlan_id }}" ] || [ "$cur_work_ports" != "1t 2 5t" ]; then
+      uci -q delete network.vlan_work || true
+      uci set network.vlan_work=switch_vlan
+      uci set network.vlan_work.device='switch0'
+      uci set network.vlan_work.vlan='{{ work_vlan_id }}'
+      uci set network.vlan_work.ports='1t 2 5t'
+      changed=1
+    fi
+
+    # Bridge eth0.9 into the guest network interface
+    cur_guest_ifname="$(uci -q get network.guest.ifname || true)"
+    if ! echo "$cur_guest_ifname" | grep -q "eth0.{{ work_vlan_id }}"; then
+      uci set network.guest.ifname="guest eth0.{{ work_vlan_id }}"
+      changed=1
+    fi
+
+    [ "$changed" -eq 1 ] && uci commit network
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_work_vlan
+  changed_when: "'CHANGED' in gatekeeper_work_vlan.stdout"
+
 - name: Add reverse route for Tailscale subnet via Pi gateway
   ansible.builtin.raw: |
     set -eu
@@ -235,88 +299,137 @@
   register: gatekeeper_route
   changed_when: "'CHANGED' in gatekeeper_route.stdout"
 
-- name: Check Pi (AdGuard Home) reachability — ICMP + DNS service health
-  # ICMP-only is insufficient: host can respond to ping while AdGuard pod is
-  # CrashLoopBackOff/restarting, leaving DNAT pointing at a dead :53 listener.
-  ansible.builtin.raw: |
-    ping -c1 -W2 {{ pi_adguard_ip }} >/dev/null 2>&1 || { echo UNREACHABLE; exit 0; }
-    timeout 3 nslookup google.com {{ pi_adguard_ip }} 2>/dev/null | grep -q "Address" \
-      && echo REACHABLE || echo UNREACHABLE
+- name: Check Pi (AdGuard Home) reachability
+  ansible.builtin.raw: ping -c1 -W2 {{ pi_adguard_ip }} >/dev/null 2>&1 && echo REACHABLE || echo UNREACHABLE
   register: gatekeeper_pi_check
   changed_when: false
+  check_mode: false
 
-- name: Force all LAN DNS traffic to AdGuard (only when Pi is reachable)
+- name: Force all LAN DNS traffic to designated resolver (AdGuard when Pi is reachable, local Opal DoT when Pi is down)
   ansible.builtin.raw: |
     set -eu
     changed=0
-    pi_reachable="{{ 'yes' if gatekeeper_pi_check.stdout | trim == 'REACHABLE' else 'no' }}"
+    pi_reachable="{{ 'yes' if (gatekeeper_pi_check.stdout | default('')) | trim == 'REACHABLE' else 'no' }}"
 
-    if [ "$pi_reachable" = "no" ]; then
-      if uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then
-        uci delete firewall.dns_hijack_adguard
-        uci commit firewall
-        changed=1
-      fi
+    if [ "$pi_reachable" = "yes" ]; then
+      target_ip="{{ pi_adguard_ip }}"
     else
-      if ! uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then
-        uci set firewall.dns_hijack_adguard='redirect'
-        changed=1
-      fi
-
-      current_name="$(uci -q get firewall.dns_hijack_adguard.name || true)"
-      [ "$current_name" = "Force-DNS-to-AdGuard" ] || { uci set firewall.dns_hijack_adguard.name='Force-DNS-to-AdGuard'; changed=1; }
-
-      current_src="$(uci -q get firewall.dns_hijack_adguard.src || true)"
-      [ "$current_src" = "lan" ] || { uci set firewall.dns_hijack_adguard.src='lan'; changed=1; }
-
-      current_proto="$(uci -q get firewall.dns_hijack_adguard.proto || true)"
-      [ "$current_proto" = "tcp udp" ] || { uci set firewall.dns_hijack_adguard.proto='tcp udp'; changed=1; }
-
-      current_src_port="$(uci -q get firewall.dns_hijack_adguard.src_dport || true)"
-      [ "$current_src_port" = "53" ] || { uci set firewall.dns_hijack_adguard.src_dport='53'; changed=1; }
-
-      if uci -q get firewall.dns_hijack_adguard.dest >/dev/null 2>&1; then
-        uci delete firewall.dns_hijack_adguard.dest
-        changed=1
-      fi
-
-      current_dest_ip="$(uci -q get firewall.dns_hijack_adguard.dest_ip || true)"
-      [ "$current_dest_ip" = "{{ pi_adguard_ip }}" ] || { uci set firewall.dns_hijack_adguard.dest_ip='{{ pi_adguard_ip }}'; changed=1; }
-
-      current_dest_port="$(uci -q get firewall.dns_hijack_adguard.dest_port || true)"
-      [ "$current_dest_port" = "53" ] || { uci set firewall.dns_hijack_adguard.dest_port='53'; changed=1; }
-
-      [ "$changed" -eq 1 ] && uci commit firewall
+      target_ip="192.168.8.1"
     fi
 
+    if ! uci -q get firewall.dns_hijack >/dev/null 2>&1; then
+      uci set firewall.dns_hijack='redirect'
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack.name || true)" = "Force-DNS-Hijack" ] || \
+      { uci set firewall.dns_hijack.name='Force-DNS-Hijack'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack.src || true)" = "lan" ] || \
+      { uci set firewall.dns_hijack.src='lan'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack.proto || true)" = "tcp udp" ] || \
+      { uci set firewall.dns_hijack.proto='tcp udp'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack.src_dport || true)" = "53" ] || \
+      { uci set firewall.dns_hijack.src_dport='53'; changed=1; }
+
+    if uci -q get firewall.dns_hijack.dest >/dev/null 2>&1; then
+      uci delete firewall.dns_hijack.dest
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack.dest_ip || true)" = "$target_ip" ] || \
+      { uci set firewall.dns_hijack.dest_ip="$target_ip"; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack.dest_port || true)" = "53" ] || \
+      { uci set firewall.dns_hijack.dest_port='53'; changed=1; }
+
+    if uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then
+      uci delete firewall.dns_hijack_adguard
+      changed=1
+    fi
+
+    [ "$changed" -eq 1 ] && uci commit firewall
     [ "$changed" -eq 1 ] && echo CHANGED || echo OK
   register: gatekeeper_dns
   changed_when: "'CHANGED' in gatekeeper_dns.stdout"
+
+- name: Configure Stubby DNS-over-TLS with Family Protection (Cloudflare + CleanBrowsing + AdGuard Family)
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    cur_enabled="$(uci -q get stubby.global.enabled || true)"
+    if [ "$cur_enabled" != "1" ]; then
+      uci set stubby.global.enabled='1'
+      changed=1
+    fi
+
+    cur_primary="$(uci -q get stubby.@resolver[0].address || true)"
+    cur_fallback="$(uci -q get stubby.@resolver[2].address || true)"
+    if [ "$cur_primary" != "1.1.1.3" ] || [ "$cur_fallback" != "185.228.168.168" ]; then
+      while uci -q delete stubby.@resolver[0]; do :; done
+      uci add stubby resolver
+      uci set stubby.@resolver[-1].address='1.1.1.3'
+      uci set stubby.@resolver[-1].tls_auth_name='family.cloudflare-dns.com'
+      uci add stubby resolver
+      uci set stubby.@resolver[-1].address='1.0.0.3'
+      uci set stubby.@resolver[-1].tls_auth_name='family.cloudflare-dns.com'
+      uci add stubby resolver
+      uci set stubby.@resolver[-1].address='185.228.168.168'
+      uci set stubby.@resolver[-1].tls_auth_name='family-filter-dns.cleanbrowsing.org'
+      uci add stubby resolver
+      uci set stubby.@resolver[-1].address='94.140.14.15'
+      uci set stubby.@resolver[-1].tls_auth_name='family.adguard-dns.com'
+      changed=1
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+      uci commit stubby
+      /etc/init.d/stubby enable
+      /etc/init.d/stubby restart
+      echo CHANGED
+    else
+      if ! ps | grep -v grep | grep -q stubby; then
+        /etc/init.d/stubby start
+        echo CHANGED
+      else
+        echo OK
+      fi
+    fi
+  register: gatekeeper_stubby
+  changed_when: "'CHANGED' in gatekeeper_stubby.stdout"
 
 - name: Configure dnsmasq DNS protection and upstream
   ansible.builtin.raw: |
     set -eu
     changed=0
-    pi_reachable="{{ 'yes' if gatekeeper_pi_check.stdout | trim == 'REACHABLE' else 'no' }}"
+    pi_reachable="{{ 'yes' if (gatekeeper_pi_check.stdout | default('')) | trim == 'REACHABLE' else 'no' }}"
 
-    cur="$(uci -q get dhcp.@dnsmasq[0].rebind_protection || true)"
-    [ "$cur" = "1" ] || { uci set dhcp.@dnsmasq[0].rebind_protection='1'; changed=1; }
+    # Allow 0.0.0.0 and :: sinkhole responses from family filter upstream
+    cur_rebind="$(uci -q get dhcp.@dnsmasq[0].rebind_protection || true)"
+    [ "$cur_rebind" = "0" ] || { uci set dhcp.@dnsmasq[0].rebind_protection='0'; changed=1; }
+
+    # Do not use resolvfile (/tmp/resolv.conf.auto from WAN) to guarantee DoT
+    cur_noresolv="$(uci -q get dhcp.@dnsmasq[0].noresolv || true)"
+    [ "$cur_noresolv" = "1" ] || { uci set dhcp.@dnsmasq[0].noresolv='1'; changed=1; }
+
+    # Super-Cache: expand DNS cache to 2000 domains and 300s min TTL for instant local resolution
+    [ "$(uci -q get dhcp.@dnsmasq[0].cachesize || true)" = "2000" ] || \
+      { uci set dhcp.@dnsmasq[0].cachesize='2000'; changed=1; }
+    [ "$(uci -q get dhcp.@dnsmasq[0].min_cache_ttl || true)" = "300" ] || \
+      { uci set dhcp.@dnsmasq[0].min_cache_ttl='300'; changed=1; }
 
     if [ "$pi_reachable" = "yes" ]; then
       desired="{{ pi_adguard_ip }}"
     else
-      desired="{{ wan_dns_servers | join(' ') }}"
+      desired="{{ dot_upstream }}"
     fi
     cur="$(uci -q get dhcp.@dnsmasq[0].server || true)"
     if [ "$cur" != "$desired" ]; then
       uci -q delete dhcp.@dnsmasq[0].server || true
-      if [ "$pi_reachable" = "yes" ]; then
-        uci add_list dhcp.@dnsmasq[0].server="{{ pi_adguard_ip }}"
-      else
-        {% for srv in wan_dns_servers %}
-        uci add_list dhcp.@dnsmasq[0].server='{{ srv }}'
-        {% endfor %}
-      fi
+      uci add_list dhcp.@dnsmasq[0].server="$desired"
       changed=1
     fi
 
@@ -325,156 +438,26 @@
   register: gatekeeper_dnsmasq
   changed_when: "'CHANGED' in gatekeeper_dnsmasq.stdout"
 
-- name: Install AdGuard failover monitor script
-  ansible.builtin.raw: |
-    tmp=$(mktemp)
-    cat > "$tmp" << 'FAILOVER'
-    #!/bin/sh
-    # Self-healing AdGuard failover with hysteresis + force-reconcile.
-    # Runs every minute via cron and once at boot via /etc/rc.local.
-    # ICMP + DNS health (not just ping — pod can crashloop while host pings).
-    # On state transition, toggles BOTH dnsmasq upstream AND the LAN DNAT.
-    # Hysteresis: flip only after HYSTERESIS consecutive divergent observations
-    # (avoids flap on transient packet loss). Force-reconcile: if config drifted
-    # from committed state (e.g., manual UCI edit, half-applied role run), apply.
-    PI_IP="{{ pi_adguard_ip }}"
-    STATE_FILE="/var/run/adguard-failover.state"
-    COUNTER_FILE="/var/run/adguard-failover.counter"
-    PUBLIC_DNS="{{ wan_dns_servers | join(' ') }}"
-    HYSTERESIS=2
-
-    if ping -c2 -W2 "$PI_IP" >/dev/null 2>&1 && \
-       timeout 3 nslookup google.com "$PI_IP" 2>/dev/null | grep -q "Address"; then
-      obs="up"
-    else
-      obs="down"
-    fi
-
-    prev="$(cat "$STATE_FILE" 2>/dev/null || echo unknown)"
-
-    if [ "$obs" = "$prev" ]; then
-      count=0
-    else
-      count="$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)"
-      count=$((count + 1))
-    fi
-    echo "$count" > "$COUNTER_FILE"
-
-    if [ "$prev" = "unknown" ] || [ "$count" -ge "$HYSTERESIS" ]; then
-      state="$obs"
-    else
-      state="$prev"
-    fi
-
-    dnat_should_exist=0
-    [ "$state" = "up" ] && dnat_should_exist=1
-    dnat_exists=0
-    uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1 && dnat_exists=1
-
-    if [ "$state" = "$prev" ] && [ "$dnat_should_exist" = "$dnat_exists" ]; then
-      exit 0
-    fi
-
-    uci -q delete dhcp.@dnsmasq[0].server 2>/dev/null || true
-    if [ "$state" = "up" ]; then
-      uci add_list dhcp.@dnsmasq[0].server="$PI_IP"
-    else
-      for srv in $PUBLIC_DNS; do
-        uci add_list dhcp.@dnsmasq[0].server="$srv"
-      done
-    fi
-    uci commit dhcp
-    /etc/init.d/dnsmasq reload
-
-    if [ "$state" = "up" ]; then
-      if [ "$dnat_exists" = "0" ]; then
-        uci set firewall.dns_hijack_adguard='redirect'
-        uci set firewall.dns_hijack_adguard.name='Force-DNS-to-AdGuard'
-        uci set firewall.dns_hijack_adguard.src='lan'
-        uci set firewall.dns_hijack_adguard.proto='tcp udp'
-        uci set firewall.dns_hijack_adguard.src_dport='53'
-        uci set firewall.dns_hijack_adguard.dest_ip="$PI_IP"
-        uci set firewall.dns_hijack_adguard.dest_port='53'
-        uci commit firewall
-        /etc/init.d/firewall reload
-      fi
-      logger -t adguard-failover "Pi RECOVERED - dnsmasq+DNAT restored to AdGuard ($PI_IP)"
-    else
-      if [ "$dnat_exists" = "1" ]; then
-        uci delete firewall.dns_hijack_adguard
-        uci commit firewall
-        /etc/init.d/firewall reload
-      fi
-      logger -t adguard-failover "Pi UNREACHABLE - dnsmasq fallback to public DNS, DNAT removed (LAN clients use router dnsmasq)"
-    fi
-
-    echo "$state" > "$STATE_FILE"
-    echo 0 > "$COUNTER_FILE"
-    FAILOVER
-    if cmp -s "$tmp" /usr/bin/adguard-failover; then
-      rm -f "$tmp"
-      echo OK
-    else
-      mv "$tmp" /usr/bin/adguard-failover
-      chmod +x /usr/bin/adguard-failover
-      echo CHANGED
-    fi
-  register: gatekeeper_failover_script
-  changed_when: "'CHANGED' in gatekeeper_failover_script.stdout"
-
-- name: Schedule AdGuard failover monitor in cron
-  ansible.builtin.raw: |
-    set -eu
-    line="* * * * * /usr/bin/adguard-failover"
-    mkdir -p /etc/crontabs
-    touch /etc/crontabs/root
-    if grep -Fq "/usr/bin/adguard-failover" /etc/crontabs/root; then
-      echo OK
-    else
-      echo "$line" >> /etc/crontabs/root
-      echo CHANGED
-    fi
-  register: gatekeeper_failover_cron
-  changed_when: "'CHANGED' in gatekeeper_failover_cron.stdout"
-
-- name: Enable and start cron service
+- name: Configure static DHCP reservation for UniFi Switch
   ansible.builtin.raw: |
     set -eu
     changed=0
-    if ! ls /etc/rc.d/S*cron >/dev/null 2>&1; then
-      /etc/init.d/cron enable >/dev/null 2>&1 || true
-      ls /etc/rc.d/S*cron >/dev/null 2>&1 && changed=1
-    fi
-    # Best-effort start/reload (does not affect idempotence; runtime-only state)
-    pgrep -x crond >/dev/null 2>&1 || /etc/init.d/cron start >/dev/null 2>&1 || true
-    if [ "{{ 'yes' if (gatekeeper_failover_cron is defined and gatekeeper_failover_cron is changed) else 'no' }}" = "yes" ]; then
-      /etc/init.d/cron reload >/dev/null 2>&1 || /etc/init.d/cron restart >/dev/null 2>&1 || true
-    fi
-    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
-  register: gatekeeper_cron_service
-  changed_when: "'CHANGED' in gatekeeper_cron_service.stdout"
 
-- name: Run AdGuard failover at boot via /etc/rc.local
-  # Cron's first tick is up to 60s after boot. If AdGuard is down at boot, LAN
-  # clients have no DNS during that window. Running the script via rc.local
-  # (backgrounded with sleep) reconciles within 30s of boot.
-  ansible.builtin.raw: |
-    set -eu
-    line='( sleep 30 && /usr/bin/adguard-failover ) >/dev/null 2>&1 &'
-    [ -f /etc/rc.local ] || printf '%s\n' '#!/bin/sh' 'exit 0' > /etc/rc.local
-    if grep -Fq '/usr/bin/adguard-failover' /etc/rc.local; then
-      echo OK
-    else
-      if grep -q '^exit 0$' /etc/rc.local; then
-        sed -i "/^exit 0\$/i $line" /etc/rc.local
-      else
-        printf '%s\n' "$line" >> /etc/rc.local
-      fi
-      chmod +x /etc/rc.local
-      echo CHANGED
+    cur_ip="$(uci -q get dhcp.unifi_switch.ip || true)"
+    cur_mac="$(uci -q get dhcp.unifi_switch.mac || true)"
+    if [ "$cur_ip" != "{{ switch_unifi_ip }}" ] || [ "$cur_mac" != "{{ switch_unifi_mac }}" ]; then
+      uci -q delete dhcp.unifi_switch || true
+      uci set dhcp.unifi_switch=host
+      uci set dhcp.unifi_switch.name='{{ switch_unifi_name }}'
+      uci set dhcp.unifi_switch.mac='{{ switch_unifi_mac }}'
+      uci set dhcp.unifi_switch.ip='{{ switch_unifi_ip }}'
+      changed=1
     fi
-  register: gatekeeper_failover_boot
-  changed_when: "'CHANGED' in gatekeeper_failover_boot.stdout"
+
+    [ "$changed" -eq 1 ] && uci commit dhcp
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_switch_dhcp
+  changed_when: "'CHANGED' in gatekeeper_switch_dhcp.stdout"
 
 - name: Configure WAN interface with static IP for DMZ (Technicolor upstream)
   ansible.builtin.raw: |
@@ -505,13 +488,9 @@
       changed=1
     fi
 
-    desired_dns="{{ wan_dns_servers | join(' ') }}"
     current_dns="$(uci -q get network.wan.dns || true)"
-    if [ "$current_dns" != "$desired_dns" ]; then
-      uci -q delete network.wan.dns 2>/dev/null || true
-      {% for srv in wan_dns_servers %}
-      uci add_list network.wan.dns='{{ srv }}'
-      {% endfor %}
+    if [ "$current_dns" != "{{ wan_dns }}" ]; then
+      uci set network.wan.dns='{{ wan_dns }}'
       changed=1
     fi
 
@@ -603,86 +582,56 @@
   register: gatekeeper_zero_trust
   changed_when: "'CHANGED' in gatekeeper_zero_trust.stdout"
 
-- name: Block guest network from reaching upstream modem subnet (Claro)
+- name: Block direct DNS-over-TLS (port 853) bypass to force devices to use network DNS
   ansible.builtin.raw: |
     set -eu
     changed=0
-    rule_name="block_guest_to_modem"
+    rule_name="block_dot_bypass"
 
     if ! uci show firewall | grep -q "name='$rule_name'"; then
-      rule_idx=$(uci add firewall rule)
+      uci add firewall rule >/dev/null
+      rule_idx="@rule[-1]"
       uci set "firewall.$rule_idx.name=$rule_name"
-      uci set "firewall.$rule_idx.src=guest"
+      uci set "firewall.$rule_idx.src=lan"
       uci set "firewall.$rule_idx.dest=wan"
-      uci set "firewall.$rule_idx.src_ip={{ guest_network_cidr }}"
-      uci set "firewall.$rule_idx.dest_ip={{ modem_subnet_cidr }}"
-      uci set "firewall.$rule_idx.proto=all"
+      uci set "firewall.$rule_idx.proto=tcp"
+      uci set "firewall.$rule_idx.dest_port=853"
       uci set "firewall.$rule_idx.target=REJECT"
       uci set "firewall.$rule_idx.enabled=1"
       changed=1
-      echo CHANGED
     else
       rule_idx=$(uci show firewall | grep "name='$rule_name'" | cut -d'.' -f2 | cut -d'=' -f1)
-      current_target="$(uci -q get firewall.$rule_idx.target || true)"
-      current_enabled="$(uci -q get firewall.$rule_idx.enabled || true)"
-      current_src_ip="$(uci -q get firewall.$rule_idx.src_ip || true)"
-      current_dest_ip="$(uci -q get firewall.$rule_idx.dest_ip || true)"
-
-      if [ "$current_target" != "REJECT" ] || [ "$current_enabled" != "1" ] || \
-         [ "$current_src_ip" != "{{ guest_network_cidr }}" ] || \
-         [ "$current_dest_ip" != "{{ modem_subnet_cidr }}" ]; then
+      cur_target="$(uci -q get firewall.$rule_idx.target || true)"
+      cur_port="$(uci -q get firewall.$rule_idx.dest_port || true)"
+      cur_enabled="$(uci -q get firewall.$rule_idx.enabled || true)"
+      if [ "$cur_target" != "REJECT" ] || [ "$cur_port" != "853" ] || [ "$cur_enabled" != "1" ]; then
         uci set "firewall.$rule_idx.target=REJECT"
+        uci set "firewall.$rule_idx.dest_port=853"
         uci set "firewall.$rule_idx.enabled=1"
-        uci set "firewall.$rule_idx.src_ip={{ guest_network_cidr }}"
-        uci set "firewall.$rule_idx.dest_ip={{ modem_subnet_cidr }}"
         changed=1
-        echo CHANGED
-      else
-        echo OK
       fi
     fi
-  register: gatekeeper_block_modem
-  changed_when: "'CHANGED' in gatekeeper_block_modem.stdout"
 
-- name: Configure DHCP reservations for known Raspberry Pis
-  ansible.builtin.raw: |
-    set -eu
-    changed=0
-    {% for r in pi_dhcp_reservations %}
-    section="{{ r.section }}"
-    if ! uci -q get dhcp.$section >/dev/null 2>&1; then
-      uci set dhcp.$section=host
-      uci set dhcp.$section.name='{{ r.name }}'
-      uci set dhcp.$section.mac='{{ r.pi_mac }}'
-      uci set dhcp.$section.ip='{{ r.pi_ip }}'
-      changed=1
-    else
-      cur_mac="$(uci -q get dhcp.$section.mac || true)"
-      cur_ip="$(uci -q get dhcp.$section.ip || true)"
-      cur_name="$(uci -q get dhcp.$section.name || true)"
-      if [ "$cur_mac" != "{{ r.pi_mac }}" ] || [ "$cur_ip" != "{{ r.pi_ip }}" ] || [ "$cur_name" != "{{ r.name }}" ]; then
-        uci set dhcp.$section.name='{{ r.name }}'
-        uci set dhcp.$section.mac='{{ r.pi_mac }}'
-        uci set dhcp.$section.ip='{{ r.pi_ip }}'
-        changed=1
-      fi
-    fi
-    {% endfor %}
-    if [ "$changed" -eq 1 ]; then
-      uci commit dhcp
-      /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
-      echo CHANGED
-    else
-      echo OK
-    fi
-  register: gatekeeper_dhcp_reservations
-  changed_when: "'CHANGED' in gatekeeper_dhcp_reservations.stdout"
+    [ "$changed" -eq 1 ] && uci commit firewall
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_block_dot
+  changed_when: "'CHANGED' in gatekeeper_block_dot.stdout"
 
 - name: Install Tor package
   ansible.builtin.raw: |
-    opkg list-installed 2>/dev/null | grep -q "^tor " && echo OK || {
-      opkg update >/dev/null 2>&1 && opkg install tor >/dev/null 2>&1 && echo CHANGED || echo OK
-    }
+    if opkg list-installed 2>/dev/null | grep -q "^tor "; then
+      echo OK
+    elif [ -f /etc/tor/.tor_unavailable ]; then
+      echo OK
+    else
+      mkdir -p /etc/tor
+      if opkg list tor 2>/dev/null | grep -q "^tor "; then
+        opkg install tor >/dev/null 2>&1 && echo CHANGED || echo OK
+      else
+        touch /etc/tor/.tor_unavailable
+        echo OK
+      fi
+    fi
   register: gatekeeper_tor_install
   changed_when: "'CHANGED' in gatekeeper_tor_install.stdout"
 
@@ -799,9 +748,13 @@
 
 - name: Ensure Tor does not start automatically on boot
   ansible.builtin.raw: |
-    if ls /etc/rc.d/S*tor >/dev/null 2>&1; then
-      /etc/init.d/tor disable
-      echo CHANGED
+    if [ -x /etc/init.d/tor ]; then
+      if ls /etc/rc.d/S[0-9][0-9]tor >/dev/null 2>&1; then
+        /etc/init.d/tor disable
+        echo CHANGED
+      else
+        echo OK
+      fi
     else
       echo OK
     fi
@@ -813,7 +766,7 @@
     set -eu
     changed=0
 
-    for svc in gl_tertf gl_health gl_macclone samba uhttpd; do
+    for svc in gl_tertf gl_health gl_macclone samba uhttpd sms_manager smstools3 repeater gl-cloud gl-alarm; do
       if [ -x "/etc/init.d/$svc" ]; then
         if ls /etc/rc.d/S*"$svc" >/dev/null 2>&1; then
           /etc/init.d/$svc disable
@@ -832,11 +785,142 @@
   register: gatekeeper_services
   changed_when: "'CHANGED' in gatekeeper_services.stdout"
 
+- name: Configure zram-swap for compressed RAM memory safety buffer
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    if ! opkg list-installed 2>/dev/null | grep -q "^zram-swap "; then
+      opkg update >/dev/null 2>&1
+      opkg install zram-swap >/dev/null 2>&1
+      changed=1
+    fi
+
+    if [ -x /etc/init.d/zram ]; then
+      if ! ls /etc/rc.d/S*zram >/dev/null 2>&1; then
+        /etc/init.d/zram enable
+        changed=1
+      fi
+      if ! swapon -s 2>/dev/null | grep -q "zram"; then
+        /etc/init.d/zram start
+        changed=1
+      fi
+    fi
+
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_zram
+  changed_when: "'CHANGED' in gatekeeper_zram.stdout"
+
+- name: Configure kernel sysctl network latency and security tuning
+  ansible.builtin.raw: |
+    set -eu
+    tmp=$(mktemp)
+    cat > "$tmp" << 'SYSCTL'
+    # Network performance and low-latency tuning
+    net.ipv4.tcp_fastopen=3
+    net.ipv4.tcp_slow_start_after_idle=0
+    net.ipv4.tcp_tw_reuse=1
+    # Security and spoofing defenses
+    net.ipv4.icmp_echo_ignore_broadcasts=1
+    net.ipv4.icmp_ignore_bogus_error_responses=1
+    net.ipv4.conf.all.rp_filter=1
+    net.ipv4.conf.default.rp_filter=1
+    SYSCTL
+    if cmp -s "$tmp" /etc/sysctl.d/99-performance.conf; then
+      rm -f "$tmp"
+      echo OK
+    else
+      mv "$tmp" /etc/sysctl.d/99-performance.conf
+      sysctl -p /etc/sysctl.d/99-performance.conf >/dev/null 2>&1 || true
+      echo CHANGED
+    fi
+  register: gatekeeper_sysctl
+  changed_when: "'CHANGED' in gatekeeper_sysctl.stdout"
+
+- name: Configure automated periodic memory cache trimming
+  ansible.builtin.raw: |
+    set -eu
+    mkdir -p /etc/periodic/hourly
+    tmp=$(mktemp)
+    cat > "$tmp" << 'MEMTRIM'
+    #!/bin/sh
+    # Release inactive slab and page caches if free RAM drops below 15MB
+    free_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || awk '/MemFree/ {print $2}' /proc/meminfo)
+    if [ "${free_kb:-99999}" -lt 15360 ]; then
+      sync
+      echo 3 > /proc/sys/vm/drop_caches
+      logger -t memory-trim "Cleaned page cache: free RAM was below 15MB"
+    fi
+    MEMTRIM
+    if cmp -s "$tmp" /etc/periodic/hourly/memory-trim; then
+      rm -f "$tmp"
+      echo OK
+    else
+      mv "$tmp" /etc/periodic/hourly/memory-trim
+      chmod +x /etc/periodic/hourly/memory-trim
+      echo CHANGED
+    fi
+  register: gatekeeper_memtrim
+  changed_when: "'CHANGED' in gatekeeper_memtrim.stdout"
+
+- name: Configure automatic LED schedule (turn off 20:00, turn on 09:00 São Paulo time)
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    cur_enable="$(uci -q get gl_timer.led.enable || true)"
+    if [ "$cur_enable" != "1" ]; then
+      uci set gl_timer.led.enable='1'
+      changed=1
+    fi
+
+    cur_off_h="$(uci -q get gl_timer.led.turnoff_hour || true)"
+    if [ "$cur_off_h" != "{{ led_turnoff_hour }}" ]; then
+      uci set gl_timer.led.turnoff_hour='{{ led_turnoff_hour }}'
+      changed=1
+    fi
+
+    cur_off_m="$(uci -q get gl_timer.led.turnoff_min || true)"
+    if [ "$cur_off_m" != "{{ led_turnoff_min }}" ]; then
+      uci set gl_timer.led.turnoff_min='{{ led_turnoff_min }}'
+      changed=1
+    fi
+
+    cur_on_h="$(uci -q get gl_timer.led.turnon_hour || true)"
+    if [ "$cur_on_h" != "{{ led_turnon_hour }}" ]; then
+      uci set gl_timer.led.turnon_hour='{{ led_turnon_hour }}'
+      changed=1
+    fi
+
+    cur_on_m="$(uci -q get gl_timer.led.turnon_min || true)"
+    if [ "$cur_on_m" != "{{ led_turnon_min }}" ]; then
+      uci set gl_timer.led.turnon_min='{{ led_turnon_min }}'
+      changed=1
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+      uci commit gl_timer
+      /etc/init.d/gl_timer restart
+      # If current local time is in the night window (20:00 to 09:00), turn off immediately
+      current_hour=$(date +%H)
+      if [ "$current_hour" -ge 20 ] || [ "$current_hour" -lt 9 ]; then
+        /etc/init.d/gl_led turnoff
+      else
+        /etc/init.d/gl_led turnon
+      fi
+      echo CHANGED
+    else
+      echo OK
+    fi
+  register: gatekeeper_led_schedule
+  changed_when: "'CHANGED' in gatekeeper_led_schedule.stdout"
+
 - name: Commit UCI changes and restart network and firewall
   ansible.builtin.raw: |
     uci commit
     /etc/init.d/network restart
     /etc/init.d/firewall restart
+    /etc/init.d/dnsmasq restart
     wifi down && sleep 2 && wifi up
     echo CHANGED
   register: gatekeeper_commit
@@ -845,14 +929,18 @@
     - gatekeeper_perf is changed
       or gatekeeper_wifi is changed
       or gatekeeper_guest_wifi is changed
+      or gatekeeper_work_vlan is changed
+      or gatekeeper_switch_dhcp is changed
       or gatekeeper_route is changed
       or gatekeeper_dns is changed
+      or gatekeeper_stubby is changed
       or gatekeeper_dnsmasq is changed
+      or gatekeeper_wan_dhcp is changed
       or gatekeeper_wan is changed
-      or gatekeeper_block_modem is changed
+      or gatekeeper_block_dot is changed
       or gatekeeper_services is changed
 
-- name: Remove DNS DNAT rules when Pi (AdGuard) is unreachable
+- name: Clean up legacy Force-DNS-to-AdGuard iptables rules if present
   ansible.builtin.raw: |
     chain="zone_lan_prerouting"
     changed=0
@@ -865,4 +953,3 @@
     [ "$changed" -eq 1 ] && echo CHANGED || echo OK
   register: gatekeeper_dns_iptables
   changed_when: "'CHANGED' in gatekeeper_dns_iptables.stdout"
-  when: gatekeeper_pi_check.stdout | trim != 'REACHABLE'
