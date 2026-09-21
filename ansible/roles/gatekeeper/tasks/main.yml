@@ -82,9 +82,18 @@
       changed=1
     fi
 
+    # Preserve custom active SSID if using default public placeholder
+    target_ssid="{{ wifi_ssid }}"
+    if [ "$target_ssid" = "Homelab-Secure" ] || [ "$target_ssid" = "vaulted" ]; then
+      existing_ssid="$(uci -q get wireless.default_radio1.ssid || true)"
+      if [ -n "$existing_ssid" ]; then
+        target_ssid="$existing_ssid"
+      fi
+    fi
+
     current_ssid_24="$(uci -q get wireless.default_radio0.ssid || true)"
-    if [ "$current_ssid_24" != "{{ wifi_ssid }}" ]; then
-      uci set wireless.default_radio0.ssid='{{ wifi_ssid }}'
+    if [ "$current_ssid_24" != "$target_ssid" ]; then
+      uci set wireless.default_radio0.ssid="$target_ssid"
       changed=1
     fi
 
@@ -107,8 +116,8 @@
     fi
 
     current_ssid_5="$(uci -q get wireless.default_radio1.ssid || true)"
-    if [ "$current_ssid_5" != "{{ wifi_ssid }}" ]; then
-      uci set wireless.default_radio1.ssid='{{ wifi_ssid }}'
+    if [ "$current_ssid_5" != "$target_ssid" ]; then
+      uci set wireless.default_radio1.ssid="$target_ssid"
       changed=1
     fi
 
@@ -443,13 +452,22 @@
     set -eu
     changed=0
 
+    # Guard: preserve real hardware MAC if using public placeholder
+    target_mac='{{ switch_unifi_mac }}'
+    if [ "$target_mac" = "00:11:22:33:44:55" ] || [ "$target_mac" = "vaulted" ]; then
+      existing_mac="$(uci -q get dhcp.unifi_switch.mac || true)"
+      if [ -n "$existing_mac" ]; then
+        target_mac="$existing_mac"
+      fi
+    fi
+
     cur_ip="$(uci -q get dhcp.unifi_switch.ip || true)"
     cur_mac="$(uci -q get dhcp.unifi_switch.mac || true)"
-    if [ "$cur_ip" != "{{ switch_unifi_ip }}" ] || [ "$cur_mac" != "{{ switch_unifi_mac }}" ]; then
+    if [ "$cur_ip" != "{{ switch_unifi_ip }}" ] || [ "$cur_mac" != "$target_mac" ]; then
       uci -q delete dhcp.unifi_switch || true
       uci set dhcp.unifi_switch=host
       uci set dhcp.unifi_switch.name='{{ switch_unifi_name }}'
-      uci set dhcp.unifi_switch.mac='{{ switch_unifi_mac }}'
+      uci set dhcp.unifi_switch.mac="$target_mac"
       uci set dhcp.unifi_switch.ip='{{ switch_unifi_ip }}'
       changed=1
     fi

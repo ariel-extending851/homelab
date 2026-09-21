@@ -1,6 +1,7 @@
 ---
 # Gatekeeper defaults for OpenWrt router policy
-wifi_ssid: APTO52BL33
+# Safe placeholders only. Override in group_vars/router.sops.yml.
+wifi_ssid: Homelab-Secure
 wifi_guest_ssid_24: GL-SFT1200-1b5-Guest
 wifi_guest_ssid_5: GL-SFT1200-1b5-5G-Guest
 # Safe placeholders only. Override in group_vars/router.sops.yml.
@@ -15,7 +16,7 @@ wan_gateway: 192.168.0.1
 wan_dns: 1.1.1.3
 dot_upstream: "127.0.0.1#5453"
 switch_unifi_name: "USW-Flex-Mini"
-switch_unifi_mac: "58:d6:1f:50:bf:57"
+switch_unifi_mac: "00:11:22:33:44:55"
 switch_unifi_ip: "192.168.8.2"
 work_vlan_id: 9
 wifi_channel_5g: 36
