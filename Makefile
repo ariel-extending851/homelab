@@ -433,6 +433,10 @@ ansible-router: ## Configure the GL.iNet Opal Router (Gatekeeper)
 	@echo "🛡️  Configuring OpenWrt Gatekeeper..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/configure_router.yml
 
+audit-router: ## Run Ansible compliance audit on GL.iNet Opal router (White Box)
+	@echo "🛡️  Running compliance audit on OpenWrt Gatekeeper..."
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/audit_router.yml
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml
@@ -1241,6 +1245,24 @@ test-dr-execution: ## Run disaster recovery role as real execution in Molecule t
 	@echo "🚨 Running disaster recovery execution tests (Molecule scenario)..."
 	@make test-molecule-emergency-recovery
 	@echo "  ✓ Disaster recovery execution test passed."
+
+test-network: setup-ci-deps-python ## Run automated network security & performance audit (Black Box)
+	@echo "🌐 Running automated network audit (Black Box)..."
+	@python3 bin/test_network.py
+
+test-network-security: setup-ci-deps-python ## Run network security & DNS threat filtering audit
+	@echo "🛡️  Running network security audit..."
+	@python3 bin/test_network.py --suite security
+
+test-network-speed: setup-ci-deps-python ## Run network latency, jitter, bandwidth & bufferbloat tests
+	@echo "⚡ Running network speed & quality audit..."
+	@python3 bin/test_network.py --suite speed
+
+test-network-quick: setup-ci-deps-python ## Run quick network audit without heavy bandwidth transfer
+	@echo "🚀 Running quick network audit..."
+	@python3 bin/test_network.py --skip-bandwidth
+
+test-network-all: audit-router test-network ## Run full network verification suite (Ansible White Box + Python Black Box)
 
 test-python-collect: setup-ci-deps-python ## Verify every Python test module imports cleanly (~5s; PR-fast guard)
 	@echo "🧪 Verifying Python test collection (no execution)..."
