@@ -441,6 +441,13 @@ stress-router: ## Run hardware stress and latency resilience test on GL.iNet Opa
 	@echo "🚀 Running stress test on GL.iNet Opal Gatekeeper..."
 	@python3 bin/stress_test_router.py
 
+tv-speak: ## Send voice notification (TTS) to Living Room TV (Usage: make tv-speak MSG="Texto do alerta")
+	@if [ -z "$(MSG)" ]; then echo "❌ Error: MSG is required. Example: make tv-speak MSG='Deploy concluido com sucesso'"; exit 1; fi
+	@python3 bin/chromecast_ctl.py --notify "$(MSG)"
+
+tv-status: ## Show Chromecast status, volume and active player
+	@python3 bin/chromecast_ctl.py --status
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml

@@ -144,6 +144,19 @@
         fail_msg: "SECURITY COMPLIANCE FAILED: miniupnpd is active! UPnP poses auto-port-forwarding risk."
         success_msg: "✓ Security: UPnP (miniupnpd) is disabled and inactive (Zero Trust)."
 
+    - name: 🔒 Check LAN DNS Hijack / Redirection (Anti-Hardcoded DNS) in iptables
+      ansible.builtin.raw: iptables -t nat -L zone_lan_prerouting -v -n 2>/dev/null || iptables -t nat -L PREROUTING -v -n
+      register: dns_redirect_check
+      changed_when: false
+
+    - name: Assert hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected
+      ansible.builtin.assert:
+        that:
+          - "'dpt:53' in dns_redirect_check.stdout"
+          - "'to:192.168.8.1:53' in dns_redirect_check.stdout or 'DNAT' in dns_redirect_check.stdout"
+        fail_msg: "SECURITY AUDIT FAILED: Hardcoded DNS (8.8.8.8) is not being intercepted on LAN!"
+        success_msg: "✓ Security: Hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected to local Stubby DoT."
+
     - name: 📋 Display Audit Summary
       ansible.builtin.debug:
         msg:
@@ -158,6 +171,7 @@
           - "  [✓] Dnsmasq: Locked to 127.0.0.1#5453                         "
           - "  [✓] 5GHz Wi-Fi: Fixed Channel 36 (Zero Jitter)                "
           - "  [✓] Split SSIDs: 5GHz (Fast) and 2.4GHz (_2.4G) separated    "
+          - "  [✓] Anti-Snoop DNS: Chromecast (8.8.8.8) redirected to Stubby DoT"
           - "  [✓] UPnP Inactive: miniupnpd disabled (Zero Trust)            "
           - "  [✓] Claro Modem (192.168.0.1): Reachable (0% packet loss)     "
           - "================================================================"
