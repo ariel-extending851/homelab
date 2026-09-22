@@ -83,17 +83,18 @@
     fi
 
     # Preserve custom active SSID if using default public placeholder
-    target_ssid="{{ wifi_ssid }}"
-    if [ "$target_ssid" = "Homelab-Secure" ] || [ "$target_ssid" = "vaulted" ]; then
+    target_ssid_5g="{{ wifi_ssid }}"
+    if [ "$target_ssid_5g" = "Homelab-Secure" ] || [ "$target_ssid_5g" = "vaulted" ]; then
       existing_ssid="$(uci -q get wireless.default_radio1.ssid || true)"
       if [ -n "$existing_ssid" ]; then
-        target_ssid="$existing_ssid"
+        target_ssid_5g="$existing_ssid"
       fi
     fi
+    target_ssid_24="${target_ssid_5g}_2.4G"
 
     current_ssid_24="$(uci -q get wireless.default_radio0.ssid || true)"
-    if [ "$current_ssid_24" != "$target_ssid" ]; then
-      uci set wireless.default_radio0.ssid="$target_ssid"
+    if [ "$current_ssid_24" != "$target_ssid_24" ]; then
+      uci set wireless.default_radio0.ssid="$target_ssid_24"
       changed=1
     fi
 
@@ -116,8 +117,8 @@
     fi
 
     current_ssid_5="$(uci -q get wireless.default_radio1.ssid || true)"
-    if [ "$current_ssid_5" != "$target_ssid" ]; then
-      uci set wireless.default_radio1.ssid="$target_ssid"
+    if [ "$current_ssid_5" != "$target_ssid_5g" ]; then
+      uci set wireless.default_radio1.ssid="$target_ssid_5g"
       changed=1
     fi
 
