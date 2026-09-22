@@ -449,7 +449,7 @@ tv-status: ## Show Chromecast status, volume and active player
 	@python3 bin/chromecast_ctl.py --status
 
 tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX] [AUTO_DISABLE=true])
-	@TV_ADB_PORT=$${PORT:-5555} AUTO_DISABLE_DEBUGGING=$${AUTO_DISABLE:-true} cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml -e "tv_port=$${PORT:-5555} auto_disable_debugging=$${AUTO_DISABLE:-true}"
 
 tv-lockdown: ## Disable USB and Wireless debugging on TV immediately (Usage: make tv-lockdown [PORT=XXXXX])
 	@python3 bin/tv_adb.py --target "192.168.8.206:$${PORT:-5555}" --lockdown
