@@ -8,6 +8,7 @@ kind: Kustomization
   # Applications
 
 resources:
+- ./alertmanager
 - ./prometheus
 - ./grafana
 - ./loki

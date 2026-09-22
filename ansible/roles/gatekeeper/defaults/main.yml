@@ -11,6 +11,13 @@ pi_tailscale_ip: 192.168.8.10
 pi_adguard_ip: 192.168.8.11
 network_cidr: 192.168.8.0/24
 guest_network_cidr: 192.168.9.0/24
+iot_network_cidr: 192.168.80.0/24
+iot_gateway_ip: 192.168.80.1
+iot_dhcp_start: 100
+iot_dhcp_limit: 100
+wifi_iot_ssid_24: Homelab-IoT-2.4G
+wifi_iot_ssid_5: Homelab-IoT-5G
+wifi_iot_password: vaulted_iot
 modem_subnet_cidr: 192.168.0.0/24
 wan_static_ip: 192.168.0.2
 wan_gateway: 192.168.0.1

@@ -248,6 +248,73 @@
   changed_when: "'CHANGED' in gatekeeper_guest_wifi.stdout"
   no_log: true
 
+- name: Configure IoT network interface and WiFi using GL.iNet wireless (Homelab-IoT)
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    # IoT network interface (192.168.80.1/24)
+    proto="$(uci -q get network.iot.proto || true)"
+    [ "$proto" = "static" ] || { uci set network.iot=interface; uci set network.iot.proto='static'; changed=1; }
+    type="$(uci -q get network.iot.type || true)"
+    [ "$type" = "bridge" ] || { uci set network.iot.type='bridge'; changed=1; }
+    disabled="$(uci -q get network.iot.disabled || true)"
+    [ "$disabled" = "0" ] || { uci set network.iot.disabled='0'; changed=1; }
+    ip="$(uci -q get network.iot.ipaddr || true)"
+    [ "$ip" = "{{ iot_gateway_ip }}" ] || { uci set network.iot.ipaddr='{{ iot_gateway_ip }}'; changed=1; }
+    mask="$(uci -q get network.iot.netmask || true)"
+    [ "$mask" = "255.255.255.0" ] || { uci set network.iot.netmask='255.255.255.0'; changed=1; }
+
+    # IoT DHCP pool
+    dhcp_iface="$(uci -q get dhcp.iot.interface || true)"
+    [ "$dhcp_iface" = "iot" ] || { uci set dhcp.iot=dhcp; uci set dhcp.iot.interface='iot'; changed=1; }
+    dhcp_start="$(uci -q get dhcp.iot.start || true)"
+    [ "$dhcp_start" = "{{ iot_dhcp_start }}" ] || { uci set dhcp.iot.start='{{ iot_dhcp_start }}'; changed=1; }
+    dhcp_limit="$(uci -q get dhcp.iot.limit || true)"
+    [ "$dhcp_limit" = "{{ iot_dhcp_limit }}" ] || { uci set dhcp.iot.limit='{{ iot_dhcp_limit }}'; changed=1; }
+    dhcp_lease="$(uci -q get dhcp.iot.leasetime || true)"
+    [ "$dhcp_lease" = "12h" ] || { uci set dhcp.iot.leasetime='12h'; changed=1; }
+
+    # IoT 2.4GHz WiFi (radio0)
+    if ! uci -q get wireless.iot2g >/dev/null 2>&1; then
+      uci set wireless.iot2g=wifi-iface
+      uci set wireless.iot2g.device='radio0'
+      uci set wireless.iot2g.mode='ap'
+      uci set wireless.iot2g.network='iot'
+      uci set wireless.iot2g.ssid='{{ wifi_iot_ssid_24 }}'
+      uci set wireless.iot2g.encryption='psk2'
+      uci set wireless.iot2g.key='{{ wifi_iot_password }}'
+      uci set wireless.iot2g.isolate='1'
+      uci set wireless.iot2g.disabled='0'
+      changed=1
+    fi
+
+    # IoT 5GHz WiFi (radio1)
+    if ! uci -q get wireless.iot5g >/dev/null 2>&1; then
+      uci set wireless.iot5g=wifi-iface
+      uci set wireless.iot5g.device='radio1'
+      uci set wireless.iot5g.mode='ap'
+      uci set wireless.iot5g.network='iot'
+      uci set wireless.iot5g.ssid='{{ wifi_iot_ssid_5 }}'
+      uci set wireless.iot5g.encryption='psk2'
+      uci set wireless.iot5g.key='{{ wifi_iot_password }}'
+      uci set wireless.iot5g.isolate='1'
+      uci set wireless.iot5g.disabled='0'
+      changed=1
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+      uci commit network
+      uci commit dhcp
+      uci commit wireless
+      echo CHANGED
+    else
+      echo OK
+    fi
+  register: gatekeeper_iot_wifi
+  changed_when: "'CHANGED' in gatekeeper_iot_wifi.stdout"
+  no_log: true
+
 - name: Configure VLAN 9 isolation for corporate work port and trunking
   ansible.builtin.raw: |
     set -eu
@@ -706,6 +773,122 @@
     fi
   register: gatekeeper_firewall_logging
   changed_when: "'CHANGED' in gatekeeper_firewall_logging.stdout"
+
+- name: Implement Zero Trust isolation for IoT zone in firewall
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    # Ensure zone_iot exists
+    if ! uci show firewall | grep -q "name='iot'"; then
+      uci add firewall zone >/dev/null
+      zone_idx="@zone[-1]"
+      uci set "firewall.$zone_idx.name=iot"
+      uci set "firewall.$zone_idx.network=iot"
+      uci set "firewall.$zone_idx.input=REJECT"
+      uci set "firewall.$zone_idx.output=ACCEPT"
+      uci set "firewall.$zone_idx.forward=REJECT"
+      changed=1
+    fi
+
+    # Allow IoT to WAN (Streaming / Internet)
+    if ! uci show firewall | grep -q "name='iot_to_wan'"; then
+      uci add firewall forwarding >/dev/null
+      fwd_idx="@forwarding[-1]"
+      uci set "firewall.$fwd_idx.name=iot_to_wan"
+      uci set "firewall.$fwd_idx.src=iot"
+      uci set "firewall.$fwd_idx.dest=wan"
+      changed=1
+    fi
+
+    # Allow LAN to IoT (Control / Casting)
+    if ! uci show firewall | grep -q "name='lan_to_iot'"; then
+      uci add firewall forwarding >/dev/null
+      fwd_idx="@forwarding[-1]"
+      uci set "firewall.$fwd_idx.name=lan_to_iot"
+      uci set "firewall.$fwd_idx.src=lan"
+      uci set "firewall.$fwd_idx.dest=iot"
+      changed=1
+    fi
+
+    # Block IoT to LAN Admin
+    if ! uci show firewall | grep -q "name='block_iot_to_admin'"; then
+      uci add firewall rule >/dev/null
+      rule_idx="@rule[-1]"
+      uci set "firewall.$rule_idx.name=block_iot_to_admin"
+      uci set "firewall.$rule_idx.src=iot"
+      uci set "firewall.$rule_idx.dest=lan"
+      uci set "firewall.$rule_idx.src_ip={{ iot_network_cidr }}"
+      uci set "firewall.$rule_idx.dest_ip={{ network_cidr }}"
+      uci set "firewall.$rule_idx.target=REJECT"
+      uci set "firewall.$rule_idx.enabled=1"
+      changed=1
+    fi
+
+    # Block IoT to Upstream Modem
+    if ! uci show firewall | grep -q "name='block_iot_to_modem'"; then
+      uci add firewall rule >/dev/null
+      rule_idx="@rule[-1]"
+      uci set "firewall.$rule_idx.name=block_iot_to_modem"
+      uci set "firewall.$rule_idx.src=iot"
+      uci set "firewall.$rule_idx.dest=wan"
+      uci set "firewall.$rule_idx.src_ip={{ iot_network_cidr }}"
+      uci set "firewall.$rule_idx.dest_ip={{ modem_subnet_cidr }}"
+      uci set "firewall.$rule_idx.target=REJECT"
+      uci set "firewall.$rule_idx.enabled=1"
+      changed=1
+    fi
+
+    [ "$changed" -eq 1 ] && uci commit firewall
+    if [ "$changed" -eq 1 ]; then
+      echo CHANGED
+    else
+      echo OK
+    fi
+  register: gatekeeper_iot_firewall
+  changed_when: "'CHANGED' in gatekeeper_iot_firewall.stdout"
+
+- name: Configure rate-limited drop logging for IoT Zero Trust isolation in /etc/firewall.user
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+    target_file="/etc/firewall.user"
+
+    [ -f "$target_file" ] || touch "$target_file"
+
+    rule_iot_admin='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-ADMIN: " 2>/dev/null || iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-ADMIN: "'
+    rule_iot_modem='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-MODEM: " 2>/dev/null || iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-MODEM: "'
+
+    if ! grep -q "FW-BLOCK-IOT-ADMIN" "$target_file"; then
+      echo "" >> "$target_file"
+      echo "# IoT Zero Trust Rate-Limited Forensic Logging (Managed by Ansible)" >> "$target_file"
+      echo "$rule_iot_admin" >> "$target_file"
+      echo "$rule_iot_modem" >> "$target_file"
+      chmod +x "$target_file"
+      /bin/sh "$target_file"
+      changed=1
+      echo CHANGED
+    else
+      echo OK
+    fi
+  register: gatekeeper_iot_logging
+  changed_when: "'CHANGED' in gatekeeper_iot_logging.stdout"
+
+- name: Ensure umdns package is installed for cross-VLAN mDNS reflection
+  ansible.builtin.raw: |
+    set -eu
+    if ! which umdns >/dev/null 2>&1; then
+      opkg update && opkg install umdns
+      /etc/init.d/umdns enable
+      /etc/init.d/umdns restart
+      echo CHANGED
+    else
+      /etc/init.d/umdns enabled || /etc/init.d/umdns enable
+      /etc/init.d/umdns status >/dev/null 2>&1 || /etc/init.d/umdns start
+      echo OK
+    fi
+  register: gatekeeper_umdns
+  changed_when: "'CHANGED' in gatekeeper_umdns.stdout"
 
 - name: Block direct DNS-over-TLS (port 853) bypass to force devices to use network DNS
   ansible.builtin.raw: |
