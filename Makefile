@@ -441,12 +441,28 @@ stress-router: ## Run hardware stress and latency resilience test on GL.iNet Opa
 	@echo "🚀 Running stress test on GL.iNet Opal Gatekeeper..."
 	@python3 bin/stress_test_router.py
 
-tv-speak: ## Send voice notification (TTS) to Living Room TV (Usage: make tv-speak MSG="Texto do alerta")
+tv-speak: ## Send family-friendly voice notification to TV (Usage: make tv-speak MSG="Texto" [FORCE=1])
 	@if [ -z "$(MSG)" ]; then echo "❌ Error: MSG is required. Example: make tv-speak MSG='Deploy concluido com sucesso'"; exit 1; fi
-	@python3 bin/chromecast_ctl.py --notify "$(MSG)"
+	@python3 bin/chromecast_ctl.py --notify "$(MSG)" $$( [ -n "$(FORCE)" ] && echo "--force" )
 
-tv-status: ## Show Chromecast status, volume and active player
+tv-briefing: ## Speak gentle morning health briefing on Living Room TV (Usage: make tv-briefing [FORCE=1])
+	@python3 bin/chromecast_ctl.py --briefing $$( [ -n "$(FORCE)" ] && echo "--force" )
+
+tv-status: ## Show Chromecast status, volume, active player, and family presence detection
 	@python3 bin/chromecast_ctl.py --status
+
+tv-vol: ## Set TV volume percentage via Google Cast (Usage: make tv-vol LEVEL=25)
+	@if [ -z "$(LEVEL)" ]; then echo "❌ Error: LEVEL is required (0-100). Example: make tv-vol LEVEL=25"; exit 1; fi
+	@python3 bin/chromecast_ctl.py --vol $(LEVEL)
+
+tv-pause: ## Pause media playback on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --pause
+
+tv-play: ## Resume media playback on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --play
+
+tv-mute: ## Toggle mute on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --mute
 
 tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX] [AUTO_DISABLE=true])
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml -e "tv_port=$${PORT:-5555} auto_disable_debugging=$${AUTO_DISABLE:-true}"
@@ -1133,9 +1149,9 @@ rollback-terraform: ## Revert infra/aws to a tag and re-apply (DRY-RUN by defaul
 		python3 bin/rollback.py terraform --tag "$$ROLLBACK_TAG"; \
 	fi
 
-morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
+morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (Usage: make morning-sync [TV=1])
 	@echo "🌅 Running morning sync health check..."
-	@python3 bin/morning_sync.py
+	@python3 bin/morning_sync.py $$( [ -n "$(TV)" ] && echo "--tv" ) $$( [ -n "$(FORCE)" ] && echo "--tv-force" )
 
 ##@ E2E Post-Deployment Testing
 
