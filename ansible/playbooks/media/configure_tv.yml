@@ -25,6 +25,9 @@
     # UI Performance acceleration
     animation_scale: "0.5"
 
+    # Auto-Hardening: Automatically disable wireless & USB debugging on TV
+    auto_disable_debugging: "{{ lookup('env', 'AUTO_DISABLE_DEBUGGING') | default('true', true) | bool }}"
+
   tasks:
     - name: "📋 Display target details"
       ansible.builtin.debug:
@@ -93,11 +96,6 @@
           register: final_packages_raw
           changed_when: false
 
-        - name: "🔒 Disconnect ADB session cleanly"
-          ansible.builtin.command:
-            cmd: "adb disconnect {{ tv_target }}"
-          changed_when: false
-
         - name: "📊 Optimization and Health Summary"
           ansible.builtin.debug:
             msg:
@@ -109,8 +107,21 @@
               - "  Bloatware:     Removidos com sucesso"
               - "  Apps Ativos:   {{ final_packages_raw.stdout_lines | map('regex_replace', '^package:', '') | list }}"
               - "  Armazenamento: {{ storage_data.stdout_lines[-1] | default('N/A') }}"
-              - "  Segurança:     Sessão ADB desconectada (JIT)"
+              - "  Auto-Lockdown: {{ 'Ativo (depuração USB e Wi-Fi desligadas)' if (auto_disable_debugging | bool) else 'Inativo (depuração mantida)' }}"
               - "=================================================="
+
+        - name: "🔒 Automatically disable Wireless and USB debugging on TV"
+          ansible.builtin.command:
+            cmd: 'adb -s {{ tv_target }} shell "settings put global adb_wifi_enabled 0; settings put global adb_enabled 0"'
+          when: auto_disable_debugging | bool
+          failed_when: false
+          changed_when: true
+          register: disable_debug_res
+
+        - name: "🔒 Disconnect ADB session cleanly"
+          ansible.builtin.command:
+            cmd: "adb disconnect {{ tv_target }}"
+          changed_when: false
 
       rescue:
         - name: "❌ Display ADB Connection Troubleshooting Guide"

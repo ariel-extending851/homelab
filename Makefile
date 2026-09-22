@@ -448,8 +448,11 @@ tv-speak: ## Send voice notification (TTS) to Living Room TV (Usage: make tv-spe
 tv-status: ## Show Chromecast status, volume and active player
 	@python3 bin/chromecast_ctl.py --status
 
-tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX])
-	@TV_ADB_PORT=$${PORT:-5555} cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml
+tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX] [AUTO_DISABLE=true])
+	@TV_ADB_PORT=$${PORT:-5555} AUTO_DISABLE_DEBUGGING=$${AUTO_DISABLE:-true} cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml
+
+tv-lockdown: ## Disable USB and Wireless debugging on TV immediately (Usage: make tv-lockdown [PORT=XXXXX])
+	@python3 bin/tv_adb.py --target "192.168.8.206:$${PORT:-5555}" --lockdown
 
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."

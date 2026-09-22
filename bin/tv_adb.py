@@ -45,12 +45,20 @@ def optimize_animations(target: str):
     print("✓ Interface acelerada com sucesso (0.5x)!")
 
 
+def disable_debugging(target: str):
+    print(f"🔒 Desativando Depuração Sem Fio e USB na TV ({target or 'default'})...")
+    run_adb(["shell", "settings put global adb_wifi_enabled 0; settings put global adb_enabled 0"], target)
+    run_adb(["disconnect", target] if target else ["disconnect"])
+    print("✓ Depuração desativada na TV e sessão ADB desconectada com sucesso!")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Google TV ADB Management Utility")
     parser.add_argument("--target", type=str, default="", help="Dispositivo ADB específico (ex: 192.168.8.206:32875)")
     parser.add_argument("--list-apps", action="store_true", help="Listar aplicativos de terceiros")
     parser.add_argument("--storage", action="store_true", help="Exibir uso de armazenamento")
     parser.add_argument("--optimize", action="store_true", help="Acelerar animações para 0.5x")
+    parser.add_argument("--lockdown", action="store_true", help="Desativar depuração sem fio e USB na TV")
 
     args = parser.parse_args()
 
@@ -60,6 +68,8 @@ def main():
         get_storage(args.target)
     elif args.optimize:
         optimize_animations(args.target)
+    elif args.lockdown:
+        disable_debugging(args.target)
     else:
         parser.print_help()
 
