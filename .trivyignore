@@ -8,3 +8,5 @@
 #   2. Get review from a second engineer (security-relevant change)
 #   3. Set a review-by date <= 90 days out
 #   4. Re-evaluate on the review-by date; remove if upstream patched
+
+CVE-2026-28388 # linuxserver/jellyfin:10.10.6 — openssl client-side memory leak upstream — review-by: 2026-12-01

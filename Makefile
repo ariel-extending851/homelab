@@ -433,6 +433,43 @@ ansible-router: ## Configure the GL.iNet Opal Router (Gatekeeper)
 	@echo "🛡️  Configuring OpenWrt Gatekeeper..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/configure_router.yml
 
+audit-router: ## Run Ansible compliance audit on GL.iNet Opal router (White Box)
+	@echo "🛡️  Running compliance audit on OpenWrt Gatekeeper..."
+	@cd $(ANSIBLE_DIR) && ANSIBLE_VARS_ENABLED=host_group_vars ansible-playbook -i inventory/production.yml playbooks/audit_router.yml
+
+stress-router: ## Run hardware stress and latency resilience test on GL.iNet Opal
+	@echo "🚀 Running stress test on GL.iNet Opal Gatekeeper..."
+	@python3 bin/stress_test_router.py
+
+tv-speak: ## Send family-friendly voice notification to TV (Usage: make tv-speak MSG="Texto" [FORCE=1])
+	@if [ -z "$(MSG)" ]; then echo "❌ Error: MSG is required. Example: make tv-speak MSG='Deploy concluido com sucesso'"; exit 1; fi
+	@python3 bin/chromecast_ctl.py --notify "$(MSG)" $$( [ -n "$(FORCE)" ] && echo "--force" )
+
+tv-briefing: ## Speak gentle morning health briefing on Living Room TV (Usage: make tv-briefing [FORCE=1])
+	@python3 bin/chromecast_ctl.py --briefing $$( [ -n "$(FORCE)" ] && echo "--force" )
+
+tv-status: ## Show Chromecast status, volume, active player, and family presence detection
+	@python3 bin/chromecast_ctl.py --status
+
+tv-vol: ## Set TV volume percentage via Google Cast (Usage: make tv-vol LEVEL=25)
+	@if [ -z "$(LEVEL)" ]; then echo "❌ Error: LEVEL is required (0-100). Example: make tv-vol LEVEL=25"; exit 1; fi
+	@python3 bin/chromecast_ctl.py --vol $(LEVEL)
+
+tv-pause: ## Pause media playback on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --pause
+
+tv-play: ## Resume media playback on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --play
+
+tv-mute: ## Toggle mute on TV via Google Cast
+	@python3 bin/chromecast_ctl.py --mute
+
+tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX] [AUTO_DISABLE=true])
+	@cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml -e "tv_port=$${PORT:-5555} auto_disable_debugging=$${AUTO_DISABLE:-true}"
+
+tv-lockdown: ## Disable USB and Wireless debugging on TV immediately (Usage: make tv-lockdown [PORT=XXXXX])
+	@python3 bin/tv_adb.py --target "192.168.8.206:$${PORT:-5555}" --lockdown
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml
@@ -770,6 +807,7 @@ validate-ansible: ## Syntax-check all critical Ansible playbooks
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/optimize_rpi.yml --syntax-check
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/recovery/emergency_recovery.yml --syntax-check
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/validation.yml --syntax-check
+	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/media/configure_tv.yml --syntax-check
 	@echo "  ✓ All Ansible playbooks passed syntax check."
 
 test-connectivity: ## Test SSM connectivity to k3s server (Zero Trust)
@@ -1111,9 +1149,9 @@ rollback-terraform: ## Revert infra/aws to a tag and re-apply (DRY-RUN by defaul
 		python3 bin/rollback.py terraform --tag "$$ROLLBACK_TAG"; \
 	fi
 
-morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (requires live cluster)
+morning-sync: ## Daily health check — smoke tests, Tailscale nodes, K3s readiness, Loki ERROR/FATAL scan (Usage: make morning-sync [TV=1])
 	@echo "🌅 Running morning sync health check..."
-	@python3 bin/morning_sync.py
+	@python3 bin/morning_sync.py $$( [ -n "$(TV)" ] && echo "--tv" ) $$( [ -n "$(FORCE)" ] && echo "--tv-force" )
 
 ##@ E2E Post-Deployment Testing
 
@@ -1241,6 +1279,24 @@ test-dr-execution: ## Run disaster recovery role as real execution in Molecule t
 	@echo "🚨 Running disaster recovery execution tests (Molecule scenario)..."
 	@make test-molecule-emergency-recovery
 	@echo "  ✓ Disaster recovery execution test passed."
+
+test-network: setup-ci-deps-python ## Run automated network security & performance audit (Black Box)
+	@echo "🌐 Running automated network audit (Black Box)..."
+	@python3 bin/test_network.py
+
+test-network-security: setup-ci-deps-python ## Run network security & DNS threat filtering audit
+	@echo "🛡️  Running network security audit..."
+	@python3 bin/test_network.py --suite security
+
+test-network-speed: setup-ci-deps-python ## Run network latency, jitter, bandwidth & bufferbloat tests
+	@echo "⚡ Running network speed & quality audit..."
+	@python3 bin/test_network.py --suite speed
+
+test-network-quick: setup-ci-deps-python ## Run quick network audit without heavy bandwidth transfer
+	@echo "🚀 Running quick network audit..."
+	@python3 bin/test_network.py --skip-bandwidth
+
+test-network-all: audit-router test-network ## Run full network verification suite (Ansible White Box + Python Black Box)
 
 test-python-collect: setup-ci-deps-python ## Verify every Python test module imports cleanly (~5s; PR-fast guard)
 	@echo "🧪 Verifying Python test collection (no execution)..."

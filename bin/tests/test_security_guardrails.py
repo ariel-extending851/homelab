@@ -78,3 +78,27 @@ class TestPolicyGuardrails:
         content = _read(compute_main)
         assert "AmazonSSMManagedInstanceCore" in content
         assert "arn:aws:s3:::${var.ssm_s3_bucket}/*" in content
+
+
+class TestAccountAndCredentialSanitization:
+    def test_aws_config_uses_mock_account_id(self):
+        config_path = REPO_ROOT / "infra" / "aws" / "scripts" / "config.yml"
+        assert config_path.exists(), "infra/aws/scripts/config.yml missing"
+        content = _read(config_path)
+        assert "585008067269" not in content, "Real AWS Account ID leaked in config.yml!"
+        assert "123456789012" in content, "Expected mock AWS Account ID in config.yml"
+
+    def test_no_raw_aws_account_ids_in_infra_configs(self):
+        """Scans infra scripts and group_vars to ensure no real 12-digit AWS account IDs exist outside mock IDs."""
+        raw_account_pattern = re.compile(r"\b(?!123456789012\b|999999999999\b)(\d{12})\b")
+        scan_dirs = [REPO_ROOT / "infra" / "aws" / "scripts", REPO_ROOT / "ansible" / "group_vars"]
+        for scan_dir in scan_dirs:
+            if not scan_dir.exists():
+                continue
+            for ext in ("*.yml", "*.yaml", "*.py"):
+                for path in scan_dir.glob(ext):
+                    if ".sops." in path.name:
+                        continue
+                    content = _read(path)
+                    match = raw_account_pattern.search(content)
+                    assert not match, f"Found unmasked 12-digit AWS Account ID '{match.group(1)}' in {path.relative_to(REPO_ROOT)}"

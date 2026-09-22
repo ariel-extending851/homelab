@@ -1,0 +1,140 @@
+---
+# Playbook to configure and optimize Google TV / Chromecast via ADB
+# Enforces debloat, performance tuning (0.5x animations), and audits system storage.
+# Zero attack surface: automatically disconnects ADB when finished.
+- name: 📺 Configure and Optimize Google TV (Chromecast)
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+
+  vars:
+    tv_ip: "{{ (hostvars['chromecast-tv'] | default({})).ansible_host | default('192.168.8.206') }}"
+    tv_port: "{{ lookup('env', 'TV_ADB_PORT') | default('5555', true) }}"
+    tv_target: "{{ tv_ip }}:{{ tv_port }}"
+
+    # Bloatware to remove
+    unwanted_packages:
+      - com.globo.globotv                  # Globoplay
+      - com.disney.disneyplus              # Disney+
+      - com.cbs.ca                         # Paramount+
+      - com.netflix.ninja                  # Netflix
+      - com.amazon.amazonvideo.livingroom  # Prime Video
+      - org.smarttube.stable               # SmartTube (user has YouTube Premium)
+
+    # UI Performance acceleration
+    animation_scale: "0.5"
+
+    # Auto-Hardening: Automatically disable wireless & USB debugging on TV
+    auto_disable_debugging: "{{ lookup('env', 'AUTO_DISABLE_DEBUGGING') | default('true', true) | bool }}"
+
+  tasks:
+    - name: "📋 Display target details"
+      ansible.builtin.debug:
+        msg:
+          - "=================================================="
+          - "  Google TV Configuration via Ansible             "
+          - "=================================================="
+          - "  Target Device: {{ tv_target }}"
+          - "  Unwanted Apps: {{ unwanted_packages | length }} targets"
+          - "  Animations:    {{ animation_scale }}x"
+          - "=================================================="
+
+    - name: "📺 Manage Google TV via ADB"
+      block:
+        - name: "🔌 Connect ADB to Google TV"
+          ansible.builtin.command:
+            cmd: "adb connect {{ tv_target }}"
+          register: adb_connect
+          changed_when: "'connected' in adb_connect.stdout and not 'already' in adb_connect.stdout"
+          failed_when: "'cannot connect' in adb_connect.stdout or 'failed to connect' in adb_connect.stdout"
+
+        - name: "🔍 Verify ADB device status"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} get-state"
+          register: adb_state
+          changed_when: false
+          failed_when: "'device' not in adb_state.stdout"
+
+        - name: "📦 Fetch currently installed packages"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} shell pm list packages"
+          register: installed_packages_raw
+          changed_when: false
+
+        - name: "📋 Parse installed package names"
+          ansible.builtin.set_fact:
+            installed_packages: "{{ installed_packages_raw.stdout_lines | map('regex_replace', '^package:', '') | list }}"
+
+        - name: "🗑️ Uninstall unwanted bloatware packages (Idempotent)"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} uninstall {{ item }}"
+          loop: "{{ unwanted_packages }}"
+          when: item in installed_packages
+          register: uninstall_res
+          changed_when: "'Success' in uninstall_res.stdout"
+          failed_when: uninstall_res.rc != 0 and 'not installed' not in uninstall_res.stderr
+
+        - name: "⚡ Enforce optimized animation scales (0.5x)"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} shell settings put global {{ item }} {{ animation_scale }}"
+          loop:
+            - window_animation_scale
+            - transition_animation_scale
+            - animator_duration_scale
+          changed_when: false
+
+        - name: "💾 Query internal flash storage usage (/data)"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} shell df -h /data"
+          register: storage_data
+          changed_when: false
+
+        - name: "📱 Query remaining third-party applications"
+          ansible.builtin.command:
+            cmd: "adb -s {{ tv_target }} shell pm list packages -3"
+          register: final_packages_raw
+          changed_when: false
+
+        - name: "📊 Optimization and Health Summary"
+          ansible.builtin.debug:
+            msg:
+              - "=================================================="
+              - "  Google TV (Chromecast Living Room): CONFIGURED "
+              - "=================================================="
+              - "  Alvo:          {{ tv_target }}"
+              - "  Animações:     {{ animation_scale }}x (Aceleradas)"
+              - "  Bloatware:     Removidos com sucesso"
+              - "  Apps Ativos:   {{ final_packages_raw.stdout_lines | map('regex_replace', '^package:', '') | list }}"
+              - "  Armazenamento: {{ storage_data.stdout_lines[-1] | default('N/A') }}"
+              - "  Auto-Lockdown: {{ 'Ativo (depuração USB e Wi-Fi desligadas)' if (auto_disable_debugging | bool) else 'Inativo (depuração mantida)' }}"
+              - "=================================================="
+
+        - name: "🔒 Automatically disable Wireless and USB debugging on TV"
+          ansible.builtin.command:
+            cmd: 'adb -s {{ tv_target }} shell "settings put global adb_wifi_enabled 0; settings put global adb_enabled 0"'
+          when: auto_disable_debugging | bool
+          failed_when: false
+          changed_when: true
+          register: disable_debug_res
+
+        - name: "🔒 Disconnect ADB session cleanly"
+          ansible.builtin.command:
+            cmd: "adb disconnect {{ tv_target }}"
+          changed_when: false
+
+      rescue:
+        - name: "❌ Display ADB Connection Troubleshooting Guide"
+          ansible.builtin.fail:
+            msg:
+              - "=========================================================================="
+              - "❌ FALHA NA CONEXÃO COM O GOOGLE TV (CHROMECAST): {{ tv_target }}"
+              - "=========================================================================="
+              - "Motivo: O ADB não conseguiu estabelecer conexão com a TV."
+              - "Passos para resolver:"
+              - "  1. Na TV, acesse: Configurações -> Sistema -> Opções do Desenvolvedor."
+              - "  2. Ative 'Depuração sem fio' (Wireless debugging)."
+              - "  3. Anote a porta aleatória exibida na TV (ex: 38271 ou 34067)."
+              - "  4. Execute novamente passando a porta:"
+              - "     make tv-configure PORT=<PORTA_DA_TV>"
+              - "=========================================================================="
