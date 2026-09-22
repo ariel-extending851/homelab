@@ -26,7 +26,7 @@ permissions:
 jobs:
   link-checker:
     name: "Run Lychee Link Checker"
-    runs-on: [self-hosted, pc-homelab]
+    runs-on: ubuntu-latest
 
     steps:
       - name: "Check out repository"
