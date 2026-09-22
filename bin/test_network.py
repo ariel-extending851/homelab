@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Network security and performance testing suite for GL.iNet Opal and Claro Modem.
+"""Network security and performance testing suite for GL.iNet Opal and Upstream Modem.
 
 Performs black-box network validation from the client perspective:
 - Security: Threat filtering (0.0.0.0), family filter, DoT resolution, WAN port lockdown.
@@ -264,7 +264,7 @@ def is_domain_blocked(ips: list[str]) -> bool:
     return any(ip in KNOWN_SINKHOLE_IPS for ip in ips)
 
 
-def run_security_suite(opal_ip: str, claro_ip: str, opal_wan_ip: str) -> list[AuditResult]:
+def run_security_suite(opal_ip: str, modem_ip: str, opal_wan_ip: str) -> list[AuditResult]:
     """Execute complete security verification suite."""
     results: list[AuditResult] = []
 
@@ -355,14 +355,14 @@ def run_security_suite(opal_ip: str, claro_ip: str, opal_wan_ip: str) -> list[Au
             )
         )
 
-    # 5. Claro Modem Local Ports Audit
-    claro_http = check_port(claro_ip, 80)
-    claro_dns = check_port(claro_ip, 53)
+    # 5. Upstream Modem Local Ports Audit
+    modem_http = check_port(modem_ip, 80)
+    modem_dns = check_port(modem_ip, 53)
     results.append(
         AuditResult(
-            "Claro Modem Gateway Ports",
-            "PASS" if claro_http else "WARN",
-            f"Claro {claro_ip} HTTP Web UI={'OPEN' if claro_http else 'CLOSED'}, DNS 53={'OPEN' if claro_dns else 'CLOSED'}",
+            "Upstream Modem Gateway Ports",
+            "PASS" if modem_http else "WARN",
+            f"Modem {modem_ip} HTTP Web UI={'OPEN' if modem_http else 'CLOSED'}, DNS 53={'OPEN' if modem_dns else 'CLOSED'}",
         )
     )
 
@@ -371,7 +371,7 @@ def run_security_suite(opal_ip: str, claro_ip: str, opal_wan_ip: str) -> list[Au
 
 def run_performance_suite(
     opal_ip: str,
-    claro_ip: str,
+    modem_ip: str,
     internet_ip: str = "1.1.1.1",
     skip_bandwidth: bool = False,
 ) -> list[AuditResult]:
@@ -392,13 +392,13 @@ def run_performance_suite(
         )
     )
 
-    # 2. Hop 2: PC -> Claro Modem
-    hop2_samples = measure_tcp_rtt(claro_ip, 80, count=15)
+    # 2. Hop 2: PC -> Upstream Modem
+    hop2_samples = measure_tcp_rtt(modem_ip, 80, count=15)
     hop2_stats = calculate_stats(hop2_samples)
     hop2_status = "PASS" if hop2_stats.avg_ms < 6.0 and hop2_stats.loss_pct == 0.0 else "WARN"
     results.append(
         AuditResult(
-            "Hop 2: PC -> Claro Modem (192.168.0.1)",
+            f"Hop 2: PC -> Upstream Modem ({modem_ip})",
             hop2_status,
             f"avg={hop2_stats.avg_ms}ms, min={hop2_stats.min_ms}ms, max={hop2_stats.max_ms}ms, jitter=±{hop2_stats.jitter_ms}ms, loss={hop2_stats.loss_pct}%",
             hop2_stats.avg_ms,
@@ -491,7 +491,7 @@ def print_terminal_report(security_results: list[AuditResult], speed_results: li
 
     print()
     print(f"{colors['BOLD']}{colors['CYAN']}======================================================================{colors['RESET']}")
-    print(f"{colors['BOLD']}      HOMELAB NETWORK AUDIT & PERFORMANCE REPORT (OPAL + CLARO)      {colors['RESET']}")
+    print(f"{colors['BOLD']}      HOMELAB NETWORK AUDIT & PERFORMANCE REPORT (GATEKEEPER)         {colors['RESET']}")
     print(f"{colors['BOLD']}{colors['CYAN']}======================================================================{colors['RESET']}")
 
     all_results = []
@@ -566,14 +566,16 @@ def main() -> int:
         help="GL.iNet Opal LAN IP (default: 192.168.8.1)",
     )
     parser.add_argument(
+        "--modem-ip",
         "--claro-ip",
+        dest="modem_ip",
         default="192.168.0.1",
-        help="Claro Modem Gateway IP (default: 192.168.0.1)",
+        help="Upstream Modem Gateway IP (default: 192.168.0.1)",
     )
     parser.add_argument(
         "--opal-wan-ip",
         default="192.168.0.2",
-        help="GL.iNet Opal WAN IP on Claro network (default: 192.168.0.2)",
+        help="GL.iNet Opal WAN IP on upstream network (default: 192.168.0.2)",
     )
     parser.add_argument(
         "--skip-bandwidth",
@@ -592,12 +594,12 @@ def main() -> int:
     speed_results: list[AuditResult] = []
 
     if args.suite in ["all", "security"]:
-        security_results = run_security_suite(args.opal_ip, args.claro_ip, args.opal_wan_ip)
+        security_results = run_security_suite(args.opal_ip, args.modem_ip, args.opal_wan_ip)
 
     if args.suite in ["all", "speed"]:
         speed_results = run_performance_suite(
             args.opal_ip,
-            args.claro_ip,
+            args.modem_ip,
             skip_bandwidth=args.skip_bandwidth,
         )
 

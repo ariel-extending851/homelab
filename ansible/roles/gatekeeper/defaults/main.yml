@@ -2,8 +2,8 @@
 # Gatekeeper defaults for OpenWrt router policy
 # Safe placeholders only. Override in group_vars/router.sops.yml.
 wifi_ssid: Homelab-Secure
-wifi_guest_ssid_24: GL-SFT1200-1b5-Guest
-wifi_guest_ssid_5: GL-SFT1200-1b5-5G-Guest
+wifi_guest_ssid_24: Homelab-Guest-2.4G
+wifi_guest_ssid_5: Homelab-Guest-5G
 # Safe placeholders only. Override in group_vars/router.sops.yml.
 wifi_password: vaulted
 wifi_guest_password: vaulted_guest

@@ -24,8 +24,8 @@
           - "'192.168.9.0/24' in guest_forward_rules.stdout"
           - "'192.168.0.0/24' in guest_forward_rules.stdout"
           - "'REJECT' in guest_forward_rules.stdout or 'DROP' in guest_forward_rules.stdout"
-        fail_msg: "SECURITY COMPLIANCE FAILED: VLAN 9 (guest) isolation to Claro modem subnet (192.168.0.0/24) is NOT active in kernel iptables!"
-        success_msg: "✓ Security: VLAN 9 corporate isolation to Claro modem subnet (block_guest_to_modem) is verified active in iptables."
+        fail_msg: "SECURITY COMPLIANCE FAILED: VLAN 9 (guest) isolation to upstream modem subnet (192.168.0.0/24) is NOT active in kernel iptables!"
+        success_msg: "✓ Security: VLAN 9 corporate isolation to upstream modem subnet (block_guest_to_modem) is verified active in iptables."
 
     - name: 🛡️  Check Zero Trust forensic rate-limited logging in iptables
       ansible.builtin.raw: iptables -S forwarding_guest_rule
@@ -120,17 +120,17 @@
         fail_msg: "PERFORMANCE AUDIT FAILED: 2.4GHz and 5GHz still share the same SSID!"
         success_msg: "✓ Performance: 2.4GHz and 5GHz SSIDs are split, preventing band steering degradation."
 
-    - name: 🌐 Check Claro Modem Gateway reachability (192.168.0.1)
+    - name: 🌐 Check Upstream Modem Gateway reachability (192.168.0.1)
       ansible.builtin.raw: ping -c 3 -W 2 192.168.0.1
-      register: ping_claro
+      register: ping_modem
       changed_when: false
 
-    - name: Assert Claro Modem is reachable with zero packet loss
+    - name: Assert Upstream Modem Gateway is reachable with zero packet loss
       ansible.builtin.assert:
         that:
-          - "'0% packet loss' in ping_claro.stdout"
-        fail_msg: "CONNECTIVITY WARNING: Claro Modem ping failed or has packet loss!"
-        success_msg: "✓ Connectivity: Claro Modem (192.168.0.1) responded with 0% packet loss."
+          - "'0% packet loss' in ping_modem.stdout"
+        fail_msg: "CONNECTIVITY WARNING: Upstream Modem Gateway ping failed or has packet loss!"
+        success_msg: "✓ Connectivity: Upstream Modem Gateway (192.168.0.1) responded with 0% packet loss."
 
     - name: 🛡️  Check UPnP daemon is disabled
       ansible.builtin.raw: pgrep miniupnpd || echo INACTIVE
@@ -173,5 +173,5 @@
           - "  [✓] Split SSIDs: 5GHz (Fast) and 2.4GHz (_2.4G) separated    "
           - "  [✓] Anti-Snoop DNS: Chromecast (8.8.8.8) redirected to Stubby DoT"
           - "  [✓] UPnP Inactive: miniupnpd disabled (Zero Trust)            "
-          - "  [✓] Claro Modem (192.168.0.1): Reachable (0% packet loss)     "
+          - "  [✓] Upstream Modem (192.168.0.1): Reachable (0% packet loss)     "
           - "================================================================"

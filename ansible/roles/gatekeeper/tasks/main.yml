@@ -183,11 +183,28 @@
       uci set dhcp.guest.start='100'; uci set dhcp.guest.limit='150'; \
       uci set dhcp.guest.leasetime='12h'; changed=1; }
 
+    # Preserve custom active guest SSIDs if using default public placeholder
+    target_guest_24="{{ wifi_guest_ssid_24 }}"
+    if [ "$target_guest_24" = "Homelab-Guest-2.4G" ]; then
+      existing_guest_24="$(uci -q get wireless.guest2g.ssid || true)"
+      if [ -n "$existing_guest_24" ]; then
+        target_guest_24="$existing_guest_24"
+      fi
+    fi
+
+    target_guest_5="{{ wifi_guest_ssid_5 }}"
+    if [ "$target_guest_5" = "Homelab-Guest-5G" ]; then
+      existing_guest_5="$(uci -q get wireless.guest5g.ssid || true)"
+      if [ -n "$existing_guest_5" ]; then
+        target_guest_5="$existing_guest_5"
+      fi
+    fi
+
     # Guest 2.4GHz (interface nativa guest2g)
     [ "$(uci -q get wireless.guest2g.disabled || true)" = "0" ] || \
       { uci set wireless.guest2g.disabled='0'; changed=1; }
-    [ "$(uci -q get wireless.guest2g.ssid || true)" = "{{ wifi_guest_ssid_24 }}" ] || \
-      { uci set wireless.guest2g.ssid='{{ wifi_guest_ssid_24 }}'; changed=1; }
+    [ "$(uci -q get wireless.guest2g.ssid || true)" = "$target_guest_24" ] || \
+      { uci set wireless.guest2g.ssid="$target_guest_24"; changed=1; }
     [ "$(uci -q get wireless.guest2g.encryption || true)" = "sae-mixed" ] || \
       { uci set wireless.guest2g.encryption='sae-mixed'; changed=1; }
     [ "$(uci -q get wireless.guest2g.network || true)" = "guest" ] || \
@@ -200,8 +217,8 @@
     # Guest 5GHz (interface nativa guest5g)
     [ "$(uci -q get wireless.guest5g.disabled || true)" = "0" ] || \
       { uci set wireless.guest5g.disabled='0'; changed=1; }
-    [ "$(uci -q get wireless.guest5g.ssid || true)" = "{{ wifi_guest_ssid_5 }}" ] || \
-      { uci set wireless.guest5g.ssid='{{ wifi_guest_ssid_5 }}'; changed=1; }
+    [ "$(uci -q get wireless.guest5g.ssid || true)" = "$target_guest_5" ] || \
+      { uci set wireless.guest5g.ssid="$target_guest_5"; changed=1; }
     [ "$(uci -q get wireless.guest5g.encryption || true)" = "sae-mixed" ] || \
       { uci set wireless.guest5g.encryption='sae-mixed'; changed=1; }
     [ "$(uci -q get wireless.guest5g.network || true)" = "guest" ] || \
@@ -602,7 +619,7 @@
   register: gatekeeper_zero_trust
   changed_when: "'CHANGED' in gatekeeper_zero_trust.stdout"
 
-- name: Implement Zero Trust isolation (Guest network cannot access Claro modem subnet)
+- name: Implement Zero Trust isolation (Guest network cannot access Upstream modem subnet)
   ansible.builtin.raw: |
     set -eu
     changed=0
