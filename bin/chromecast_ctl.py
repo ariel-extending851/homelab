@@ -46,18 +46,19 @@ class EphemeralAudioHandler(http.server.SimpleHTTPRequestHandler):
     audio_data = b""
 
     def do_GET(self):
-        if self.path.endswith(".mp3") or self.path == "/":
+        print(f"📥 Chromecast conectado buscando áudio: {self.client_address[0]} (caminho: {self.path})", flush=True)
+        if self.path.endswith(".mp3") or self.path == "/" or "/notify" in self.path:
             self.send_response(200)
             self.send_header("Content-Type", "audio/mpeg")
             self.send_header("Content-Length", str(len(self.audio_data)))
             self.send_header("Accept-Ranges", "bytes")
             self.end_headers()
             self.wfile.write(self.audio_data)
+            print("✓ Áudio MP3 transmitido com sucesso para a TV!", flush=True)
         else:
             self.send_error(404, "File Not Found")
 
     def log_message(self, format, *args):
-        # Silence HTTP server logs to keep CLI clean
         pass
 
 
@@ -173,17 +174,21 @@ def send_voice_notification(
 
         mc = cast.media_controller
         print(f"📢 Transmitindo áudio para a TV em volume suave ({round(volume * 100 if volume else 100)}%)...")
-        mc.play_media(stream_url, "audio/mp3", title="Homelab Notificação", thumb=None)
+        mc.play_media(stream_url, "audio/mpeg", title="Homelab Notificação", thumb=None)
         mc.block_until_active(timeout=10)
 
-        # Wait for playback to complete (max 20s)
+        # Wait for playback to complete (track has_started so we don't exit before playing)
         start_time = time.time()
-        timeout = 20
+        timeout = 25
+        has_started = False
         while time.time() - start_time < timeout:
             status = mc.status
-            if status.player_state in ["IDLE"]:
-                if time.time() - start_time > 2.0:
-                    break
+            state = status.player_state
+            if state in ["PLAYING", "BUFFERING"]:
+                has_started = True
+            elif state in ["IDLE"] and has_started:
+                # Playback completed!
+                break
             time.sleep(0.5)
 
         print("✓ Notificação de voz concluída com sucesso!")
