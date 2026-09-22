@@ -17,6 +17,7 @@ spec:
       labels:
         app.kubernetes.io/name: alertmanager
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -27,7 +28,7 @@ spec:
       containers:
         - name: alertmanager
           image: prom/alertmanager:v0.27.0
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           args:
             - "--config.file=/etc/alertmanager/alertmanager.yml"
             - "--storage.path=/alertmanager"
