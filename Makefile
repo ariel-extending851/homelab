@@ -448,6 +448,9 @@ tv-speak: ## Send voice notification (TTS) to Living Room TV (Usage: make tv-spe
 tv-status: ## Show Chromecast status, volume and active player
 	@python3 bin/chromecast_ctl.py --status
 
+tv-configure: ## Configure and optimize Google TV via Ansible (Usage: make tv-configure [PORT=XXXXX])
+	@TV_ADB_PORT=$${PORT:-5555} cd $(ANSIBLE_DIR) && ansible-playbook -i inventory/production.yml playbooks/media/configure_tv.yml
+
 clean-tailscale: ## Remove stale Tailscale nodes
 	@echo "🧹 Cleaning up stale Tailscale nodes..."
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/cleanup_tailscale.yml
@@ -785,6 +788,7 @@ validate-ansible: ## Syntax-check all critical Ansible playbooks
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/maintenance/optimize_rpi.yml --syntax-check
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/recovery/emergency_recovery.yml --syntax-check
 	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/validation.yml --syntax-check
+	@cd $(ANSIBLE_DIR) && ansible-playbook playbooks/media/configure_tv.yml --syntax-check
 	@echo "  ✓ All Ansible playbooks passed syntax check."
 
 test-connectivity: ## Test SSM connectivity to k3s server (Zero Trust)

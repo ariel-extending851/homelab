@@ -148,3 +148,11 @@ all:
           ansible_host: 192.168.8.120
           ansible_user: "{{ lookup('env', 'USER') }}"
           ansible_connection: ssh
+
+    # ── Media devices ─────────────────────────────────────────────────────
+    media:
+      hosts:
+        chromecast-tv:
+          ansible_host: 192.168.8.206
+          device_type: google_tv
+
