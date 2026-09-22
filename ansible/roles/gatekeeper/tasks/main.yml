@@ -750,8 +750,15 @@
 
     [ -f "$target_file" ] || touch "$target_file"
 
-    rule_admin='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: " 2>/dev/null || iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: "'
-    rule_modem='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-MODEM: " 2>/dev/null || iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-MODEM: "'
+    rule_admin='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }}'
+    rule_admin="$rule_admin -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-ADMIN: \" 2>/dev/null || "
+    rule_admin="$rule_admin iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }}"
+    rule_admin="$rule_admin -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-ADMIN: \""
+
+    rule_modem='iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }}'
+    rule_modem="$rule_modem -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-MODEM: \" 2>/dev/null || "
+    rule_modem="$rule_modem iptables -A forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ modem_subnet_cidr }}"
+    rule_modem="$rule_modem -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-MODEM: \""
 
     if ! grep -q "FW-BLOCK-ADMIN" "$target_file"; then
       echo "" >> "$target_file"
@@ -763,7 +770,9 @@
       changed=1
       echo CHANGED
     else
-      if ! iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-ADMIN: " 2>/dev/null; then
+      if ! iptables -C forwarding_guest_rule -s {{ guest_network_cidr }} \
+        -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 \
+        -j LOG --log-prefix "FW-BLOCK-ADMIN: " 2>/dev/null; then
         /bin/sh "$target_file"
         changed=1
         echo CHANGED
@@ -856,8 +865,15 @@
 
     [ -f "$target_file" ] || touch "$target_file"
 
-    rule_iot_admin='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-ADMIN: " 2>/dev/null || iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-ADMIN: "'
-    rule_iot_modem='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-MODEM: " 2>/dev/null || iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }} -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix "FW-BLOCK-IOT-MODEM: "'
+    rule_iot_admin='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }}'
+    rule_iot_admin="$rule_iot_admin -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-IOT-ADMIN: \" 2>/dev/null || "
+    rule_iot_admin="$rule_iot_admin iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ network_cidr }}"
+    rule_iot_admin="$rule_iot_admin -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-IOT-ADMIN: \""
+
+    rule_iot_modem='iptables -C forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }}'
+    rule_iot_modem="$rule_iot_modem -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-IOT-MODEM: \" 2>/dev/null || "
+    rule_iot_modem="$rule_iot_modem iptables -A forwarding_iot_rule -s {{ iot_network_cidr }} -d {{ modem_subnet_cidr }}"
+    rule_iot_modem="$rule_iot_modem -m limit --limit 5/min --limit-burst 10 -j LOG --log-prefix \"FW-BLOCK-IOT-MODEM: \""
 
     if ! grep -q "FW-BLOCK-IOT-ADMIN" "$target_file"; then
       echo "" >> "$target_file"
