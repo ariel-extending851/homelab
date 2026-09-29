@@ -286,10 +286,10 @@ setup-ci-deps-bats: ## Install bats testing framework (for CI)
 	@echo "✅ bats installed"
 
 setup-ci-deps-python: ## Install Python test dependencies (pytest, pytest-cov, boto3, jinja2, pyyaml)
-	@python3 -c "import pytest, pytest_cov, boto3, jinja2, yaml" 2>/dev/null \
+	@python3 -c "import pytest, pytest_cov, boto3, jinja2, yaml, OpenSSL" 2>/dev/null \
 	  || (echo "📦 Installing Python test dependencies..." \
 	      && pip install --quiet --break-system-packages --timeout 60 --retries 2 \
-	         pytest pytest-cov boto3 jinja2 pyyaml \
+	         pytest pytest-cov boto3 jinja2 pyyaml pyopenssl cryptography \
 	      && echo "✅ Python test dependencies installed")
 
 setup-ci-deps-workflow-lint: ## Install actionlint + zizmor (for CI)
