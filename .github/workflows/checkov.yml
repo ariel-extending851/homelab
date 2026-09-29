@@ -32,7 +32,7 @@ concurrency:
 jobs:
   iac:
     name: "Security: Checkov SAST"
-    runs-on: [self-hosted, pc-homelab]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read

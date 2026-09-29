@@ -384,6 +384,16 @@ def build_parser():
         metavar="N",
         help="number of Loki log lines to scan (default: 50)",
     )
+    p.add_argument(
+        "--tv",
+        action="store_true",
+        help="speak gentle morning briefing on Living Room TV (auto-suppressed if TV is in use)",
+    )
+    p.add_argument(
+        "--tv-force",
+        action="store_true",
+        help="force TV briefing even if TV is in active playback",
+    )
     return p
 
 
@@ -404,7 +414,16 @@ def main(argv=None):
     check_k3s_nodes(args.kubeconfig, result)
     check_loki_logs(args.kubeconfig, result, tail=args.loki_tail)
 
-    return print_summary(result)
+    exit_code = print_summary(result)
+
+    if getattr(args, "tv", False):
+        try:
+            from chromecast_ctl import speak_morning_briefing
+            speak_morning_briefing(force=getattr(args, "tv_force", False))
+        except Exception as e:
+            print(f"  ⚠️  TV briefing warning: {e}")
+
+    return exit_code
 
 
 if __name__ == "__main__":

@@ -20,6 +20,11 @@ repos:
       - id: mixed-line-ending
 
   # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
   - repo: https://github.com/trufflesecurity/trufflehog
     rev: v3.82.6
     hooks:

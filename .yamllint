@@ -21,6 +21,9 @@ rules:
   comments:
     min-spaces-from-content: 1
 
+  # Allow flexible comment indentation in manifests and config files
+  comments-indentation: disable
+
   # Allow spaces inside braces — required for Ansible inline-dict loop syntax:
   #   loop:
   #     - { key: 'vm.swappiness', value: '{{ swap.swappiness }}' }

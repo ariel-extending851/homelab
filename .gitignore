@@ -9,6 +9,11 @@ terraform.tfstate*.backup
 *.tfvars
 *.tfvars.json
 tfplan
+*.tfplan
+*.tfplan.*
+terraform.tfplan
+terraform-graph.dot
+*.dot
 terraform.tfvars
 
 # Ignorar pasta de builds

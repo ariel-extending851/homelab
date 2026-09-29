@@ -38,7 +38,7 @@ permissions:
 jobs:
   confirm:
     name: Validate confirmation phrase
-    runs-on: [self-hosted, pc-homelab]
+    runs-on: ubuntu-latest
     steps:
       - name: Fail unless confirmation matches
         env:
@@ -53,7 +53,7 @@ jobs:
 
   destroy:
     name: Terraform destroy + verify
-    runs-on: [self-hosted, pc-homelab]
+    runs-on: ubuntu-latest
     needs: [confirm]
     environment: production
     permissions:

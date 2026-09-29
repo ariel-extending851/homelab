@@ -1,8 +1,14 @@
 ---
 # Copy this file to router.sops.yaml and encrypt it with SOPS.
 # This file is intentionally plaintext example data only.
+wifi_ssid: "MyCustomWiFi"
 wifi_password: "REPLACE_WITH_REAL_WIFI_PASSWORD"
+wifi_guest_ssid_24: "Homelab-Guest-2.4G"
+wifi_guest_ssid_5: "Homelab-Guest-5G"
 wifi_guest_password: "REPLACE_WITH_REAL_GUEST_WIFI_PASSWORD"
+wifi_iot_ssid: "Homelab-IoT"
+wifi_iot_password: "REPLACE_WITH_REAL_IOT_WIFI_PASSWORD"
+switch_unifi_mac: "AA:BB:CC:DD:EE:03"
 
 # DHCP reservations pin Raspberry Pi MACs to stable LAN IPs.
 # Section names must use underscores (UCI rejects hyphens).

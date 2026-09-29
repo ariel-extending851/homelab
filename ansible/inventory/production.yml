@@ -135,6 +135,7 @@ all:
           ansible_host: 192.168.8.1
           ansible_connection: ssh
           ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_opal
           ansible_python_interpreter: /bin/false
           ansible_ssh_common_args: '-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa -o RequiredRSASize=1024 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts'
           ansible_password: "{{ lookup('env', 'ROUTER_SSH_PASS') }}"
@@ -147,3 +148,10 @@ all:
           ansible_host: 192.168.8.120
           ansible_user: "{{ lookup('env', 'USER') }}"
           ansible_connection: ssh
+
+    # ── Media devices ─────────────────────────────────────────────────────
+    media:
+      hosts:
+        chromecast-tv:
+          ansible_host: 192.168.8.206
+          device_type: google_tv

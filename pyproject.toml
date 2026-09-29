@@ -32,6 +32,7 @@ packages = ["bin"]
 
 [tool.pytest.ini_options]
 # Test discovery paths
+pythonpath = ["."]
 testpaths = [
   "bin/tests",
   "infra/aws/modules/scheduler/lambda_src/tests",
