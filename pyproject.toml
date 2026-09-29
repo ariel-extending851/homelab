@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,14 +14,14 @@ description = "Homelab infrastructure-as-code project"
 # (CVE-2024-37891 — transitive via botocore, pinned explicitly), pyyaml
 # safe-loader patches.
 ci = [
-  "pytest==9.0.3",
+  "pytest==9.1.1",
   "pytest-cov==6.0.0",
-  "pytest-benchmark==5.1.0",
+  "pytest-benchmark==5.3.0",
   "pyyaml==6.0.3",
   "jinja2==3.1.6",
-  "boto3==1.43.24",
+  "boto3==1.43.88",
   "urllib3>=2.7.0",
-  "moto[ec2,s3,iam]==5.2.2",
+  "moto[ec2,s3,iam]==5.2.3",
 ]
 
 [project.scripts]
