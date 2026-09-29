@@ -1,0 +1,2539 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/architecture/networking/">
+      
+      
+        <link rel="prev" href="../kubernetes/">
+      
+      
+        <link rel="next" href="../gitops/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Networking - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#networking" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Networking
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-address-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Address Plan
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-tailscale-mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Tailscale Mesh
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Tailscale Mesh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-architectural-justification-for-tailscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 Architectural justification for Tailscale
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 Operational notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-cluster-ingress-tailscale-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cluster Ingress: Tailscale Operator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Cluster Ingress: Tailscale Operator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-proxyclass-shaping" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 ProxyClass shaping
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Data Plane
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-ebpf-stack-current-and-staged" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. eBPF Stack (Current and Staged)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. eBPF Stack (Current and Staged)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-falco-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Falco (live)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-cilium-staged-not-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Cilium (staged, not active)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-networkpolicies" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. NetworkPolicies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-operator-access-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Operator Access Paths
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-where-to-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Where to Go Next
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../runbooks/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbooks/trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-address-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Address Plan
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-tailscale-mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Tailscale Mesh
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Tailscale Mesh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-architectural-justification-for-tailscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 Architectural justification for Tailscale
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 Operational notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-cluster-ingress-tailscale-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cluster Ingress: Tailscale Operator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Cluster Ingress: Tailscale Operator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-proxyclass-shaping" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 ProxyClass shaping
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Data Plane
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-ebpf-stack-current-and-staged" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. eBPF Stack (Current and Staged)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. eBPF Stack (Current and Staged)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-falco-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Falco (live)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-cilium-staged-not-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Cilium (staged, not active)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-networkpolicies" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. NetworkPolicies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-operator-access-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Operator Access Paths
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-where-to-go-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Where to Go Next
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/architecture/networking.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="networking">Networking<a class="headerlink" href="#networking" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> Active
+<strong>Last reviewed:</strong> 2026-05-12
+<strong>Owner:</strong> @ariel-extending851</p>
+</blockquote>
+<p>Two design invariants frame every networking decision in this repo:</p>
+<ol>
+<li><strong>No public TCP port exists on any node.</strong> Operator and inter-cluster traffic ride the Tailscale mesh; nothing else is reachable from the open internet.</li>
+<li><strong>The data plane is replaceable, not load-bearing.</strong> The current CNI (Flannel) is k3s's default. Runtime security observability is provided by Falco's eBPF probe today, and the CNI itself is staged for migration to Cilium (see <a href="#5-ebpf-stack-current-and-staged">§5</a>) when bootstrap risk is acceptable.</li>
+</ol>
+<blockquote>
+<p>See also: <a href="../lan-tailnet-bridge/">LAN ↔ tailnet bridge</a> — how off-tailnet LAN clients (smart TVs, IoT, guest devices) reach <code>*.tail57bf10.ts.net</code> services through AdGuard split DNS plus the GL.iNet reverse route.</p>
+</blockquote>
+<hr />
+<h2 id="1-address-plan">1. Address Plan<a class="headerlink" href="#1-address-plan" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>CIDR</th>
+<th>Purpose</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>192.168.8.0/24</code></td>
+<td>Home admin LAN (trusted)</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+<tr>
+<td><code>192.168.9.0/24</code></td>
+<td>Home guest/IoT LAN (isolated)</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+<tr>
+<td><code>192.168.8.1</code></td>
+<td>Opal gateway (OpenWrt, GL.iNet)</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+<tr>
+<td><code>100.64.0.0/10</code></td>
+<td>Tailscale CGNAT range; per-node IPs</td>
+<td>Tailscale console</td>
+</tr>
+<tr>
+<td><code>tail57bf10.ts.net</code></td>
+<td>MagicDNS suffix for the tailnet</td>
+<td>Tailscale console</td>
+</tr>
+<tr>
+<td><code>10.42.0.0/16</code></td>
+<td>k3s <strong>pod</strong> CIDR (Flannel VXLAN)</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+<tr>
+<td><code>10.43.0.0/16</code></td>
+<td>k3s <strong>service</strong> CIDR (ClusterIP)</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+<tr>
+<td><code>cluster.local</code></td>
+<td>k3s cluster DNS suffix</td>
+<td><code>ansible/group_vars/all.yml</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-tailscale-mesh">2. Tailscale Mesh<a class="headerlink" href="#2-tailscale-mesh" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    subgraph EXT["off-tailnet"]
+        IOT["IoT / smart TV"]
+        GUEST["guest device"]
+    end
+
+    subgraph LAN["192.168.8.0/24"]
+        ROUTER["GL.iNet Opal&lt;br/&gt;(subnet router)"]
+        PI3["RPi 3 · tailscaled"]
+        PI4["RPi 4 · tailscaled"]
+    end
+
+    subgraph CLOUD["AWS us-east-1"]
+        SERVER["k3s server · tailscaled"]
+        AGENT["k3s agent · tailscaled"]
+    end
+
+    subgraph LAPTOP["operator workstation"]
+        WS["tailscaled"]
+    end
+
+    subgraph TS["Tailnet (WireGuard) · MagicDNS&lt;br/&gt;ACL: tailscale admin console"]
+        MESH(("100.64.0.0/10"))
+    end
+
+    PI3    -- node IP --&gt; MESH
+    PI4    -- node IP --&gt; MESH
+    SERVER -- node IP --&gt; MESH
+    AGENT  -- node IP --&gt; MESH
+    WS     -- node IP --&gt; MESH
+
+    IOT   -- DNS via AdGuard --&gt; ROUTER
+    GUEST -- DNS via AdGuard --&gt; ROUTER
+    ROUTER -- subnet route --&gt; MESH
+
+    MESH ==&gt;|ingressClassName: tailscale&lt;br/&gt;ts.net managed TLS| APPS["&lt;app&gt;.tail57bf10.ts.net"]
+
+    classDef cloud fill:#fff5e6,stroke:#e0a060
+    classDef edge fill:#e6f0ff,stroke:#6080c0
+    classDef mesh fill:#e6ffed,stroke:#60a070
+    class SERVER,AGENT cloud
+    class PI3,PI4,ROUTER,WS edge
+    class MESH,APPS mesh</code></pre>
+<p>Every node — AWS EC2 and Raspberry Pi alike — runs the <code>tailscaled</code> daemon (provisioned by the Ansible <code>tailscale</code> role) and joins the tailnet using an auth key delivered through SOPS. WireGuard handles encryption; the Tailscale admin console holds the ACL.</p>
+<h3 id="21-architectural-justification-for-tailscale">2.1 Architectural justification for Tailscale<a class="headerlink" href="#21-architectural-justification-for-tailscale" title="Permanent link">&para;</a></h3>
+<div class="admonition abstract">
+<p class="admonition-title">Decision: Tailscale as the only ingress path</p>
+<p>Tailscale was selected over a self-hosted WireGuard mesh, NetBird, or a public load-balancer-plus-WAF stack because it collapses three concerns into one substrate:</p>
+<ul>
+<li><strong>Zero public attack surface.</strong> The AWS security group has no <code>0.0.0.0/0</code> rule; the home router has no port-forward. The k3s API server has no public IP. The only ingress paths are the tailnet (operator + apps) and AWS SSM (break-glass), both audited.</li>
+<li><strong>Operator-managed Kubernetes ingress.</strong> The Tailscale operator publishes <code>ingressClassName: tailscale</code> and a <code>ProxyClass</code> CRD; any <code>Ingress</code> becomes a dedicated proxy pod with a tailnet hostname and <code>ts.net</code> managed TLS. No external load balancer, no Cloudflare tunnel, no DNS-01 cert dance.</li>
+<li><strong>Defense-in-depth ACL.</strong> Tailscale ACLs gate which tailnet identities can reach which tagged services, independent of cluster RBAC. A compromised laptop with tailnet membership still cannot reach internal admin endpoints unless its tag allows it.</li>
+</ul>
+<p>Trade-off accepted: the tailnet control plane is a hosted dependency. The break-glass path is AWS SSM (IAM-authenticated, CloudTrail-audited), which the runbooks <a href="../../runbooks/tailscale-logged-out/"><code>tailscale-logged-out.md</code></a> and <a href="../../runbooks/control-plane-recovery/"><code>control-plane-recovery.md</code></a> exercise.</p>
+</div>
+<h3 id="22-operational-notes">2.2 Operational notes<a class="headerlink" href="#22-operational-notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Auth keys are reusable + ephemeral; rotated on the cadence in <a href="../../runbooks/sops-key-rotation/"><code>../runbooks/sops-key-rotation.md</code></a>.</li>
+<li>Stale tailnet nodes are pruned by <code>make clean-tailscale</code> (Ansible playbook calling the Tailscale API).</li>
+<li>Recovery when a node's session drops: <a href="../../runbooks/tailscale-logged-out/"><code>../runbooks/tailscale-logged-out.md</code></a>.</li>
+</ul>
+<hr />
+<h2 id="3-cluster-ingress-tailscale-operator">3. Cluster Ingress: Tailscale Operator<a class="headerlink" href="#3-cluster-ingress-tailscale-operator" title="Permanent link">&para;</a></h2>
+<p>The in-cluster <a href="../../k8s/system/tailscale-operator">Tailscale Kubernetes operator</a> publishes an <code>IngressClass</code> named <code>tailscale</code>. An <code>Ingress</code> resource using that class receives:</p>
+<ul>
+<li>A dedicated proxy pod (<code>ts-&lt;name&gt;</code> in the <code>tailscale</code> namespace).</li>
+<li>A tailnet hostname matching the Ingress <code>host</code>.</li>
+<li>Automatic TLS via Tailscale's managed certificate program.</li>
+<li>No external load balancer, no port forwarding.</li>
+</ul>
+<p>Active ingress hostnames: <a href="../../reference/tailnet-services/"><code>../reference/tailnet-services.md</code></a>.</p>
+<h3 id="31-proxyclass-shaping">3.1 ProxyClass shaping<a class="headerlink" href="#31-proxyclass-shaping" title="Permanent link">&para;</a></h3>
+<p>The operator's <code>ProxyClass</code> CRD lets each service tune its proxy's resources and node placement. Current classes:</p>
+<table>
+<thead>
+<tr>
+<th>ProxyClass</th>
+<th>Used by</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default</code></td>
+<td>most apps</td>
+<td>Standard bandwidth, single replica</td>
+</tr>
+<tr>
+<td><code>high-bandwidth</code></td>
+<td><code>grafana</code></td>
+<td>Larger CPU/mem requests for dashboard and log streaming</td>
+</tr>
+</tbody>
+</table>
+<p>To opt in, annotate the <code>Service</code>: <code>tailscale.com/proxy-class: high-bandwidth</code>. The ProxyClass also carries a <code>nodeSelector</code> that spreads proxy pods to avoid stacking memory pressure on the 2 GB k3s server — see <a href="../overview/#2-resource-allocation-rationale"><code>docs/architecture/overview.md#2-resource-allocation-rationale</code></a>.</p>
+<hr />
+<h2 id="4-data-plane">4. Data Plane<a class="headerlink" href="#4-data-plane" title="Permanent link">&para;</a></h2>
+<p>Today the cluster runs k3s's bundled <strong>Flannel</strong> CNI in VXLAN mode (pod CIDR <code>10.42.0.0/16</code>). Pod-to-pod traffic between Raspberry Pi nodes and AWS workers is encapsulated and rides the tailnet WireGuard tunnel as outer transport. Service IPs (<code>10.43.0.0/16</code>) are programmed by kube-proxy in iptables mode.</p>
+<p>This is intentional: the data plane is the most disruptive thing to change on a single-control-plane cluster, and the bootstrap order matters (see <a href="#5-ebpf-stack-current-and-staged">§5</a>).</p>
+<hr />
+<h2 id="5-ebpf-stack-current-and-staged">5. eBPF Stack (Current and Staged)<a class="headerlink" href="#5-ebpf-stack-current-and-staged" title="Permanent link">&para;</a></h2>
+<p>The cluster's eBPF footprint is split across two layers: <strong>runtime observability (Falco) is live today; data-plane (Cilium) is staged for a future migration.</strong></p>
+<pre class="mermaid"><code>flowchart TB
+    subgraph TODAY["Today"]
+        FALCO["Falco&lt;br/&gt;modern_ebpf probe&lt;br/&gt;syscall-level detection"]
+        FLANNEL["Flannel VXLAN&lt;br/&gt;(k3s default CNI)"]
+        KP["kube-proxy&lt;br/&gt;iptables mode"]
+    end
+
+    subgraph STAGED["Staged (cilium-flip.yml)"]
+        CILIUM["Cilium&lt;br/&gt;eBPF data plane&lt;br/&gt;kube-proxy-replacement"]
+    end
+
+    FALCO -. observes .-&gt; WORKLOADS["Pods"]
+    FLANNEL -. forwards .-&gt; WORKLOADS
+    KP -. service NAT .-&gt; WORKLOADS
+
+    FLANNEL -.-&gt;|cilium-flip| CILIUM
+    KP -.-&gt;|cilium-flip| CILIUM
+
+    classDef live fill:#e6ffed,stroke:#60a070
+    classDef staged fill:#fff5e6,stroke:#e0a060
+    class FALCO,FLANNEL,KP live
+    class CILIUM staged</code></pre>
+<h3 id="51-falco-live">5.1 Falco (live)<a class="headerlink" href="#51-falco-live" title="Permanent link">&para;</a></h3>
+<p>Falco runs as a DaemonSet (<a href="../../k8s/apps/falco/"><code>k8s/apps/falco/</code></a>) with the <code>modern_ebpf</code> probe kind. It attaches to syscall-tracing eBPF programs to detect runtime threats — unexpected exec into containers, writes outside the rootfs, privilege escalation attempts — and emits findings to the otel-collector pipeline. This is the runtime arm of the security stack; admission-time enforcement lives in Kyverno (see <a href="../../security/runtime-enforcement/"><code>../security/runtime-enforcement.md</code></a>).</p>
+<h3 id="52-cilium-staged-not-active">5.2 Cilium (staged, not active)<a class="headerlink" href="#52-cilium-staged-not-active" title="Permanent link">&para;</a></h3>
+<p>The repo carries pre-pull and flip playbooks (<a href="../../ansible/playbooks/cilium-prepull.yml"><code>ansible/playbooks/cilium-prepull.yml</code></a>, <a href="../../ansible/playbooks/cilium-flip.yml"><code>ansible/playbooks/cilium-flip.yml</code></a>) for migrating the data plane to Cilium with kube-proxy-replacement. The default remains off (<code>enable_cilium_cni: false</code> in <a href="../../ansible/roles/k3s/defaults/main.yml"><code>ansible/roles/k3s/defaults/main.yml</code></a>) for two reasons:</p>
+<ul>
+<li><strong>Bootstrap risk.</strong> A CNI swap during initial cluster formation has produced unrecoverable clusters in practice; the comment block in <a href="../../k8s/apps/kustomization.yaml"><code>k8s/apps/kustomization.yaml</code></a> records the failure mode.</li>
+<li><strong>Memory ceiling.</strong> Cilium's agent footprint must be measured against the 2 GB k3s server budget before commitment; the prepull playbook exists to time and size this on a steady-state cluster.</li>
+</ul>
+<p>The migration is gated by an observability and resource-budget review; until then, Flannel remains the data plane and Falco delivers the eBPF visibility that is most valuable today (security telemetry, not packet forwarding).</p>
+<hr />
+<h2 id="6-networkpolicies">6. NetworkPolicies<a class="headerlink" href="#6-networkpolicies" title="Permanent link">&para;</a></h2>
+<p>Most app namespaces are open by default. The enforced policies live in <a href="../../k8s/system/network-policies/monitoring-policies.yaml"><code>k8s/system/network-policies/monitoring-policies.yaml</code></a>:</p>
+<ul>
+<li><strong>Allow Prometheus scrape</strong> from the <code>monitoring</code> namespace into every app namespace's metrics port.</li>
+<li><strong>Default-deny</strong> egress on the <code>monitoring</code> namespace except DNS, intra-cluster scrape targets, and Loki.</li>
+</ul>
+<p>Full rationale and the NetworkPolicy authoring conventions: <a href="../../security/network-policies/"><code>../security/network-policies.md</code></a>.</p>
+<hr />
+<h2 id="7-operator-access-paths">7. Operator Access Paths<a class="headerlink" href="#7-operator-access-paths" title="Permanent link">&para;</a></h2>
+<p>There are exactly two ways to reach a node:</p>
+<ol>
+<li><strong>Tailscale (preferred).</strong> <code>ssh &lt;user&gt;@&lt;node&gt;.tail57bf10.ts.net</code> — works identically for AWS instances and Raspberry Pis.</li>
+<li><strong>AWS SSM Session Manager (break-glass).</strong> <code>aws ssm start-session --target &lt;instance-id&gt;</code> — IAM-authenticated, CloudTrail-audited; used when a node has joined AWS but not yet joined the tailnet (initial bootstrap or after a failed Tailscale auth).</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">There is no inbound SSH from the public internet.</p>
+<p>The security group provisioned by <a href="../../infra/aws/modules/network"><code>infra/aws/modules/network</code></a> has no <code>0.0.0.0/0</code> ingress rule. If you find one, that is a regression — open an audit-history entry and revert.</p>
+</div>
+<hr />
+<h2 id="8-where-to-go-next">8. Where to Go Next<a class="headerlink" href="#8-where-to-go-next" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Tailscale operator catalog page:</strong> <a href="../../services/tailscale-operator/"><code>../services/tailscale-operator.md</code></a></li>
+<li><strong>Recovery when tailnet auth fails:</strong> <a href="../../runbooks/tailscale-logged-out/"><code>../runbooks/tailscale-logged-out.md</code></a></li>
+<li><strong>Per-app ingress hostnames:</strong> <a href="../../reference/tailnet-services/"><code>../reference/tailnet-services.md</code></a></li>
+<li><strong>AWS security group rules:</strong> <a href="../aws-infrastructure/"><code>aws-infrastructure.md</code></a></li>
+<li><strong>Runtime admission and runtime detection layers:</strong> <a href="../../security/runtime-enforcement/"><code>../security/runtime-enforcement.md</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>

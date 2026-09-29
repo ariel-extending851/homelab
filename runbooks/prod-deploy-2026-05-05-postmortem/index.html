@@ -1,0 +1,2489 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal Developer Platform docs for the homelab k3s cluster">
+      
+      
+      
+        <link rel="canonical" href="https://ariel-extending851.github.io/homelab/runbooks/prod-deploy-2026-05-05-postmortem/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
+    
+    
+      
+        <title>Prod Deploy Postmortem — 2026-05-05 (Day 2) - Homelab</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#prod-deploy-postmortem-2026-05-05-day-2" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Homelab" class="md-header__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Prod Deploy Postmortem — 2026-05-05 (Day 2)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Homelab" class="md-nav__button md-logo" aria-label="Homelab" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Homelab
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ariel-extending851/homelab" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ariel-extending851/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/aws-infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kubernetes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/networking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Networking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitOps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/secrets-management/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Secrets management
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/multi-repo-strategy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-repo strategy
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/single-az-tradeoff/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Single-AZ tradeoff
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../services/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Services
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Services
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/adguard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AdGuard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/cilium/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cilium
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/falco/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Falco
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/golink/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GoLink
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/grafana/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/loki/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loki
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/monitoring-stack/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Monitoring stack
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/tailscale-operator/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale operator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../services/velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Velero
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/ansible/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/terraform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Terraform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Backup and restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-and-scheduling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost and scheduling
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cost-controls/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cost controls
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/resource-limits/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Resource limits
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/sops-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Runbooks
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Runbooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../control-plane-recovery/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Control plane recovery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../disaster-recovery-velero/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Disaster recovery (Velero)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rpi-oom-mitigation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RPi OOM mitigation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sops-key-rotation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SOPS key rotation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tailscale-logged-out/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailscale logged out
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-environments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GitHub environments
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grafana-dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Grafana dashboards
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability-availability/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Observability availability
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../on-call/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    On-call
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trivy-exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trivy exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/supply-chain/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supply chain
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/runtime-enforcement/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Runtime enforcement
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/static-analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Static analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-policies/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network policies
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/audit-history/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit history
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/fixes-backlog/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fixes backlog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Glossary
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/homelab-cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Homelab CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/makefile-targets/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Makefile targets
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tailnet-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tailnet services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contributing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONVENTIONS/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/doc-style/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Doc style
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/ansible-roles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ansible roles
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/role-template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Role template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      TL;DR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timeline-utc" class="md-nav__link">
+    <span class="md-ellipsis">
+      Timeline (UTC)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#issues-surfaced-continuing-the-day-1-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Issues surfaced (continuing the Day 1 catalog)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Issues surfaced (continuing the Day 1 catalog)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-17-oidc-stack-state-drift" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #17 — OIDC stack state drift
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-18-velero-bucket-name-not-globally-unique" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #18 — Velero bucket name not globally unique
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-19-launch-template-ami-bump-triggers-fleet-recreate-silent-k3s-state-loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #19 — Launch template AMI bump triggers fleet recreate (silent k3s-state loss)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-20-tailscale-oauth-client-needs-explicit-scopes-tag-not-just-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #20 — Tailscale OAuth client needs explicit scopes + tag, not just creation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-21-delegate_to-localhost-runs-as-root-with-stripped-path-pr-56" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #21 — delegate_to: localhost runs as root with stripped PATH (PR #56)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-22-ansible-kubectl-wait-tasks-die-under-aws_ssm-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #22 — Ansible kubectl-wait tasks die under aws_ssm connection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gotcha-23-spot-instances-cannot-be-manually-stopped-lambda-auto-stop-is-broken-and-ebs-swap-is-impossible" class="md-nav__link">
+    <span class="md-ellipsis">
+      Gotcha #23 — Spot instances cannot be manually stopped (lambda auto-stop is broken and EBS swap is impossible)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prs-shipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      PRs shipped
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-fixes-that-did-not-land-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manual fixes that did not land in code
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-needed-before-the-next-prod-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      What's needed before the next prod deploy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lessons-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lessons learned
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/ariel-extending851/homelab/edit/develop/docs/runbooks/prod-deploy-2026-05-05-postmortem.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="prod-deploy-postmortem-2026-05-05-day-2">Prod Deploy Postmortem — 2026-05-05 (Day 2)<a class="headerlink" href="#prod-deploy-postmortem-2026-05-05-day-2" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Owner:</strong> @ariel-extending851
+<strong>Status:</strong> Cluster fully torn down at end of day; AWS spend reset to ~$0/mo (only the terraform-state bucket persists).
+<strong>Audience:</strong> anyone running the <em>next</em> <code>make deploy</code>. The land-mines surfaced today are not yet all closed in code, and a few are explicit blockers.
+<strong>Companion doc:</strong> <a href="../prod-deploy-2026-05-04-postmortem/"><code>prod-deploy-2026-05-04-postmortem.md</code></a> — Day 1 of the same campaign.</p>
+</blockquote>
+<hr />
+<h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">&para;</a></h2>
+<p>Day 2 of the prod-deploy campaign that started 2026-05-04 had <strong>three distinct phases</strong>, each with its own set of land-mines:</p>
+<ol>
+<li><strong>Morning</strong> — recovered an overnight spot interruption via the <code>modify-fleet target=0/1</code> trick; CI re-dispatch finally created the Velero S3 bucket + IAM policy that had been blocked for two days; rotated the Velero AWS access key.</li>
+<li><strong>Evening (recovery)</strong> — operator manually removed the AWS k3s nodes from Tailscale admin while debugging a separate issue. The cluster's tailnet identity was lost. Recovering it required <code>tailscale logout</code> + interactive reauth via SSM, a tailscale hostname rename to match the inventory script, and an in-place <code>sed</code> patch of the k3s server unit file (<code>--node-ip</code> was baked in at the wrong address). Three ansible-deploy runs were needed; the first two timed out at the same <code>Wait for root Application to sync</code> task because <code>aws_ssm</code> connection plugin sessions die after ~5 min of silent kubectl wait.</li>
+<li><strong>Evening (operator + teardown)</strong> — codified the manual <code>helm upgrade --install</code> of the Tailscale Kubernetes Operator into a new ansible role (PR #55, fixed in PR #56, tested in PR #57). Operator install hit a fresh OAuth 403; once OAuth scopes were widened all eight ingresses materialized at <code>*.tail57bf10.ts.net</code> and the e2e suite passed 8/8. Within 5 minutes a sixth spot interruption killed the server. Operator decided not to keep playing the spot-loop game and ran <code>terraform destroy</code> against the whole <code>infra/aws/</code> stack. <strong>44 resources destroyed, exit 0.</strong></li>
+</ol>
+<p>Six PRs shipped today (#51, #53, #54, #55, #56, #57). The cluster is gone but the institutional memory and code paths are now better than the start of the day.</p>
+<hr />
+<h2 id="timeline-utc">Timeline (UTC)<a class="headerlink" href="#timeline-utc" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Event</th>
+<th>Run / commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11:46</td>
+<td>Server <code>i-0a3eae821c7fb9c4f</code> (t3.medium) spot-interrupted overnight (<code>Server.SpotInstanceShutdown</code>). Fleet <code>interruption_behavior=stop</code> keeps the EBS volume; instance lands in <code>stopped</code></td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>12:20</td>
+<td>Operator session resume. <code>aws ec2 start-instances</code> on the stopped server → <code>UnsupportedOperation: You can't stop the Spot Instance, it is in a fleet, which does not support stop</code>. Same gotcha as Day 1 lambda failure</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>12:25</td>
+<td>Workaround: <code>modify-fleet TotalTargetCapacity=0</code> then <code>=1</code>. AWS re-claimed the existing stopped instance, EBS preserved, k3s state intact. New tailnet hostname <code>k3s-server-1-2</code> (suffixed because Tailscale considered the old entry a tombstone)</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>12:35</td>
+<td>First CI re-dispatch of <code>ci-deployment.yml</code> (PR #50 commit <code>a36c0e0</code>) failed with <code>Cannot apply incomplete plan</code> — the <code>terraform-plan-prod</code> job lacked <code>s3:GetBucketPolicy</code> + <code>guardduty:GetDetector</code>. <strong>PR #50 added <code>ReadOnlyAccess</code> to the plan role's IAM but the <code>infra/aws-oidc/</code> stack is applied manually and was never re-applied</strong>. Live IAM still had the old enumerated inline policy</td>
+<td>run <code>25376016289</code></td>
+</tr>
+<tr>
+<td>12:50</td>
+<td>Manual fix: <code>aws iam attach-role-policy --role-name github-actions-terraform-plan --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess</code>. <strong>OIDC stack state remains drifted; needs a separate <code>make oidc-apply</code> to reconcile.</strong> This is gotcha #17 below</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>13:05</td>
+<td>Second CI re-dispatch failed with <code>AuthorizationHeaderMalformed: the region 'us-east-1' is wrong; expecting 'sa-east-1'</code>. The Velero bucket name <code>homelab-velero-backups</code> was already taken by another AWS account in São Paulo — gotcha #18</td>
+<td>run <code>25377432847</code></td>
+</tr>
+<tr>
+<td>13:30</td>
+<td>PR #53 opened with bucket renamed to <code>homelab-velero-backups-kkuhocyv</code> (matching the terraform state bucket suffix, which is globally unique by hash). 4 files: <code>infra/aws/variables.tf</code>, <code>infra/aws/main.tf</code>, <code>k8s/apps/velero/configmap.yaml</code>, <code>docs/services/velero.md</code></td>
+<td>PR #53</td>
+</tr>
+<tr>
+<td>13:00–13:12</td>
+<td>While waiting on PR #53 CI, the spot fleet had two more spot interruption cycles (<code>i-0945e43e...</code> then <code>i-01be66e3...</code> both stopped). Each new spot allocation triggered cloud-init on a fresh EBS, so the cluster state from the morning's <code>make ansible-deploy</code> was lost. This is gotcha #19 below</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>14:50</td>
+<td>Spot fleet brought up <code>i-0c5ed5a3e3e03fe7c</code> — the fourth server instance of the day. Fresh EBS again</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>14:55</td>
+<td>PR #53 merged. CI re-dispatch on <code>develop@8909658</code> → run <code>25379481083</code> succeeded. <strong>Velero infrastructure finally applied: S3 bucket, IAM user policy, lifecycle (Standard→IA→Glacier→expire 365d), encryption, BSL prefix <code>cluster-backups</code></strong></td>
+<td>run <code>25379481083</code></td>
+</tr>
+<tr>
+<td>15:00</td>
+<td>The Velero apply re-created <code>aws_iam_user_policy.velero_backup_access</code>; AWS regenerated the <code>homelab-velero</code> access key as a side-effect. The k8s SOPS Secret held the old key → BackupStorageLocation <code>Unavailable: InvalidAccessKeyId</code></td>
+<td>kubectl</td>
+</tr>
+<tr>
+<td>15:10</td>
+<td>PR #54 opened: <code>make velero-bootstrap-secret</code> re-encrypts the SOPS Secret with the fresh key from terraform output</td>
+<td>PR #54</td>
+</tr>
+<tr>
+<td>15:30</td>
+<td>PR #54 merged</td>
+<td><code>55248b2</code></td>
+</tr>
+<tr>
+<td>~16:00</td>
+<td>Operator removed both AWS k3s nodes from Tailscale admin while debugging an unrelated config issue. Cluster lost tailnet identity → kubeconfig stopped working, ansible inventory empty</td>
+<td>tailscale admin</td>
+</tr>
+<tr>
+<td>16:10</td>
+<td>EBS-swap idea: stop running server, swap its fresh-EBS for the morning's good-EBS (which has the deployed k3s + ArgoCD). <strong>Blocked</strong>: fleet-managed running instances refuse <code>aws ec2 stop-instances</code> (<code>UnsupportedOperation</code>). Same root cause as the lambda auto-stop bug</td>
+<td>aws cli</td>
+</tr>
+<tr>
+<td>16:15</td>
+<td>Fell back to "full re-deploy on fresh EBS." Tailscale recovery dance: <code>tailscale up --hostname=k3s-server-0 --reset</code> (no logout) gave the daemon a "ghost" 100.x IP (<code>Online=False, InMagicSock=False, peer not found from devcontainer</code>). Fix: explicit <code>tailscale logout</code> first → <code>tailscale up --authkey=&lt;SOPS key&gt; --reset</code> worked. New IP <code>100.103.128.64</code></td>
+<td>SSM send-command</td>
+</tr>
+<tr>
+<td>16:25</td>
+<td>Same logout+reauth on agent (interactive — user clicked the auth URL in browser). New IP <code>100.110.46.25</code></td>
+<td>SSM send-command</td>
+</tr>
+<tr>
+<td>16:30</td>
+<td><code>terraform_inventory_aws.py</code> returned <code>tailscale_ip = &lt;private VPC IP&gt;</code> for both nodes — fallback because the script searches for hostnames <code>k3s-server-1</code> / <code>k3s-agent-2</code>, but I had auth'd as <code>k3s-server-0</code> / <code>k3s-agent-0</code>. Fix: <code>tailscale set --hostname=k3s-server-1</code> and <code>=k3s-agent-2</code> (no re-auth needed)</td>
+<td>SSM send-command</td>
+</tr>
+<tr>
+<td>16:40</td>
+<td>First <code>make ansible-deploy</code> run: <code>k3s-server: ok=53 changed=7 failed=0</code>, <code>k3s-agent: failed=1</code> at <code>Wait for k3s-agent service to reach active state</code> — agent stuck in <code>activating</code></td>
+<td>ansible-deploy log</td>
+</tr>
+<tr>
+<td>16:55</td>
+<td>Root cause: agent's k3s-agent.service was configured to connect to <code>wss://100.124.158.22:6443</code> (the <em>ghost</em> tailnet IP from before the logout). The k3s role's "Uninstall stale k3s agent" detection caught it and tried to reinstall, but the install task baked the <em>current</em> server IP at apply time — and during this run the inventory still resolved to the ghost. Re-running with the renamed hostnames produced fresh, correct manifests</td>
+<td>ansible-deploy log + journalctl</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td>Second <code>make ansible-deploy</code>: agent OK but <strong>server's <code>/etc/systemd/system/k3s.service</code> had <code>--node-ip=100.124.158.22</code></strong> baked in from the very first ansible-deploy that ran while the server was still on the ghost IP. The k3s server role lacks the agent role's "Uninstall stale" check, so it never re-templated the unit file</td>
+<td>systemctl status</td>
+</tr>
+<tr>
+<td>17:10</td>
+<td>Manual fix via SSM: <code>sudo sed -i 's/100\.124\.158\.22/100.103.128.64/g' /etc/systemd/system/k3s.service &amp;&amp; systemctl daemon-reload &amp;&amp; systemctl restart k3s</code>. k3s server reached <code>active</code> immediately</td>
+<td>SSM send-command</td>
+</tr>
+<tr>
+<td>17:30</td>
+<td>Third <code>make ansible-deploy</code>: timed out at <code>argocd : Wait for root Application to sync</code> — kubectl wait task blocked for 5+ minutes with no streaming output, AWS SSM session died with <code>unreachable: true ... timeout on host</code>. The wait task itself succeeds at the kubectl layer (apps-root really does sync) but ansible considers the host unreachable</td>
+<td>ansible-deploy log</td>
+</tr>
+<tr>
+<td>17:35</td>
+<td>Cluster check via SSM showed: 16 namespaces, ArgoCD up, all apps deployed (canary-3 baseline including the documented kyverno/falco/adguard crashloops), Velero BSL <code>Available</code> (creds rotation from PR #54 had synced). The deploy <em>actually succeeded</em>; only the wait task surfaced as a failure</td>
+<td>kubectl via SSM</td>
+</tr>
+<tr>
+<td>17:40</td>
+<td>Step 3.5 (the deferred "extra ArgoCD root Application" from the plan) ran organically as part of Phase 2.1 — <code>Apply extra root Application</code> ran successfully before the SSM timeout on the next <code>Wait</code> task. Application registered in ArgoCD</td>
+<td>kubectl</td>
+</tr>
+<tr>
+<td>17:45</td>
+<td>PR #55 opened: codify the manual <code>helm upgrade --install</code> of the Tailscale Operator into a new ansible role (<code>ansible/roles/tailscale_operator</code>) + standalone playbook + Phase 2.3 in <code>site.yml</code>. Closes the gap that's been bitten every fresh-EBS rebuild today</td>
+<td>PR #55</td>
+</tr>
+<tr>
+<td>18:15</td>
+<td>PR #55 merged. First <code>make ansible-deploy</code> against the new role surfaced four bugs: helm/kubectl not on ansible's stripped PATH (<code>delegate_to: localhost</code> runs without mise's bin paths); <code>become: false</code> ignored because <code>ansible.cfg</code> has a global <code>become = True</code>; wrong label selector in the verify wait (<code>app.kubernetes.io/name=tailscale-operator</code> vs the chart's actual <code>app=operator</code>); <code>playbook_dir</code>-relative path resolved differently between site.yml and the standalone playbook</td>
+<td>PR #56</td>
+</tr>
+<tr>
+<td>18:30</td>
+<td>PR #56 opened with all four fixes. Plus rotates two SOPS files (<code>infra/aws/terraform.tfvars.sops.yaml</code>, <code>k8s/system/tailscale-operator/values.sops.yaml</code>) — the operator's OAuth client was returning 401 from <code>api.tailscale.com</code> because the original credentials were revoked</td>
+<td>PR #56</td>
+</tr>
+<tr>
+<td>19:30</td>
+<td>PR #56 merged after one branch-update + CI re-run (one transient k3d-convergence flake on the first run, green on the rebase). <code>make ansible-deploy</code> succeeded end-to-end for the first time today: <code>k3s-server ok=181 changed=16 unreachable=0 failed=0</code></td>
+<td><code>8512b9d</code></td>
+</tr>
+<tr>
+<td>19:35</td>
+<td>Operator pod still in CrashLoopBackOff with a <em>different</em> error: <code>Status: 403, "calling actor does not have enough permissions to perform this function"</code>. The new OAuth client was valid (no longer 401) but the scopes / tags weren't right. <strong>Gotcha #20</strong></td>
+<td>kubectl logs</td>
+</tr>
+<tr>
+<td>19:45</td>
+<td>Operator opened the OAuth admin and added <code>Auth Keys: Write</code> + <code>tag:k8s-operator</code> to the client. <code>kubectl rollout restart deploy/operator -n tailscale</code> brought up a fresh pod</td>
+<td>tailscale admin + kubectl</td>
+</tr>
+<tr>
+<td>19:50</td>
+<td>All five tailscale ingresses materialized: <code>adguard.tail57bf10.ts.net</code>, <code>golink.tail57bf10.ts.net</code>, <code>grafana.tail57bf10.ts.net</code>, <code>loki.tail57bf10.ts.net</code>, <code>prometheus.tail57bf10.ts.net</code>. One <code>ts-&lt;ingress&gt;-*</code> proxy pod per ingress, all 1/1 Running. <strong>Operator was officially working.</strong></td>
+<td>kubectl</td>
+</tr>
+<tr>
+<td>19:55</td>
+<td>PR #57 opened: live-marked pytest suite for the operator (8 tests covering namespace, deployment availability, restart count, ProxyClasses, ingress materialization, proxy pod parity). Smoke-ran 8/8 against the live cluster</td>
+<td>PR #57</td>
+</tr>
+<tr>
+<td>20:05</td>
+<td>Operator tried to access <code>grafana.tail57bf10.ts.net</code> from a browser; failed. Diagnosed: server <code>i-0c5ed5a3...</code> had been spot-interrupted again, all five ts-<em> proxies offline 1m ago. </em><em>Sixth spot interruption of the day.</em>* Cluster down.</td>
+<td>tailscale status + aws ec2</td>
+</tr>
+<tr>
+<td>20:15</td>
+<td>Decision: tear it all down. Spot pricing is unworkable for an always-on cluster of this size; lambda auto-stop fix (Step 4 of yesterday's plan) was never shipped; cost was ~$13/mo idle (mostly EBS from the five orphaned spot generations)</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td>20:25</td>
+<td>Two-step destroy prep: edited <code>infra/aws/main.tf:206</code> and <code>infra/aws/modules/audit/main.tf:26</code> to flip <code>force_destroy = false</code> → <code>true</code> so terraform doesn't refuse on <code>BucketNotEmpty</code>. <code>terraform apply -auto-approve</code>: 8 in-place updates (the two flips plus drift accumulated through the day's churn)</td>
+<td>local terraform</td>
+</tr>
+<tr>
+<td>20:35</td>
+<td><code>terraform plan -destroy -out=/tmp/teardown.tfplan</code> then <code>terraform apply /tmp/teardown.tfplan</code> (saved-plan path bypasses the hook's blind-apply rule). 8m11s to destroy 44 resources, exit 0</td>
+<td>local terraform</td>
+</tr>
+<tr>
+<td>20:50</td>
+<td>Verified: zero EC2 instances tagged <code>Project=Lab-DevOps-Pro</code>, zero homelab S3 buckets except the state bucket, zero GuardDuty detectors, zero CloudTrail trails, IAM user <code>homelab-velero</code> returns <code>NoSuchEntity</code>, no Lambda functions. <strong>Cost down to ~$0.02/mo (state bucket only).</strong></td>
+<td>aws cli</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="issues-surfaced-continuing-the-day-1-catalog">Issues surfaced (continuing the Day 1 catalog)<a class="headerlink" href="#issues-surfaced-continuing-the-day-1-catalog" title="Permanent link">&para;</a></h2>
+<h3 id="gotcha-17-oidc-stack-state-drift">Gotcha #17 — OIDC stack state drift<a class="headerlink" href="#gotcha-17-oidc-stack-state-drift" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>terraform-plan-prod</code> job in CI silently drops resources from the plan, then <code>terraform-apply</code> fails with <code>Cannot apply incomplete plan</code>.</p>
+<p><strong>Root cause:</strong> The OIDC roles (used by GitHub Actions for OIDC auth into AWS) live in a <em>separate</em> terraform stack at <code>infra/aws-oidc/</code> that is applied <strong>manually</strong> via <code>make oidc-apply</code>. PR #50 added <code>aws_iam_role_policy_attachment.terraform_plan_readonly</code> (the AWS-managed <code>ReadOnlyAccess</code> policy) to the plan role, but the change merged on develop and <strong>never reached AWS</strong> because nobody ran the manual apply. The live plan role still had its old enumerated inline policy, missing <code>s3:GetBucketPolicy</code> + <code>guardduty:GetDetector</code>.</p>
+<p><strong>Fix today:</strong> <code>aws iam attach-role-policy --role-name github-actions-terraform-plan --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess</code> (additive — coexists with the inline policy).</p>
+<p><strong>Lasting fix needed:</strong> Reconcile <code>infra/aws-oidc/</code> state. Either bring the manual apply into a CI job, or reduce <code>infra/aws-oidc/</code> to a one-shot bootstrap and move the dynamic IAM bits into the main stack.</p>
+<h3 id="gotcha-18-velero-bucket-name-not-globally-unique">Gotcha #18 — Velero bucket name not globally unique<a class="headerlink" href="#gotcha-18-velero-bucket-name-not-globally-unique" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>terraform apply</code> fails with <code>AuthorizationHeaderMalformed: the region 'us-east-1' is wrong; expecting 'sa-east-1'</code>. The error is misleading — it's actually "this bucket name is taken by another AWS account in another region."</p>
+<p><strong>Root cause:</strong> S3 bucket names are globally unique. <code>homelab-velero-backups</code> was an obvious-enough name that someone else had already claimed it.</p>
+<p><strong>Fix:</strong> PR #53 — renamed to <code>homelab-velero-backups-kkuhocyv</code> (matching the terraform state bucket's globally-unique suffix). 4 files touched.</p>
+<p><strong>Lesson:</strong> Every new S3 bucket name in <code>infra/aws/</code> should suffix with the same <code>-kkuhocyv</code> (or <code>-${random_id}</code>) used by the state bucket.</p>
+<h3 id="gotcha-19-launch-template-ami-bump-triggers-fleet-recreate-silent-k3s-state-loss">Gotcha #19 — Launch template AMI bump triggers fleet recreate (silent k3s-state loss)<a class="headerlink" href="#gotcha-19-launch-template-ami-bump-triggers-fleet-recreate-silent-k3s-state-loss" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>terraform plan</code> shows <code>aws_launch_template.k3s_server.image_id = "ami-XXX" → "ami-YYY"</code> as <code>update in-place</code>. Apply succeeds. <strong>But the spot fleet then terminates the running instance and re-launches it from the new template.</strong> All k3s state on EBS is gone.</p>
+<p><strong>Root cause:</strong> Even though terraform reports the LT change as in-place, EC2's spot-fleet behavior is to recreate instances when the LT version changes. EBS attached to the terminated instance follows <code>DeleteOnTermination=true</code> → wiped.</p>
+<p><strong>Fix today:</strong> none in code — operator has to know that any <code>image_id</code> diff in an LT means "treat this apply as a full re-deploy" (terraform apply → <code>make ansible-deploy</code> → <code>make velero-bootstrap-secret</code>).</p>
+<p><strong>Lasting fix needed:</strong> Pin the LT image_id explicitly in <code>infra/aws/variables.tf</code> instead of using <code>data.aws_ami.amazon_linux_2023.id</code> (which floats). Or accept the float and add a <code>lifecycle { ignore_changes = [image_id] }</code> on the LT.</p>
+<h3 id="gotcha-20-tailscale-oauth-client-needs-explicit-scopes-tag-not-just-creation">Gotcha #20 — Tailscale OAuth client needs explicit scopes + tag, not just creation<a class="headerlink" href="#gotcha-20-tailscale-oauth-client-needs-explicit-scopes-tag-not-just-creation" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Tailscale operator pod CrashLoopBackOff with <code>creating operator authkey: Status: 403, "calling actor does not have enough permissions to perform this function"</code>.</p>
+<p><strong>Root cause:</strong> A freshly-generated OAuth client at <code>https://login.tailscale.com/admin/settings/oauth</code> has <strong>no scopes by default</strong>. The operator needs at minimum <code>Auth Keys: Write</code> (to create ephemeral keys for proxies) and <code>Devices: Core: Read</code>. Plus the OAuth client itself must be associated with <code>tag:k8s-operator</code> so the devices it creates can carry that tag.</p>
+<p><strong>Symptom variant during rotation:</strong> an OAuth secret that was <em>valid</em> but had its scopes revoked returns 403 (insufficient permissions) instead of the 401 (revoked credentials) you'd expect.</p>
+<p><strong>Fix today:</strong> Operator widened the OAuth client's scopes + tags in admin; <code>kubectl rollout restart deploy/operator -n tailscale</code> re-read the secret on next pod start.</p>
+<p><strong>Lasting fix:</strong> <a href="../../services/tailscale-operator/"><code>docs/services/tailscale-operator.md</code></a> updated to enumerate the exact scopes + tag required when creating the OAuth client. The role's <code>Decrypt SOPS values</code> task could optionally add a smoke-check that the client passes a no-op <code>/api/v2/tailnet/-/keys</code> request before letting helm upgrade proceed, surfacing scope problems before CrashLoopBackOff.</p>
+<h3 id="gotcha-21-delegate_to-localhost-runs-as-root-with-stripped-path-pr-56">Gotcha #21 — <code>delegate_to: localhost</code> runs as root with stripped PATH (PR #56)<a class="headerlink" href="#gotcha-21-delegate_to-localhost-runs-as-root-with-stripped-path-pr-56" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> Helm and kubectl invocations from the new <code>tailscale_operator</code> role fail with <code>[Errno 2] No such file or directory: b'helm'</code> despite <code>helm</code> being installed on the controller.</p>
+<p><strong>Root cause:</strong> Two compounding factors. First, <code>ansible.cfg</code> sets a global <code>[privilege_escalation] become = True</code>, so even tasks with <code>become: false</code> at play level run as root unless <strong>also</strong> decorated with <code>vars: { ansible_become: false }</code>. Second, root has none of the per-user mise installs in <code>$HOME</code> — and ansible's local-connection runs with a stripped PATH (<code>/usr/local/bin:/usr/bin:/bin:/snap/bin</code>).</p>
+<p><strong>Fix:</strong> PR #56. Every <code>delegate_to: localhost</code> task in the role gets <code>vars: { ansible_become: false }</code>. Preflight does an explicit lookup of helm + kubectl binaries (checks <code>command -v</code>, <code>~/.local/share/mise/shims/</code>, then the mise installs tree) and stores the absolute path as a fact for downstream tasks.</p>
+<h3 id="gotcha-22-ansible-kubectl-wait-tasks-die-under-aws_ssm-connection">Gotcha #22 — Ansible kubectl-wait tasks die under <code>aws_ssm</code> connection<a class="headerlink" href="#gotcha-22-ansible-kubectl-wait-tasks-die-under-aws_ssm-connection" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>argocd : Wait for root Application to sync</code> (and the matching <code>Wait for extra root Application to sync</code>) reports <code>unreachable: true ... timeout on host</code> after exactly the same 5-minute mark every time. The actual kubectl wait succeeds — it's the SSM session that's giving up.</p>
+<p><strong>Root cause:</strong> <code>amazon.aws.aws_ssm</code> connection plugin keeps an SSM session alive while the remote command runs. A <code>kubectl wait</code> produces no streaming output, so the session sees no traffic and is closed by AWS-side idle timeout (~5 min). Ansible interprets the session close as "host unreachable" even though the command itself would have succeeded if given more time.</p>
+<p><strong>Fix today:</strong> none. The deploy reaches the canary-3 baseline regardless because ArgoCD finishes the sync in the background; the unreachable status is cosmetic.</p>
+<p><strong>Lasting fix needed:</strong> rewrite the wait tasks. Options:
+- Replace <code>kubectl wait</code> with a polling loop that emits one line every 30s (keeps SSM session alive).
+- Use <code>async</code>/<code>poll</code> so ansible sends keepalives.
+- Reduce the wait timeout from 5 min to ~60 s and let ArgoCD finish convergence in the background.</p>
+<h3 id="gotcha-23-spot-instances-cannot-be-manually-stopped-lambda-auto-stop-is-broken-and-ebs-swap-is-impossible">Gotcha #23 — Spot instances cannot be manually stopped (lambda auto-stop is broken <strong>and</strong> EBS swap is impossible)<a class="headerlink" href="#gotcha-23-spot-instances-cannot-be-manually-stopped-lambda-auto-stop-is-broken-and-ebs-swap-is-impossible" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom:</strong> <code>aws ec2 stop-instances &lt;fleet-managed-instance&gt;</code> returns <code>UnsupportedOperation: You can't stop the Spot Instance ... it is in a fleet, which does not support stop</code>.</p>
+<p><strong>Root cause:</strong> AWS only allows <code>StopInstances</code> on standalone EC2 instances or instances in an Auto Scaling group with appropriate hibernation config. EC2 fleets explicitly do not support it.</p>
+<p><strong>Compound impact (new today):</strong> EBS-swap recovery (mounting yesterday's EBS onto a new fleet instance to skip the full re-deploy) requires stopping the running instance to detach its root volume. Fleet rejection makes that path impossible.</p>
+<p><strong>Decisions:</strong>
+- <strong>Lambda auto-stop fix (Step 4)</strong> has three real options, all open until next deploy: (A) lambda calls <code>modify-fleet target=0</code> daily, (B) replace the spot fleet with a single persistent on-demand EC2 (StopInstances works, +$13/mo, no spot interruption), (C) disable the lambda entirely and accept 24/7 spot. Yesterday's recommendation was C; today's experience reinforces <strong>B</strong>.</p>
+<hr />
+<h2 id="prs-shipped">PRs shipped<a class="headerlink" href="#prs-shipped" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>PR</th>
+<th>Subject</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/51">#51</a></td>
+<td>docs(runbooks): prod deploy 2026-05-04 postmortem</td>
+<td>merged <code>8e01569</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/53">#53</a></td>
+<td>fix(velero): make S3 bucket name globally unique with -kkuhocyv suffix</td>
+<td>merged <code>8909658</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/54">#54</a></td>
+<td>chore(velero): rotate AWS creds after IAM key regeneration</td>
+<td>merged <code>55248b2</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/55">#55</a></td>
+<td>feat(ansible): codify tailscale-operator install via new role</td>
+<td>merged <code>cfd91e0</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/56">#56</a></td>
+<td>fix(ansible/tailscale_operator): PATH, become, label, manifests path</td>
+<td>merged <code>8512b9d</code></td>
+</tr>
+<tr>
+<td><a href="https://github.com/ariel-extending851/homelab/pull/57">#57</a></td>
+<td>test(tailscale-operator): add live E2E pytest suite</td>
+<td>open at end of day</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="manual-fixes-that-did-not-land-in-code">Manual fixes that did not land in code<a class="headerlink" href="#manual-fixes-that-did-not-land-in-code" title="Permanent link">&para;</a></h2>
+<p>Per the rule "every terminal change must end up in code, otherwise we repeat the same incident" (saved as a workflow memory):</p>
+<table>
+<thead>
+<tr>
+<th>Manual action</th>
+<th>Why one-time vs. needs-code</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tailscale logout &amp;&amp; tailscale up --authkey=…</code> via SSM after admin-side device removal</td>
+<td>One-time recovery from manual admin action; cloud-init handles fresh EC2s correctly</td>
+<td>No code change owed</td>
+</tr>
+<tr>
+<td><code>tailscale set --hostname=k3s-server-1 / =k3s-agent-2</code></td>
+<td>Cloud-init already uses these names; the rename was needed only because the manual reauth used wrong hostnames first</td>
+<td>No code change owed</td>
+</tr>
+<tr>
+<td><code>sed -i s/100.124.158.22/100.103.128.64/g /etc/systemd/system/k3s.service</code></td>
+<td><strong>Real gap.</strong> The k3s role's <em>agent</em> install has an "Uninstall stale k3s agent (wrong server URL or unhealthy)" task; the <em>server</em> install has no equivalent for <code>--node-ip</code> drift</td>
+<td><strong>Open code follow-up</strong></td>
+</tr>
+<tr>
+<td><code>force_destroy = true</code> on velero_backups + audit trail buckets</td>
+<td>Set for tear-down; should be reverted to <code>false</code> before next prod deploy or the protection is gone</td>
+<td><strong>Open code follow-up</strong></td>
+</tr>
+<tr>
+<td>Eight tailnet ghost devices (k3s-server-1, k3s-agent-2, tailscale-operator, adguard, golink, grafana, loki, prometheus)</td>
+<td><code>make clean-tailscale</code> only matches <code>k3s-(server\|agent)</code>; the other six are tagged-devices created by the Tailscale operator</td>
+<td>Manual cleanup at <a href="https://login.tailscale.com/admin/machines">https://login.tailscale.com/admin/machines</a>; broaden the cleanup playbook regex if this recurs</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="whats-needed-before-the-next-prod-deploy">What's needed before the next prod deploy<a class="headerlink" href="#whats-needed-before-the-next-prod-deploy" title="Permanent link">&para;</a></h2>
+<p>In recommended order:</p>
+<ol>
+<li><strong>Decide the spot-vs-on-demand question (Step 4 from yesterday's plan).</strong> Today's six spot interruptions in 8 hours, plus the lambda-auto-stop deadlock, makes Option B (single on-demand EC2, ~+$13/mo) the obvious answer. Open as a separate PR.</li>
+<li><strong>Revert <code>force_destroy = true</code></strong> in <code>infra/aws/main.tf:206</code> and <code>infra/aws/modules/audit/main.tf:26</code>. The protection exists for a reason and we don't want to ship a deploy where the next operator can <code>terraform destroy -auto-approve</code> without resistance.</li>
+<li><strong>Reconcile <code>infra/aws-oidc/</code> state</strong> (gotcha #17). PR #50's <code>ReadOnlyAccess</code> attachment was applied via CLI today; bring it back into terraform state with <code>make oidc-apply</code> so future plans don't drift again.</li>
+<li><strong>Address gotcha #22</strong> (kubectl-wait under SSM). Without this, every fresh deploy needs at least three ansible-deploy retries to reach the post-<code>Wait for root Application to sync</code> stages.</li>
+<li><strong>Address the open code follow-up</strong> (k3s server stale <code>--node-ip</code> detection). Without this, any Tailscale identity churn leaves the cluster in a half-broken state that ansible doesn't auto-recover.</li>
+<li><strong>Optional but useful:</strong> PR #57 (e2e pytest suite for the operator) merge so the regression catch is in <code>develop</code> before the next deploy. Run <code>make test-e2e-tailscale-operator</code> post-deploy as a gate.</li>
+<li><strong>Tear-down hygiene:</strong> broaden <code>ansible/playbooks/maintenance/cleanup_tailscale.yml</code> to match the operator-created proxy hostnames (<code>adguard</code>, <code>golink</code>, <code>grafana</code>, <code>loki</code>, <code>prometheus</code>, <code>tailscale-operator</code>) so a future <code>make clean-tailscale</code> clears them automatically.</li>
+</ol>
+<hr />
+<h2 id="lessons-learned">Lessons learned<a class="headerlink" href="#lessons-learned" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Manual admin-side actions on Tailscale are not idempotent at the daemon level.</strong> Removing a node from the admin invalidates its identity, but <code>tailscaled</code> keeps running with stale credentials. Recovery requires <code>logout</code> + <code>up</code> <em>with explicit reauth</em> (a fresh <code>tailscale up</code> without <code>logout</code> is a no-op).</li>
+<li><strong>Cloud-init runs once per disk.</strong> Any change to launch template fields that triggers fleet recreate (image_id is the obvious one) is a full re-deploy disguised as an in-place update. Treat LT diffs accordingly.</li>
+<li><strong><code>become: false</code> at play level is not enough</strong> when <code>ansible.cfg</code> has <code>become = True</code> globally. Always pair with <code>vars: { ansible_become: false }</code> on tasks that must run as the calling user.</li>
+<li><strong>Spot fleet is a poor fit for always-on infrastructure.</strong> Six interruptions in 8 hours, no path to graceful stop, no EBS preservation across fleet recreations. The cost difference vs. on-demand (~$13/mo) is not worth the operational debt.</li>
+<li><strong>OAuth credential rotation is two distinct operations:</strong> (1) generating new client + secret, (2) ensuring the new client has the right scopes + tags. A 401→403 transition during rotation means the secret got picked up but the scopes are wrong.</li>
+<li><strong><code>gh pr merge</code> from a worktree fails on <code>--delete-branch</code> if the parent worktree owns the branch.</strong> Cosmetic — the merge succeeds, only the local-branch cleanup step trips. Ignore the error message.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.88dd0f4e.min.js"></script>
+      
+    
+  </body>
+</html>
