@@ -149,13 +149,52 @@
       register: dns_redirect_check
       changed_when: false
 
-    - name: Assert hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected
+    - name: Assert hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected on LAN
       ansible.builtin.assert:
         that:
           - "'dpt:53' in dns_redirect_check.stdout"
-          - "'to:192.168.8.1:53' in dns_redirect_check.stdout or 'DNAT' in dns_redirect_check.stdout"
+          - "'to:192.168.8.1:53' in dns_redirect_check.stdout or 'to:192.168.8.11:53' in dns_redirect_check.stdout or 'DNAT' in dns_redirect_check.stdout"
         fail_msg: "SECURITY AUDIT FAILED: Hardcoded DNS (8.8.8.8) is not being intercepted on LAN!"
-        success_msg: "✓ Security: Hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected to local Stubby DoT."
+        success_msg: "✓ Security: Hardcoded DNS (Chromecast 8.8.8.8) is intercepted and redirected on LAN."
+
+    - name: 🔒 Check Guest (VLAN 9) DNS Hijack / Redirection in iptables
+      ansible.builtin.raw: iptables -t nat -L zone_guest_prerouting -v -n 2>/dev/null || iptables -t nat -L PREROUTING -v -n
+      register: dns_redirect_guest_check
+      changed_when: false
+
+    - name: Assert hardcoded DNS is intercepted and redirected on Guest
+      ansible.builtin.assert:
+        that:
+          - "'dpt:53' in dns_redirect_guest_check.stdout"
+          - "'to:192.168.9.1:53' in dns_redirect_guest_check.stdout or 'DNAT' in dns_redirect_guest_check.stdout"
+        fail_msg: "SECURITY AUDIT FAILED: Hardcoded DNS is not being intercepted on Guest (VLAN 9)!"
+        success_msg: "✓ Security: Hardcoded DNS is intercepted and redirected to local gateway on Guest."
+
+    - name: 🔒 Check IoT DNS Hijack / Redirection (Smart TVs / Chromecast) in iptables
+      ansible.builtin.raw: iptables -t nat -L zone_iot_prerouting -v -n 2>/dev/null || iptables -t nat -L PREROUTING -v -n
+      register: dns_redirect_iot_check
+      changed_when: false
+
+    - name: Assert hardcoded DNS is intercepted and redirected on IoT
+      ansible.builtin.assert:
+        that:
+          - "'dpt:53' in dns_redirect_iot_check.stdout"
+          - "'to:192.168.80.1:53' in dns_redirect_iot_check.stdout or 'DNAT' in dns_redirect_iot_check.stdout"
+        fail_msg: "SECURITY AUDIT FAILED: Hardcoded DNS is not being intercepted on IoT!"
+        success_msg: "✓ Security: Hardcoded DNS is intercepted and redirected to local gateway on IoT."
+
+    - name: 🔒 Check DNS-over-TLS (port 853) bypass blocking in iptables
+      ansible.builtin.raw: iptables -S forwarding_lan_rule 2>/dev/null || iptables -S FORWARD 2>/dev/null
+      register: dot_block_check
+      changed_when: false
+
+    - name: Assert direct DoT bypass (port 853) is blocked
+      ansible.builtin.assert:
+        that:
+          - "'853' in dot_block_check.stdout"
+          - "'REJECT' in dot_block_check.stdout or 'DROP' in dot_block_check.stdout"
+        fail_msg: "SECURITY AUDIT FAILED: Direct DNS-over-TLS (port 853) bypass is NOT blocked in iptables!"
+        success_msg: "✓ Security: Direct DNS-over-TLS (port 853) bypass is verified blocked in iptables."
 
     - name: 📋 Display Audit Summary
       ansible.builtin.debug:
@@ -171,7 +210,8 @@
           - "  [✓] Dnsmasq: Locked to 127.0.0.1#5453                         "
           - "  [✓] 5GHz Wi-Fi: Fixed Channel 36 (Zero Jitter)                "
           - "  [✓] Split SSIDs: 5GHz (Fast) and 2.4GHz (_2.4G) separated    "
-          - "  [✓] Anti-Snoop DNS: Chromecast (8.8.8.8) redirected to Stubby DoT"
+          - "  [✓] Anti-Snoop DNS: Hardcoded DNS (8.8.8.8) redirected across LAN, Guest, and IoT"
+          - "  [✓] Anti-Bypass DoT: Direct DNS-over-TLS (port 853) blocked across zones"
           - "  [✓] UPnP Inactive: miniupnpd disabled (Zero Trust)            "
           - "  [✓] Upstream Modem (192.168.0.1): Reachable (0% packet loss)     "
           - "================================================================"

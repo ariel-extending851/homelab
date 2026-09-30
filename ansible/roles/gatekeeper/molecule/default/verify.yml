@@ -167,6 +167,28 @@
       changed_when: false
       failed_when: verify_block_modem_config.rc != 0
 
+    - name: Verify Guest DNS hijack rule exists and points to guest gateway
+      ansible.builtin.raw: |
+        uci -q show firewall.dns_hijack_guest.dest_ip | grep -q "='192.168.9.1'" && \
+        uci -q show firewall.dns_hijack_guest.src | grep -q "='guest'"
+      register: verify_dns_hijack_guest
+      changed_when: false
+      failed_when: verify_dns_hijack_guest.rc != 0
+
+    - name: Verify IoT DNS hijack rule exists and points to iot gateway
+      ansible.builtin.raw: |
+        uci -q show firewall.dns_hijack_iot.dest_ip | grep -q "='{{ iot_gateway_ip }}'" && \
+        uci -q show firewall.dns_hijack_iot.src | grep -q "='iot'"
+      register: verify_dns_hijack_iot
+      changed_when: false
+      failed_when: verify_dns_hijack_iot.rc != 0
+
+    - name: Verify DoT bypass block rule exists for LAN
+      ansible.builtin.raw: uci show firewall | grep -q "name='block_dot_bypass'"
+      register: verify_dot_block
+      changed_when: false
+      failed_when: verify_dot_block.rc != 0
+
     - name: Verify DNS hijack rule is absent when Pi is unreachable (Molecule default)
       ansible.builtin.raw: |
         if uci -q get firewall.dns_hijack_adguard >/dev/null 2>&1; then

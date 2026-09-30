@@ -449,6 +449,82 @@
   register: gatekeeper_dns
   changed_when: "'CHANGED' in gatekeeper_dns.stdout"
 
+- name: Force all Guest (VLAN 9) DNS traffic to local gateway resolver (Anti-Bypass)
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    if ! uci -q get firewall.dns_hijack_guest >/dev/null 2>&1; then
+      uci set firewall.dns_hijack_guest='redirect'
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack_guest.name || true)" = "Force-DNS-Hijack-Guest" ] || \
+      { uci set firewall.dns_hijack_guest.name='Force-DNS-Hijack-Guest'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_guest.src || true)" = "guest" ] || \
+      { uci set firewall.dns_hijack_guest.src='guest'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_guest.proto || true)" = "tcp udp" ] || \
+      { uci set firewall.dns_hijack_guest.proto='tcp udp'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_guest.src_dport || true)" = "53" ] || \
+      { uci set firewall.dns_hijack_guest.src_dport='53'; changed=1; }
+
+    if uci -q get firewall.dns_hijack_guest.dest >/dev/null 2>&1; then
+      uci delete firewall.dns_hijack_guest.dest
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack_guest.dest_ip || true)" = "{{ guest_gateway_ip }}" ] || \
+      { uci set firewall.dns_hijack_guest.dest_ip="{{ guest_gateway_ip }}"; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_guest.dest_port || true)" = "53" ] || \
+      { uci set firewall.dns_hijack_guest.dest_port='53'; changed=1; }
+
+    [ "$changed" -eq 1 ] && uci commit firewall
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_dns_guest
+  changed_when: "'CHANGED' in gatekeeper_dns_guest.stdout"
+
+- name: Force all IoT DNS traffic to local gateway resolver (Anti-Bypass Smart TVs / Chromecast)
+  ansible.builtin.raw: |
+    set -eu
+    changed=0
+
+    if ! uci -q get firewall.dns_hijack_iot >/dev/null 2>&1; then
+      uci set firewall.dns_hijack_iot='redirect'
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack_iot.name || true)" = "Force-DNS-Hijack-IoT" ] || \
+      { uci set firewall.dns_hijack_iot.name='Force-DNS-Hijack-IoT'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_iot.src || true)" = "iot" ] || \
+      { uci set firewall.dns_hijack_iot.src='iot'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_iot.proto || true)" = "tcp udp" ] || \
+      { uci set firewall.dns_hijack_iot.proto='tcp udp'; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_iot.src_dport || true)" = "53" ] || \
+      { uci set firewall.dns_hijack_iot.src_dport='53'; changed=1; }
+
+    if uci -q get firewall.dns_hijack_iot.dest >/dev/null 2>&1; then
+      uci delete firewall.dns_hijack_iot.dest
+      changed=1
+    fi
+
+    [ "$(uci -q get firewall.dns_hijack_iot.dest_ip || true)" = "{{ iot_gateway_ip }}" ] || \
+      { uci set firewall.dns_hijack_iot.dest_ip="{{ iot_gateway_ip }}"; changed=1; }
+
+    [ "$(uci -q get firewall.dns_hijack_iot.dest_port || true)" = "53" ] || \
+      { uci set firewall.dns_hijack_iot.dest_port='53'; changed=1; }
+
+    [ "$changed" -eq 1 ] && uci commit firewall
+    [ "$changed" -eq 1 ] && echo CHANGED || echo OK
+  register: gatekeeper_dns_iot
+  changed_when: "'CHANGED' in gatekeeper_dns_iot.stdout"
+
 - name: Configure Stubby DNS-over-TLS with Family Protection (Cloudflare + CleanBrowsing + AdGuard Family)
   ansible.builtin.raw: |
     set -eu
@@ -906,35 +982,44 @@
   register: gatekeeper_umdns
   changed_when: "'CHANGED' in gatekeeper_umdns.stdout"
 
-- name: Block direct DNS-over-TLS (port 853) bypass to force devices to use network DNS
+- name: Block direct DNS-over-TLS (port 853) bypass across LAN, Guest, and IoT to force devices to use network DNS
   ansible.builtin.raw: |
     set -eu
     changed=0
-    rule_name="block_dot_bypass"
 
-    if ! uci show firewall | grep -q "name='$rule_name'"; then
-      uci add firewall rule >/dev/null
-      rule_idx="@rule[-1]"
-      uci set "firewall.$rule_idx.name=$rule_name"
-      uci set "firewall.$rule_idx.src=lan"
-      uci set "firewall.$rule_idx.dest=wan"
-      uci set "firewall.$rule_idx.proto=tcp"
-      uci set "firewall.$rule_idx.dest_port=853"
-      uci set "firewall.$rule_idx.target=REJECT"
-      uci set "firewall.$rule_idx.enabled=1"
-      changed=1
-    else
-      rule_idx=$(uci show firewall | grep "name='$rule_name'" | cut -d'.' -f2 | cut -d'=' -f1)
-      cur_target="$(uci -q get firewall.$rule_idx.target || true)"
-      cur_port="$(uci -q get firewall.$rule_idx.dest_port || true)"
-      cur_enabled="$(uci -q get firewall.$rule_idx.enabled || true)"
-      if [ "$cur_target" != "REJECT" ] || [ "$cur_port" != "853" ] || [ "$cur_enabled" != "1" ]; then
-        uci set "firewall.$rule_idx.target=REJECT"
+    for zone in lan guest iot; do
+      if [ "$zone" = "lan" ]; then
+        rule_name="block_dot_bypass"
+      else
+        rule_name="block_dot_bypass_${zone}"
+      fi
+
+      if ! uci show firewall | grep -q "name='$rule_name'"; then
+        uci add firewall rule >/dev/null
+        rule_idx="@rule[-1]"
+        uci set "firewall.$rule_idx.name=$rule_name"
+        uci set "firewall.$rule_idx.src=$zone"
+        uci set "firewall.$rule_idx.dest=wan"
+        uci set "firewall.$rule_idx.proto=tcp"
         uci set "firewall.$rule_idx.dest_port=853"
+        uci set "firewall.$rule_idx.target=REJECT"
         uci set "firewall.$rule_idx.enabled=1"
         changed=1
+      else
+        rule_idx=$(uci show firewall | grep "name='$rule_name'" | cut -d'.' -f2 | cut -d'=' -f1)
+        cur_target="$(uci -q get firewall.$rule_idx.target || true)"
+        cur_src="$(uci -q get firewall.$rule_idx.src || true)"
+        cur_port="$(uci -q get firewall.$rule_idx.dest_port || true)"
+        cur_enabled="$(uci -q get firewall.$rule_idx.enabled || true)"
+        if [ "$cur_target" != "REJECT" ] || [ "$cur_src" != "$zone" ] || [ "$cur_port" != "853" ] || [ "$cur_enabled" != "1" ]; then
+          uci set "firewall.$rule_idx.src=$zone"
+          uci set "firewall.$rule_idx.target=REJECT"
+          uci set "firewall.$rule_idx.dest_port=853"
+          uci set "firewall.$rule_idx.enabled=1"
+          changed=1
+        fi
       fi
-    fi
+    done
 
     [ "$changed" -eq 1 ] && uci commit firewall
     [ "$changed" -eq 1 ] && echo CHANGED || echo OK
@@ -1267,12 +1352,16 @@
       or gatekeeper_switch_dhcp is changed
       or gatekeeper_route is changed
       or gatekeeper_dns is changed
+      or gatekeeper_dns_guest is changed
+      or gatekeeper_dns_iot is changed
       or gatekeeper_stubby is changed
       or gatekeeper_dnsmasq is changed
       or gatekeeper_wan_dhcp is changed
       or gatekeeper_wan is changed
       or gatekeeper_zero_trust is changed
       or gatekeeper_guest_modem is changed
+      or gatekeeper_iot_firewall is changed
+      or gatekeeper_iot_logging is changed
       or gatekeeper_block_dot is changed
       or gatekeeper_services is changed
 

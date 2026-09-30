@@ -11,6 +11,7 @@ pi_tailscale_ip: 192.168.8.10
 pi_adguard_ip: 192.168.8.11
 network_cidr: 192.168.8.0/24
 guest_network_cidr: 192.168.9.0/24
+guest_gateway_ip: 192.168.9.1
 iot_network_cidr: 192.168.80.0/24
 iot_gateway_ip: 192.168.80.1
 iot_dhcp_start: 100
