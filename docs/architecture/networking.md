@@ -9,7 +9,7 @@ Two design invariants frame every networking decision in this repo:
 1. **No public TCP port exists on any node.** Operator and inter-cluster traffic ride the Tailscale mesh; nothing else is reachable from the open internet.
 2. **The data plane is replaceable, not load-bearing.** The current CNI (Flannel) is k3s's default. Runtime security observability is provided by Falco's eBPF probe today, and the CNI itself is staged for migration to Cilium (see [§5](#5-ebpf-stack-current-and-staged)) when bootstrap risk is acceptable.
 
-> See also: [LAN ↔ tailnet bridge](lan-tailnet-bridge.md) — how off-tailnet LAN clients (smart TVs, IoT, guest devices) reach `*.tail57bf10.ts.net` services through AdGuard split DNS plus the GL.iNet reverse route.
+> See also: [LAN ↔ tailnet bridge](lan-tailnet-bridge.md) — how off-tailnet LAN clients (smart TVs, IoT, guest devices) reach `*.example-tailnet.ts.net` services through AdGuard split DNS plus the GL.iNet reverse route.
 
 ---
 
@@ -21,7 +21,7 @@ Two design invariants frame every networking decision in this repo:
 | `192.168.9.0/24` | Home guest/IoT LAN (isolated) | `ansible/group_vars/all.yml` |
 | `192.168.8.1` | Opal gateway (OpenWrt, GL.iNet) | `ansible/group_vars/all.yml` |
 | `100.64.0.0/10` | Tailscale CGNAT range; per-node IPs | Tailscale console |
-| `tail57bf10.ts.net` | MagicDNS suffix for the tailnet | Tailscale console |
+| `example-tailnet.ts.net` | MagicDNS suffix for the tailnet | Tailscale console |
 | `10.42.0.0/16` | k3s **pod** CIDR (Flannel VXLAN) | `ansible/group_vars/all.yml` |
 | `10.43.0.0/16` | k3s **service** CIDR (ClusterIP) | `ansible/group_vars/all.yml` |
 | `cluster.local` | k3s cluster DNS suffix | `ansible/group_vars/all.yml` |
@@ -66,7 +66,7 @@ flowchart LR
     GUEST -- DNS via AdGuard --> ROUTER
     ROUTER -- subnet route --> MESH
 
-    MESH ==>|ingressClassName: tailscale<br/>ts.net managed TLS| APPS["<app>.tail57bf10.ts.net"]
+    MESH ==>|ingressClassName: tailscale<br/>ts.net managed TLS| APPS["<app>.example-tailnet.ts.net"]
 
     classDef cloud fill:#fff5e6,stroke:#e0a060
     classDef edge fill:#e6f0ff,stroke:#6080c0
@@ -188,7 +188,7 @@ Full rationale and the NetworkPolicy authoring conventions: [`../security/networ
 
 There are exactly two ways to reach a node:
 
-1. **Tailscale (preferred).** `ssh <user>@<node>.tail57bf10.ts.net` — works identically for AWS instances and Raspberry Pis.
+1. **Tailscale (preferred).** `ssh <user>@<node>.example-tailnet.ts.net` — works identically for AWS instances and Raspberry Pis.
 2. **AWS SSM Session Manager (break-glass).** `aws ssm start-session --target <instance-id>` — IAM-authenticated, CloudTrail-audited; used when a node has joined AWS but not yet joined the tailnet (initial bootstrap or after a failed Tailscale auth).
 
 !!! warning "There is no inbound SSH from the public internet."

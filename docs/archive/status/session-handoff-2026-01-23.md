@@ -127,7 +127,7 @@ cd /var/mnt/nvme/repos/repos/homelab
 ---
 
 ### Priority 3: Manual Dashboard Validation
-**URL**: https://grafana.tail57bf10.ts.net
+**URL**: https://grafana.example-tailnet.ts.net
 **Dashboard**: "K3s Homelab and Hybrid Cloud Overview - Comprehensive"
 
 **Key Metrics to Verify**:
@@ -352,7 +352,7 @@ throttle_percent = (nr_throttled / nr_periods) * 100
 - **Branch**: `fix/grafana-dashboard-provisioning`
 
 ### Grafana Access:
-- **URL**: https://grafana.tail57bf10.ts.net
+- **URL**: https://grafana.example-tailnet.ts.net
 - **Dashboard**: Browse → "K3s Homelab and Hybrid Cloud Overview - Comprehensive"
 
 ### Documentation:

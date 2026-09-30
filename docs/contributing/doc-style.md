@@ -67,7 +67,7 @@ Service docs (`docs/services/<app>.md`) describe one deployed application:
 ```markdown
 # <App Name>
 
-> **Status:** Active · **Node:** rasp-pi-04 · **Namespace:** media · **Ingress:** https://<app>.tail57bf10.ts.net
+> **Status:** Active · **Node:** rasp-pi-04 · **Namespace:** media · **Ingress:** https://<app>.example-tailnet.ts.net
 > **Manifests:** [`k8s/apps/<app>/`](../../k8s/apps/<app>/) · **Last reviewed:** YYYY-MM-DD
 
 ## Overview

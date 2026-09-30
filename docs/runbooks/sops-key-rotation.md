@@ -26,7 +26,7 @@ Run before any rotation. The procedure is reversible *only* if these hold.
 | CI is green on `develop` | (GitHub PR list) | No failing checks |
 | No in-flight deploy | `gh run list --workflow ci-deployment.yml --limit 1` | Last run completed |
 | Backup of current key exists | `ls -la ~/.config/sops/age/keys.txt.backup-*` | At least one file |
-| Operator can reach every node | `for n in k3s-server k3s-agent rasp-pi-03 rasp-pi-04; do ssh "$n.tail57bf10.ts.net" true; done` | All return 0 |
+| Operator can reach every node | `for n in k3s-server k3s-agent rasp-pi-03 rasp-pi-04; do ssh "$n.example-tailnet.ts.net" true; done` | All return 0 |
 
 !!! warning "Rotate during a low-change window"
     A rotation mid-deploy can leave half the cluster decrypting with the old recipient and half with the new. Pick a quiet window and freeze merges to `develop` until the rotation completes.
@@ -159,7 +159,7 @@ After either rotation, every row below must pass before the runbook is considere
 | CI green with new GitHub secret | `gh run list --workflow ci-validation.yml --limit 1` | `completed: success` |
 | ArgoCD reconciles a SOPS-backed Secret | `kubectl rollout restart deploy/<known-secret-consumer> -n <ns>` then `kubectl rollout status` | Rollout completes; pod logs show fresh secret values |
 | Velero still authenticates to S3 | `velero backup-location get` | Phase: Available |
-| Tailscale auth still works on every node | `ssh <node>.tail57bf10.ts.net tailscale status` | All peers visible |
+| Tailscale auth still works on every node | `ssh <node>.example-tailnet.ts.net tailscale status` | All peers visible |
 
 If any row fails, **rollback (§6) before proceeding.**
 

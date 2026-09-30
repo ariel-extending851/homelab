@@ -110,7 +110,7 @@ Settings → Apps:
 Current RPi 4 likely has default 100MB swap. Increase to 2GB:
 
 ```bash
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net
 
 # Check current swap
 free -h
@@ -260,7 +260,7 @@ Track improvements with:
 
 ```bash
 # RPi 4 system metrics
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "uptime && free -m && top -bn1 | head -20"
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "uptime && free -m && top -bn1 | head -20"
 
 # Pod resource usage
 

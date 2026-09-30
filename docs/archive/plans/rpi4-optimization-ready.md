@@ -83,7 +83,7 @@ cd /var/mnt/nvme/repos/repos/homelab
 
 ```bash
 # SSH to RPi 4
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net
 
 # Copy and run swap script
 cat > /tmp/optimize-swap.sh << 'EOF'
@@ -173,7 +173,7 @@ kubectl uncordon rasp-pi-04
 kubectl rollout restart deployment -n tailscale operator
 
 # Remove swap (if causing issues)
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "sudo swapoff /swapfile && sudo rm /swapfile"
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "sudo swapoff /swapfile && sudo rm /swapfile"
 ```
 
 ---
@@ -183,7 +183,7 @@ ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "sudo swapoff /swapfile && sudo rm /swap
 ### Before Starting
 - [ ] Review `docs/rpi4-proxy-audit.md`
 - [ ] Verify kubectl access: `kubectl get nodes`
-- [ ] Check current RPi 4 state: `ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "free -m && uptime"`
+- [ ] Check current RPi 4 state: `ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "free -m && uptime"`
 - [ ] Have rollback commands ready
 - [ ] Plan for 5-10 minute maintenance window
 
@@ -193,7 +193,7 @@ ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "sudo swapoff /swapfile && sudo rm /swap
 
 ### After Migration
 - [ ] Run swap optimization on RPi 4
-- [ ] Verify RPi 4 load: `ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "uptime"`
+- [ ] Verify RPi 4 load: `ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "uptime"`
 - [ ] Test all *arr apps are accessible
 - [ ] Commit any config changes to git
 

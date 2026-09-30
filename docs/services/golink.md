@@ -1,6 +1,6 @@
 # GoLink
 
-> **Status:** Active · **Node:** any · **Namespace:** golink · **Ingress:** <https://golink.tail57bf10.ts.net>
+> **Status:** Active · **Node:** any · **Namespace:** golink · **Ingress:** <https://golink.example-tailnet.ts.net>
 > **Manifests:** [`k8s/apps/golink/`](../../k8s/apps/golink/) · **Last reviewed:** 2026-04-23
 
 [GoLink](https://github.com/tailscale/golink) — Tailscale's open-source short-link redirector. Provides `go/<keyword>` redirects across the tailnet.
@@ -12,7 +12,7 @@
 - **Deployment:** single replica, no node affinity (lightweight Go binary)
 - **Storage:** 1 Gi PVC for SQLite link database (`local-path-provisioner`)
 - **Tailscale auth:** uses a Tailscale auth key from the `tailscale-auth-key` Secret to join the tailnet directly (`hostname: golink`)
-- **Ingress:** Tailscale operator at `golink.tail57bf10.ts.net`
+- **Ingress:** Tailscale operator at `golink.example-tailnet.ts.net`
 
 The pod itself runs an embedded `tsnet` instance, so it appears as a discrete tailnet node. This is why a separate auth key is needed per pod.
 

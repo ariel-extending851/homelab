@@ -4,11 +4,11 @@
 > **Last reviewed:** 2026-05-10
 > **Owner:** @ariel-extending851
 
-How LAN clients **without Tailscale installed** (smart TVs, IoT, consoles, guest devices, anything that can't or shouldn't run the Tailscale daemon) reach `*.tail57bf10.ts.net` services.
+How LAN clients **without Tailscale installed** (smart TVs, IoT, consoles, guest devices, anything that can't or shouldn't run the Tailscale daemon) reach `*.example-tailnet.ts.net` services.
 
 ## Why this doc exists
 
-The default homelab assumption is "every consumer of `*.tail57bf10.ts.net` is on the tailnet" — the user's laptop has the Tailscale client, MagicDNS resolves the hostname directly to a `100.x.y.z` address, and Tailscale routes the packet via the encrypted mesh.
+The default homelab assumption is "every consumer of `*.example-tailnet.ts.net` is on the tailnet" — the user's laptop has the Tailscale client, MagicDNS resolves the hostname directly to a `100.x.y.z` address, and Tailscale routes the packet via the encrypted mesh.
 
 That breaks for two classes of device on the home LAN (`192.168.8.0/24`):
 
@@ -31,8 +31,8 @@ The router itself (GL.iNet Opal SFT1200) is also unable to bridge for them: Open
    ┌──────────────────┐                     │            ┌──────────────────────────┐
    │  LAN client      │                     │            │  rasp-pi-03 (192.168.8.12)│
    │  ─ no Tailscale  │  1. dig adguard.    │            │  AdGuard hostNetwork :53  │
-   │  ─ DHCP DNS=.1   │     tail57bf10      │            │  upstream split-DNS:      │
-   │                  │     .ts.net         │            │   [/tail57bf10.ts.net/]   │
+   │  ─ DHCP DNS=.1   │     example-tailnet      │            │  upstream split-DNS:      │
+   │                  │     .ts.net         │            │   [/example-tailnet.ts.net/]   │
    │                  │ ──────────────────────────────►  │     100.100.100.100       │
    │                  │                     │            │   (others) Cloudflare DoH │
    │                  │ ◄────────────────── 2. 100.x.y.z │                          │
@@ -69,7 +69,7 @@ The router itself (GL.iNet Opal SFT1200) is also unable to bridge for them: Open
 | Component | Where | What it does | Source of truth |
 |---|---|---|---|
 | LAN DNS DNAT | GL.iNet `firewall.dns_hijack_adguard` | Redirects every LAN `:53` query to `pi_adguard_ip:53` so AdGuard sees all DNS traffic, regardless of what the client thinks its resolver is | [`ansible/roles/gatekeeper/tasks/main.yml`](../../ansible/roles/gatekeeper/tasks/main.yml) (~line 248) |
-| AdGuard split DNS | rasp-pi-03 `:53` (hostNetwork) | Upstream DNS list with the per-domain prefix `[/tail57bf10.ts.net/]100.100.100.100` — that prefix tells AdGuard "for this domain only, use Tailscale MagicDNS as upstream" | AdGuard Home UI → Settings → DNS → Upstream DNS servers (persisted in PV `/opt/adguardhome/conf/AdGuardHome.yaml`) |
+| AdGuard split DNS | rasp-pi-03 `:53` (hostNetwork) | Upstream DNS list with the per-domain prefix `[/example-tailnet.ts.net/]100.100.100.100` — that prefix tells AdGuard "for this domain only, use Tailscale MagicDNS as upstream" | AdGuard Home UI → Settings → DNS → Upstream DNS servers (persisted in PV `/opt/adguardhome/conf/AdGuardHome.yaml`) |
 | Tailscale MagicDNS | `100.100.100.100` (Tailscale-managed) | Resolves tailnet hostnames to `100.x.y.z` CGNAT addresses | Tailscale admin console |
 | Reverse route | GL.iNet `network.tailscale_reverse_route` | Static route: `100.64.0.0/10` → `pi_tailscale_ip` (LAN gateway). LAN clients sending packets to `100.x` addresses get them forwarded to the subnet router | [`ansible/roles/gatekeeper/tasks/main.yml`](../../ansible/roles/gatekeeper/tasks/main.yml) (~line 196) |
 | Subnet router + exit node | rasp-pi-04 (`192.168.8.11`) | Runs `tailscale set --advertise-routes=192.168.8.0/24 --advertise-exit-node`. Receives `100.x` packets from the LAN via the reverse route and forwards them through the tailnet | [`ansible/roles/tailscale/tasks/main.yml:60-71`](../../ansible/roles/tailscale/tasks/main.yml) — gated `when: inventory_hostname == 'rasp-pi-04'` |
@@ -101,15 +101,15 @@ The bridge is a fallback for devices the operator doesn't fully control. For eve
 
 ### One-time AdGuard split-DNS rule (manual, persisted in PV)
 
-1. Open `https://adguard.tail57bf10.ts.net/#dns` (from any tailnet-connected device).
+1. Open `https://adguard.example-tailnet.ts.net/#dns` (from any tailnet-connected device).
 2. Under **Upstream DNS servers**, add the line (preserving existing lines):
    ```text
-   [/tail57bf10.ts.net/]100.100.100.100
+   [/example-tailnet.ts.net/]100.100.100.100
    ```
 3. Click **Apply**, then **Test upstreams** — should return success.
 4. Verify from a non-tailnet LAN client:
    ```bash
-   dig @192.168.8.12 adguard.tail57bf10.ts.net  # should return a 100.x.y.z, not NXDOMAIN
+   dig @192.168.8.12 adguard.example-tailnet.ts.net  # should return a 100.x.y.z, not NXDOMAIN
    dig @192.168.8.12 google.com                 # unchanged, still answered via the public upstream
    ```
 

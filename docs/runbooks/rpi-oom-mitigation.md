@@ -41,7 +41,7 @@ kubectl describe node "$NODE" | grep -E '(MemoryPressure|Allocated|Capacity|memo
 kubectl get pod -A -o wide --field-selector spec.nodeName="$NODE"
 
 # 2.4 Inspect recent OOM events on the node (requires SSM or tailnet SSH)
-ssh "$NODE.tail57bf10.ts.net" "dmesg -T | grep -i 'killed process' | tail -20"
+ssh "$NODE.example-tailnet.ts.net" "dmesg -T | grep -i 'killed process' | tail -20"
 ```
 
 The RPi 3's authorized workload set is **Tailscale subnet router + node-exporter + AdGuard (host-network DNS)**. Anything else found on it is drift and must be re-pinned.
@@ -97,7 +97,7 @@ rpi_kubelet_eviction_soft_grace_period_memory_available: "1m30s"
 Apply via `make ansible-deploy --tags rpi_optimization`. Verify:
 
 ```bash
-ssh rasp-pi-03.tail57bf10.ts.net "cat /var/lib/rancher/k3s/agent/etc/kubelet.conf | grep -A4 evictionHard"
+ssh rasp-pi-03.example-tailnet.ts.net "cat /var/lib/rancher/k3s/agent/etc/kubelet.conf | grep -A4 evictionHard"
 ```
 
 ### 3.3 Tier 3 — Repel taint (last-resort, used sparingly)

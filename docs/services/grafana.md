@@ -1,6 +1,6 @@
 # Grafana
 
-> **Status:** Active · **Node:** any · **Namespace:** grafana · **Ingress:** <https://grafana.tail57bf10.ts.net>
+> **Status:** Active · **Node:** any · **Namespace:** grafana · **Ingress:** <https://grafana.example-tailnet.ts.net>
 > **Manifests:** [`k8s/apps/grafana/`](../../k8s/apps/grafana/) · **Last reviewed:** 2026-04-23
 
 Metrics + log dashboarding. Reads from Prometheus and Loki (in-cluster). Uses the **`high-bandwidth`** Tailscale ProxyClass because dashboards stream a lot of data.
@@ -40,7 +40,7 @@ kubectl set env deployment/grafana -n grafana \
 ### Access
 
 ```text
-https://grafana.tail57bf10.ts.net
+https://grafana.example-tailnet.ts.net
 ```
 
 Default user: `admin`. Password from the secret.
@@ -65,7 +65,7 @@ kubectl rollout restart deployment grafana -n grafana
 TOKEN=$(kubectl exec -n grafana deploy/grafana -- \
   grafana-cli api token-create --name backup --role Admin)
 curl -H "Authorization: Bearer $TOKEN" \
-  https://grafana.tail57bf10.ts.net/api/search?type=dash-db | jq
+  https://grafana.example-tailnet.ts.net/api/search?type=dash-db | jq
 ```
 
 Or snapshot the PVC directory on the underlying node.

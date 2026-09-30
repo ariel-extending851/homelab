@@ -192,7 +192,7 @@ Before running in production, test:
 
 4. **Verify endpoints:**
    ```bash
-   curl https://grafana.tail57bf10.ts.net
+   curl https://grafana.example-tailnet.ts.net
    # etc...
    ```
 
@@ -203,7 +203,7 @@ Before running in production, test:
 
 6. **Run swap optimization:**
    ```bash
-   ssh ubuntu@rasp-pi-04.tail57bf10.ts.net
+   ssh ubuntu@rasp-pi-04.example-tailnet.ts.net
    sudo bash /var/mnt/nvme/repos/repos/homelab/scripts/optimize-rpi4-swap.sh
    ```
 
