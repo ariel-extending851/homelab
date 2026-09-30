@@ -80,7 +80,7 @@ See [Runbooks index](runbooks/README.md).
 | Document | Purpose |
 |---|---|
 | [Makefile targets](reference/makefile-targets.md) | Every `make` target with one-line purpose |
-| [Tailnet services](reference/tailnet-services.md) | Every `*.tail57bf10.ts.net` hostname |
+| [Tailnet services](reference/tailnet-services.md) | Every `*.example-tailnet.ts.net` hostname |
 | [Glossary](reference/glossary.md) | Project-specific terms |
 
 ## 📅 Plans

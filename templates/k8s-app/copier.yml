@@ -164,13 +164,13 @@ depends_on:
 
 needs_ingress:
   type: bool
-  help: Expose via Tailscale ingress (https://<app>.tail57bf10.ts.net)?
+  help: Expose via Tailscale ingress (https://<app>.example-tailnet.ts.net)?
   default: true
 
 ingress_hostname:
   type: str
   help: Tailscale hostname (without scheme).
-  default: "{{ app_name }}.tail57bf10.ts.net"
+  default: "{{ app_name }}.example-tailnet.ts.net"
   when: "{{ needs_ingress }}"
 
 needs_pvc:

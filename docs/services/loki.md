@@ -1,6 +1,6 @@
 # Loki
 
-> **Status:** Active · **Node:** any · **Namespace:** loki · **Ingress:** <https://loki.tail57bf10.ts.net>
+> **Status:** Active · **Node:** any · **Namespace:** loki · **Ingress:** <https://loki.example-tailnet.ts.net>
 > **Manifests:** [`k8s/apps/loki/`](../../k8s/apps/loki/) · **Last reviewed:** 2026-04-23
 
 Log aggregation backend for Grafana. Single-binary Loki running in `monolithic` mode (no microservices split — appropriate for homelab scale).
@@ -44,7 +44,7 @@ Promtail config lives with the otel-collector setup — it scrapes:
 
 ### Access
 
-Direct UI: `https://loki.tail57bf10.ts.net` (mostly for `/ready` health endpoint). For real querying, use Grafana's Explore tab with the Loki datasource.
+Direct UI: `https://loki.example-tailnet.ts.net` (mostly for `/ready` health endpoint). For real querying, use Grafana's Explore tab with the Loki datasource.
 
 ### LogQL examples
 

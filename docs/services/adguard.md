@@ -1,6 +1,6 @@
 # AdGuard Home
 
-> **Status:** Active · **Node:** rasp-pi-03 · **Namespace:** adguard · **Ingress:** <https://adguard.tail57bf10.ts.net>
+> **Status:** Active · **Node:** rasp-pi-03 · **Namespace:** adguard · **Ingress:** <https://adguard.example-tailnet.ts.net>
 > **Manifests:** [`k8s/apps/adguard/`](../../k8s/apps/adguard/) · **Last reviewed:** 2026-04-23
 
 DNS server with ad-blocking + filtering for the home LAN. Runs with `hostNetwork` on rasp-pi-03 so it can listen on port 53 directly.
@@ -14,7 +14,7 @@ AdGuard Home is the DNS resolver for the entire home network (192.168.8.0/24 and
 - **Pod placement:** pinned to `rasp-pi-03` via `nodeSelector` (DNS needs to be reachable on the LAN, and this Pi has a stable LAN IP)
 - **Networking:** `hostNetwork: true` so port 53 binds to the node's LAN IP
 - **Storage:** PV at `/mnt/ssd/k3s-storage/adguard` for config + filter lists
-- **Web UI:** standard Tailscale ingress at `adguard.tail57bf10.ts.net`
+- **Web UI:** standard Tailscale ingress at `adguard.example-tailnet.ts.net`
 
 ## Security
 
@@ -50,7 +50,7 @@ kubectl rollout restart deployment adguard -n adguard
 ### Access the UI
 
 ```text
-https://adguard.tail57bf10.ts.net
+https://adguard.example-tailnet.ts.net
 ```
 (only reachable from the tailnet)
 

@@ -10,7 +10,7 @@ Each component has its own namespace (matches its app directory under `k8s/apps/
 
 | Component | Namespace | Ingress |
 |---|---|---|
-| [Prometheus](#prometheus) | `prometheus` | <https://prometheus.tail57bf10.ts.net> |
+| [Prometheus](#prometheus) | `prometheus` | <https://prometheus.example-tailnet.ts.net> |
 | [node-exporter](#node-exporter) | `node-exporter` | — (DaemonSet, scraped) |
 | [kube-state-metrics](#kube-state-metrics) | `kube-state-metrics` | — (scraped) |
 | [Blackbox exporter](#blackbox) | `blackbox` | — (scraped) |
@@ -28,7 +28,7 @@ Each component has its own namespace (matches its app directory under `k8s/apps/
 | Storage | 20 Gi PVC (`local-path-provisioner`) |
 | Retention | 15 days (default) |
 | Scrape interval | 30 s |
-| Ingress | `prometheus.tail57bf10.ts.net` (UI / `/targets` / debug) |
+| Ingress | `prometheus.example-tailnet.ts.net` (UI / `/targets` / debug) |
 
 Scrape config lives in [`k8s/apps/prometheus/configmap.yaml`](../../k8s/apps/prometheus/configmap.yaml). Targets:
 
@@ -43,7 +43,7 @@ Scrape config lives in [`k8s/apps/prometheus/configmap.yaml`](../../k8s/apps/pro
 
 ```bash
 # Confirm targets are healthy
-# Status → Targets at https://prometheus.tail57bf10.ts.net/targets
+# Status → Targets at https://prometheus.example-tailnet.ts.net/targets
 
 # Drop & re-create a noisy series
 kubectl exec -n prometheus deploy/prometheus -- \
@@ -122,7 +122,7 @@ kube_deployment_status_replicas_unavailable
 
 Configuration: [`k8s/apps/blackbox/configmap.yaml`](../../k8s/apps/blackbox/configmap.yaml). Probe targets are defined in `prometheus/configmap.yaml` under `scrape_configs.job_name: blackbox`. Today's probe list:
 
-- All app ingresses (e.g., `https://grafana.tail57bf10.ts.net/`)
+- All app ingresses (e.g., `https://grafana.example-tailnet.ts.net/`)
 - Critical external endpoints (e.g., GitHub API for ArgoCD)
 
 Useful Grafana queries:

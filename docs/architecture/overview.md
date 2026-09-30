@@ -29,7 +29,7 @@ graph TB
         WS["operator workstation"]
     end
 
-    subgraph TS["Tailnet · tail57bf10.ts.net (WireGuard mesh)"]
+    subgraph TS["Tailnet · example-tailnet.ts.net (WireGuard mesh)"]
         MESH(("MagicDNS + ACL"))
     end
 
@@ -39,7 +39,7 @@ graph TB
     PI3    -.->|tailscaled| MESH
     WS     -.->|tailscaled| MESH
 
-    MESH ==>|ingressClassName: tailscale<br/>ts.net managed TLS| APPS["app.tail57bf10.ts.net"]
+    MESH ==>|ingressClassName: tailscale<br/>ts.net managed TLS| APPS["app.example-tailnet.ts.net"]
 
     LAMBDA -->|StartInstances<br/>StopInstances| SERVER
     LAMBDA -->|StartInstances<br/>StopInstances| AGENT
@@ -128,10 +128,10 @@ These are hard limits enforced by the chosen substrate, not preferences:
 
 ## 7. Request Flow Example
 
-A user opening `https://grafana.tail57bf10.ts.net` from their laptop:
+A user opening `https://grafana.example-tailnet.ts.net` from their laptop:
 
 1. The laptop is on the tailnet (Tailscale client running locally).
-2. **MagicDNS** resolves `grafana.tail57bf10.ts.net` to the Grafana proxy pod inside the cluster.
+2. **MagicDNS** resolves `grafana.example-tailnet.ts.net` to the Grafana proxy pod inside the cluster.
 3. The Tailscale operator's proxy terminates `ts.net` managed TLS and forwards to the in-cluster `Service`.
 4. The `Service` (ClusterIP `10.43.x.x`) routes to a Grafana pod on whichever node satisfies its `nodeAffinity` — typically `rasp-pi-04` for proximity to Loki PVCs.
 5. Grafana queries Prometheus and Loki over in-cluster ClusterIP services. No traffic leaves the cluster.

@@ -62,7 +62,7 @@ ansible -i .../production.yml rasp-pi-03 \
 **Diagnostic:**
 ```bash
 # Live debug UI (only reachable on the tailnet)
-curl https://alloy.tail57bf10.ts.net/debug/livedebugging
+curl https://alloy.example-tailnet.ts.net/debug/livedebugging
 # Or:
 kubectl -n alloy logs -l app=alloy | grep -i beyla
 ```

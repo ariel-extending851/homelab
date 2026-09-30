@@ -4,6 +4,9 @@
 # Localhost URLs — sample/doc references, not real endpoints
 ^https?://localhost(:[0-9]+)?(/.*)?$
 
+# Tailnet internal and example domains (*.ts.net)
+^https?://.*\.ts\.net(/.*)?$
+
 # GitHub settings pages (require authentication)
 https://github.com/ariel-extending851/homelab/settings
 

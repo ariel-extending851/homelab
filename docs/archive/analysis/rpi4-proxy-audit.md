@@ -173,7 +173,7 @@ echo "=== Current Proxy Distribution ==="
 kubectl get pods -n tailscale -o wide | grep ingress
 
 echo "=== RPi 4 Current Load ==="
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "uptime && free -m"
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "uptime && free -m"
 ```
 
 ### Execution Phase
@@ -221,11 +221,11 @@ kubectl get pods -n tailscale -o wide
 
 # Check RPi 4 resource relief
 echo "=== RPi 4 Load After Optimization ==="
-ssh ubuntu@rasp-pi-04.tail57bf10.ts.net "uptime && free -m"
+ssh ubuntu@rasp-pi-04.example-tailnet.ts.net "uptime && free -m"
 
 # Test all endpoints
 echo "=== Testing Endpoints ==="
-curl -s -o /dev/null -w "%{http_code}" https://grafana.tail57bf10.ts.net
+curl -s -o /dev/null -w "%{http_code}" https://grafana.example-tailnet.ts.net
 # etc...
 ```
 

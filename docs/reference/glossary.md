@@ -41,13 +41,13 @@ ArgoCD annotation (`argoproj.io/sync-wave`) that orders resource creation within
 ## Network
 
 **Tailnet**
-A Tailscale network (mesh of WireGuard peers). This project's tailnet is `tail57bf10.ts.net`. Every node + the operator laptop joins it.
+A Tailscale network (mesh of WireGuard peers). This project's tailnet is `example-tailnet.ts.net`. Every node + the operator laptop joins it.
 
 **MagicDNS**
 Tailscale feature that auto-resolves `<hostname>` to the tailnet IP of the device with that name. Enabled in the Tailscale admin console.
 
 **ts.net**
-Tailscale's parent domain for managed TLS certificates. Each tailnet gets a subdomain (`tail57bf10.ts.net` for ours).
+Tailscale's parent domain for managed TLS certificates. Each tailnet gets a subdomain (`example-tailnet.ts.net` for ours).
 
 **SSM Session Manager**
 AWS service that gives you a shell on an EC2 instance via the IAM-authenticated AWS API — no SSH port required. Used as break-glass when Tailscale is down. See [`../runbooks/tailscale-logged-out.md`](../runbooks/tailscale-logged-out.md).

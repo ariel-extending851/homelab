@@ -6,7 +6,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 **Date:** January 22, 2026
 **Strategy:** Replace manual sidecars with native Kubernetes Ingress
-**Tailnet:** `tail57bf10.ts.net`
+**Tailnet:** `example-tailnet.ts.net`
 
 ## What Changed
 
@@ -31,7 +31,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 **Added:**
 - `ingress.yaml` with `ingressClassName: tailscale`
-- Hostname: `grafana.tail57bf10.ts.net`
+- Hostname: `grafana.example-tailnet.ts.net`
 
 **Updated:**
 - `kustomization.yaml` - added `ingress.yaml` resource
@@ -46,7 +46,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 **Added:**
 - `ingress.yaml` with `ingressClassName: tailscale`
-- Hostname: `prometheus.tail57bf10.ts.net`
+- Hostname: `prometheus.example-tailnet.ts.net`
 
 **Updated:**
 - `kustomization.yaml` - added `ingress.yaml` resource
@@ -61,7 +61,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 **Added:**
 - `ingress.yaml` with `ingressClassName: tailscale`
-- Hostname: `loki.tail57bf10.ts.net`
+- Hostname: `loki.example-tailnet.ts.net`
 
 **Updated:**
 - `kustomization.yaml` - added `ingress.yaml` resource
@@ -76,7 +76,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 
 **Added:**
 - `ingress.yaml` with `ingressClassName: tailscale`
-- Hostname: `adguard.tail57bf10.ts.net`
+- Hostname: `adguard.example-tailnet.ts.net`
 
 **Updated:**
 - `kustomization.yaml` - added `ingress.yaml` resource
@@ -93,7 +93,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 **Modified:**
 - `ingress.yaml` - changed from Traefik to Tailscale
   - Before: `kubernetes.io/ingress.class: traefik`, `searxng.local`
-  - After: `ingressClassName: tailscale`, `searxng.tail57bf10.ts.net`
+  - After: `ingressClassName: tailscale`, `searxng.example-tailnet.ts.net`
 
 **Added:**
 - `kustomization.yaml` (new file)
@@ -111,7 +111,7 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
 **Modified:**
 - `ingress.yaml` - changed from Traefik to Tailscale
   - Before: `kubernetes.io/ingress.class: traefik`, `golink.local`
-  - After: `ingressClassName: tailscale`, `golink.tail57bf10.ts.net`
+  - After: `ingressClassName: tailscale`, `golink.example-tailnet.ts.net`
 
 **Kept:**
 - PVC for GoLink database (not Tailscale-related)
@@ -191,12 +191,12 @@ This document summarizes the migration from Tailscale sidecar pattern to the Tai
    # Visit: https://login.tailscale.com/admin/machines
 
    # Test access (from a device on the Tailnet)
-   curl https://grafana.tail57bf10.ts.net
-   curl https://prometheus.tail57bf10.ts.net
-   curl https://loki.tail57bf10.ts.net
-   curl https://adguard.tail57bf10.ts.net
-   curl https://searxng.tail57bf10.ts.net
-   curl https://golink.tail57bf10.ts.net
+   curl https://grafana.example-tailnet.ts.net
+   curl https://prometheus.example-tailnet.ts.net
+   curl https://loki.example-tailnet.ts.net
+   curl https://adguard.example-tailnet.ts.net
+   curl https://searxng.example-tailnet.ts.net
+   curl https://golink.example-tailnet.ts.net
    ```
 
 ## Rollback Plan
@@ -255,7 +255,7 @@ After successful migration:
 
 3. **TLS Certificates:** The operator automatically manages TLS certificates. You no longer need to handle this manually.
 
-4. **Hostname Pattern:** All services use `<app>.tail57bf10.ts.net` format for consistency.
+4. **Hostname Pattern:** All services use `<app>.example-tailnet.ts.net` format for consistency.
 
 ## References
 

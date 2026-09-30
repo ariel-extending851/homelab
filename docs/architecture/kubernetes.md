@@ -138,7 +138,7 @@ kubectl get applications -n argocd
 kubectl get pods -n tailscale | grep ^ts-
 
 # Tailnet hostnames respond
-  curl -sI -o /dev/null -w "%{http_code} $h\n" https://$h.tail57bf10.ts.net
+  curl -sI -o /dev/null -w "%{http_code} $h\n" https://$h.example-tailnet.ts.net
 done
 ```
 

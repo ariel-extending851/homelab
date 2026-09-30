@@ -11,7 +11,7 @@
 
 ## Symptoms
 
-`kubectl` commands time out, ArgoCD UI is unreachable, all `*.tail57bf10.ts.net` hostnames fail to resolve. The cluster looks down — but if you check via SSM:
+`kubectl` commands time out, ArgoCD UI is unreachable, all `*.example-tailnet.ts.net` hostnames fail to resolve. The cluster looks down — but if you check via SSM:
 
 ```bash
 # Via SSM Session Manager
