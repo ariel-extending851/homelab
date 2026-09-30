@@ -68,7 +68,7 @@ The router itself (GL.iNet Opal SFT1200) is also unable to bridge for them: Open
 
 | Component | Where | What it does | Source of truth |
 |---|---|---|---|
-| LAN DNS DNAT | GL.iNet `firewall.dns_hijack_adguard` | Redirects every LAN `:53` query to `pi_adguard_ip:53` so AdGuard sees all DNS traffic, regardless of what the client thinks its resolver is | [`ansible/roles/gatekeeper/tasks/main.yml`](../../ansible/roles/gatekeeper/tasks/main.yml) (~line 248) |
+| LAN DNS DNAT | GL.iNet `firewall.dns_hijack` | Redirects every LAN `:53` query to `pi_adguard_ip:53` so AdGuard sees all DNS traffic, regardless of what the client thinks its resolver is | [`ansible/roles/gatekeeper/tasks/main.yml`](../../ansible/roles/gatekeeper/tasks/main.yml) (~line 400) |
 | AdGuard split DNS | rasp-pi-03 `:53` (hostNetwork) | Upstream DNS list with the per-domain prefix `[/tail57bf10.ts.net/]100.100.100.100` — that prefix tells AdGuard "for this domain only, use Tailscale MagicDNS as upstream" | AdGuard Home UI → Settings → DNS → Upstream DNS servers (persisted in PV `/opt/adguardhome/conf/AdGuardHome.yaml`) |
 | Tailscale MagicDNS | `100.100.100.100` (Tailscale-managed) | Resolves tailnet hostnames to `100.x.y.z` CGNAT addresses | Tailscale admin console |
 | Reverse route | GL.iNet `network.tailscale_reverse_route` | Static route: `100.64.0.0/10` → `pi_tailscale_ip` (LAN gateway). LAN clients sending packets to `100.x` addresses get them forwarded to the subnet router | [`ansible/roles/gatekeeper/tasks/main.yml`](../../ansible/roles/gatekeeper/tasks/main.yml) (~line 196) |
